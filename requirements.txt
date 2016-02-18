@@ -1,0 +1,31 @@
+aiopg
+arrow
+argon2_cffi
+asyncio-redis
+bleach
+boto
+bcrypt
+cnamedtuple
+# crypto
+Jinja2
+python-magic
+markdown
+MarkupSafe
+numpy
+passlib
+Pillow
+psycopg2
+pycrypto
+python-dateutil
+PyYAML
+radon
+rauth
+redis
+redis_structures
+requests
+pygments
+python-redis-lock
+python-slugify
+stream-python
+ujson
+# yapf
