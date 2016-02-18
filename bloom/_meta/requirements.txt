@@ -1,0 +1,9 @@
+argon2_cffi
+arrow
+bcrypt
+cnamedtuple
+python-dateutil
+passlib
+psycopg2
+pycrypto
+slugify
