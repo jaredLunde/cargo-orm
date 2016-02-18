@@ -10,7 +10,7 @@ from bloom.fields import Varchar
 from bloom import create_pool
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Char import *
+from unit_tests.fields.Char import *
 
 
 class TestVarchar(TestChar):

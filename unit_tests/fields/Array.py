@@ -9,7 +9,7 @@ from bloom.fields import Array
 from vital.debug import RandData
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import *
+from unit_tests.fields.Field import *
 
 
 class TestArray(TestField):

@@ -11,7 +11,7 @@ from bloom import *
 from bloom.fields import Timestamp
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Time import *
+from unit_tests.fields.Time import *
 
 
 class TestTimestamp(TestTime):

@@ -4,11 +4,11 @@ import sys
 import unittest
 
 import psycopg2.extras
-from vital import request
+from kola import request
 from bloom.fields import IP
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import *
+from unit_tests.fields.Field import *
 
 
 request.bind()

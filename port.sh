@@ -5,3 +5,5 @@ find ./ -type f -exec sed -i -e 's/Vital/Bloom/g' {} \;;
 find ./ -type f -exec sed -i -e 's/from vital import config/from kola import config/g' {} \;;
 find ./ -type f -exec sed -i -e 's/create_vital_pool/create_kola_pool/g' {} \;;
 find ./ -type f -exec sed -i -e 's/create_vital_client/create_kola_client/g' {} \;;
+find ./ -type f -exec sed -i -e 's/from vital import/from kola import/g' {} \;;
+find ./ -type f -exec sed -i -e 's/unit_tests\.sql/unit_tests/g' {} \;;

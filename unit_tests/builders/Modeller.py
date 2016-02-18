@@ -29,7 +29,7 @@ banner = '''
   ``Creates models from tables and tables from models``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/bloom-orm
+   http://github.com/jaredlunde/Bloom ORM
 
 """'''
 

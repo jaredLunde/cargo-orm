@@ -10,7 +10,7 @@ from bloom.fields import Bool
 from bloom import create_pool
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import TestField
+from unit_tests.fields.Field import TestField
 
 
 class TestBool(TestField):

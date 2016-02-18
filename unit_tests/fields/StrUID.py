@@ -8,7 +8,7 @@ from kola import config
 from bloom.fields import StrUID
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Int import TestInt
+from unit_tests.fields.Int import TestInt
 
 
 class TestStrUID(TestInt):

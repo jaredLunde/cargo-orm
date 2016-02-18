@@ -10,7 +10,7 @@ from bloom.fields import Decimal
 from bloom import create_pool
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Numeric import TestNumeric
+from unit_tests.fields.Numeric import TestNumeric
 
 
 class TestDecimal(TestNumeric):

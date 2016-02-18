@@ -7,7 +7,7 @@ from vital.docr import Docr
 from bloom.fields import Enum
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Char import *
+from unit_tests.fields.Char import *
 
 
 class TestEnum(TestField):

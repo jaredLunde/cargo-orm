@@ -8,7 +8,7 @@ from kola import config
 from bloom.fields import BigInt
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.SmallInt import TestSmallInt
+from unit_tests.fields.SmallInt import TestSmallInt
 
 
 class TestBigInt(TestSmallInt):

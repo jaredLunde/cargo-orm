@@ -11,7 +11,7 @@ from bloom import *
 from bloom.fields import Time
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import *
+from unit_tests.fields.Field import *
 
 
 class TestTime(TestField):

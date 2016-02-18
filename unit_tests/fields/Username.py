@@ -10,7 +10,7 @@ from bloom.fields import Username
 from vital.debug import RandData, gen_rand_str
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Char import *
+from unit_tests.fields.Char import *
 
 
 class TestUsername(TestChar):

@@ -6,18 +6,18 @@ import unittest
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 
 from kola import config
-from unit_tests.sql.statements.BaseQuery import *
-from unit_tests.sql.statements.DELETE import *
-from unit_tests.sql.statements.EXCEPT import *
-from unit_tests.sql.statements.INSERT import *
-from unit_tests.sql.statements.INTERSECT import *
-from unit_tests.sql.statements.Intersections import *
-from unit_tests.sql.statements.Query import *
-from unit_tests.sql.statements.RAW import *
-from unit_tests.sql.statements.SELECT import *
-from unit_tests.sql.statements.UNION import *
-from unit_tests.sql.statements.UPDATE import *
-from unit_tests.sql.statements.WITH import *
+from unit_tests.statements.BaseQuery import *
+from unit_tests.statements.DELETE import *
+from unit_tests.statements.EXCEPT import *
+from unit_tests.statements.INSERT import *
+from unit_tests.statements.INTERSECT import *
+from unit_tests.statements.Intersections import *
+from unit_tests.statements.Query import *
+from unit_tests.statements.RAW import *
+from unit_tests.statements.SELECT import *
+from unit_tests.statements.UNION import *
+from unit_tests.statements.UPDATE import *
+from unit_tests.statements.WITH import *
 
 if __name__ == '__main__':
     # Unit test

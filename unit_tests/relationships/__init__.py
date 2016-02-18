@@ -3,14 +3,15 @@
 import os
 import sys
 import unittest
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
+path = os.path.dirname(os.path.abspath(__file__)).split('bloom-orm')[0] + \
+    'bloom-orm'
+sys.path.insert(0, path)
 
 
 from kola import config
-from unit_tests.sql.relationships.BaseRelationship import *
-from unit_tests.sql.relationships.ForeignKey import *
-from unit_tests.sql.relationships.Relationship import *
-from unit_tests.sql.relationships._get_obj_from_string import *
+from unit_tests.relationships.BaseRelationship import *
+from unit_tests.relationships.ForeignKey import *
+from unit_tests.relationships.Relationship import *
 
 
 if __name__ == '__main__':

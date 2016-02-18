@@ -8,7 +8,7 @@ from bloom.fields import Email
 from vital.debug import RandData, gen_rand_str
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import *
+from unit_tests.fields.Field import *
 
 
 class TestEmail(TestField):

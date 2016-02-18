@@ -10,7 +10,7 @@ from bloom.fields import AuthKey
 from vital.security import *
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import *
+from unit_tests.fields.Field import *
 
 
 class TestAuthKey(TestField):

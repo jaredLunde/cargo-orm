@@ -8,7 +8,7 @@ from kola import config
 from bloom.fields import BigSerial
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.BigInt import TestBigInt
+from unit_tests.fields.BigInt import TestBigInt
 
 
 class TestBigSerial(TestBigInt):

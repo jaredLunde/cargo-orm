@@ -6,7 +6,7 @@ import unittest
 from bloom.fields import Slug, SlugFactory
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-from unit_tests.sql.fields.Field import TestField
+from unit_tests.fields.Field import TestField
 
 
 class TestSlug(TestField):

@@ -3,20 +3,21 @@
 import os
 import sys
 import unittest
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
-
+path = os.path.dirname(os.path.abspath(__file__)).split('bloom-orm')[0] + \
+    'bloom-orm'
+sys.path.insert(0, path)
 from kola import config
-from unit_tests.sql.expressions.ArrayItems import *
-from unit_tests.sql.expressions.BaseLogic import *
-from unit_tests.sql.expressions.Case import *
-from unit_tests.sql.expressions.Clause import *
-from unit_tests.sql.expressions.DateTimeLogic import *
-from unit_tests.sql.expressions.Expression import *
-from unit_tests.sql.expressions.Function import *
-from unit_tests.sql.expressions.NumericLogic import *
-from unit_tests.sql.expressions.StringLogic import *
-from unit_tests.sql.expressions.Subquery import *
-from unit_tests.sql.expressions.alias import *
+from unit_tests.expressions.ArrayItems import *
+from unit_tests.expressions.BaseLogic import *
+from unit_tests.expressions.Case import *
+from unit_tests.expressions.Clause import *
+from unit_tests.expressions.DateTimeLogic import *
+from unit_tests.expressions.Expression import *
+from unit_tests.expressions.Function import *
+from unit_tests.expressions.NumericLogic import *
+from unit_tests.expressions.StringLogic import *
+from unit_tests.expressions.Subquery import *
+from unit_tests.expressions.alias import *
 
 
 if __name__ == '__main__':

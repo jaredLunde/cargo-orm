@@ -10,7 +10,7 @@
 """
 import copy
 
-import dateutil
+from dateutil import parser as dateparser
 import arrow
 
 from vital.debug import prepr
@@ -187,7 +187,7 @@ class Time(_TimeFields, TimeLogic, DateLogic):
                 self._set_value(value)
             elif not isinstance(value, arrow.Arrow):
                 if isinstance(value, str):
-                    value = dateutil.parser.parse(value)
+                    value = dateparser.parse(value)
                 self._arrow = arrow.get(value)
                 self._set_value(self._arrow)
             else:
