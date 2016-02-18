@@ -4,7 +4,7 @@ import sys
 import unittest
 
 from vital.docr import Docr
-from vital.sql.fields import Enum
+from bloom.fields import Enum
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Char import *

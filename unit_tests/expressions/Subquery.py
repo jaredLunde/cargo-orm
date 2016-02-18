@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.expressions.Subquery`
+    `Unit tests for bloom.expressions.Subquery`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,7 +9,7 @@
 import unittest
 
 from vital.security import randkey
-from vital.sql import *
+from bloom import *
 
 
 def new_field(type='char'):

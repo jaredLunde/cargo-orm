@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder Fields`
+  `Bloom SQL Builder Fields`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import re
@@ -13,8 +13,8 @@ import re
 from vital.debug import prepr
 from vital.cache import cached_property
 
-from vital.sql import aliased
-from vital.sql.builder.utils import *
+from bloom import aliased
+from bloom.builder.utils import *
 
 
 __all__ = ('FieldMeta', '_field_tpl')

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for vital.sql.validators.Validate`
+  `Unit tests for bloom.validators.Validate`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -10,20 +10,20 @@ import random
 import unittest
 from collections import *
 
-from vital import config
+from kola import config
 from vital.security import randkey
 from vital.docr import Docr
 from vital.debug import gen_rand_str, RandData
 
-from vital.sql import *
-from vital.sql.validators import Validate, ValidationValue
+from bloom import *
+from bloom.validators import Validate, ValidationValue
 
-from vital.sql.orm import QueryState
-from vital.sql.statements import WITH
+from bloom.orm import QueryState
+from bloom.statements import WITH
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
-create_vital_pool()
+create_kola_pool()
 
 
 def new_field(type='char', value=None, name=None, table=None, **kwargs):

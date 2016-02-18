@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.clients.Postgres`
+    `Unit tests for bloom.clients.Postgres`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -14,9 +14,9 @@ except:
 import unittest
 import psycopg2
 
-from vital import config
-from vital.sql.cursors import *
-from vital.sql.clients import Postgres
+from kola import config
+from bloom.cursors import *
+from bloom.clients import Postgres
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'

@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder Utils`
+  `Bloom SQL Builder Utils`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import os
@@ -13,8 +13,8 @@ import os
 from vital.cache import memoize
 from vital.docr import Docr
 
-from vital.sql import fields
-from vital.sql.etc.translator import postgres
+from bloom import fields
+from bloom.etc.translator import postgres
 
 
 __all__ = ('_get_sql_file', '_get_docr', '_find_sql_field')

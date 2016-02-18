@@ -4,9 +4,9 @@
 import sys
 import unittest
 
-from vital import config
+from kola import config
 
-from vital.sql.fields import Int
+from bloom.fields import Int
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.SmallInt import TestSmallInt

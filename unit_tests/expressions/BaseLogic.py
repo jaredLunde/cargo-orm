@@ -1,18 +1,18 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for vital.sql.expressions.BaseLogic`
+  `Unit tests for bloom.expressions.BaseLogic`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.expressions import *
+from bloom.expressions import *
 from vital.security import randkey
-from vital.sql import ORM, fields
-from vital.sql.fields import Field
+from bloom import ORM, fields
+from bloom.fields import Field
 
 
 def new_field(type='char', table=None, name=None):

@@ -2,19 +2,19 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Field`
+  `Bloom SQL Field`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import copy
 from vital.debug import prepr
 
-from vital.sql.etc.types import *
-from vital.sql.exceptions import *
-from vital.sql.expressions import *
-from vital.sql.validators import *
+from bloom.etc.types import *
+from bloom.exceptions import *
+from bloom.expressions import *
+from bloom.validators import *
 
 
 __all__ = ('Field',)

@@ -1,15 +1,15 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.relationships.BaseRelationship`
+    `Unit tests for bloom.relationships.BaseRelationship`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.relationships import BaseRelationship
+from bloom.relationships import BaseRelationship
 
 
 class TestBaseRelationship(unittest.TestCase):

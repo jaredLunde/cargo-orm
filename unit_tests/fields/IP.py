@@ -5,7 +5,7 @@ import unittest
 
 import psycopg2.extras
 from vital import request
-from vital.sql.fields import IP
+from bloom.fields import IP
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Field import *

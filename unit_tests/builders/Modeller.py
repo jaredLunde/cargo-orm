@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.builder.Modeller`
+    `Unit tests for bloom.builder.Modeller`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,15 +9,15 @@
 import unittest
 import psycopg2
 
-from vital import config
-from vital.sql import ORM, create_vital_client
-from vital.sql.builder import Modeller, create_models
+from kola import config
+from bloom import ORM, create_kola_client
+from bloom.builder import Modeller, create_models
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
 config.bind(cfile)
 
-create_vital_client()
+create_kola_client()
 
 
 banner = '''
@@ -25,11 +25,11 @@ banner = '''
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder`
+  `Bloom SQL Builder`
   ``Creates models from tables and tables from models``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """'''
 

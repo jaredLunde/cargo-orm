@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Expressions`
+  `Bloom SQL Expressions`
   ``Objects for creating SQL expressions, functions and clauses``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2016 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import random
@@ -15,7 +15,7 @@ from hashlib import sha1
 
 from vital.debug import prepr
 from vital.security import randhex
-from vital.sql.etc import passwords, usernames, logic
+from bloom.etc import passwords, usernames, logic
 
 
 __all__ = (
@@ -947,10 +947,10 @@ class BaseExpression(object):
         return _make_param(key)
 
     def _inherit_parameters(self, *items):
-        """ Inherits the parameters of other :mod:vital.sql objects into this
+        """ Inherits the parameters of other :mod:bloom objects into this
             one.
 
-            @items: :mod:vital.sql objects
+            @items: :mod:bloom objects
         """
         self.params.update({
             k: v
@@ -1140,7 +1140,7 @@ class Clause(BaseExpression):
                  use_field_name=False, alias=None):
         """`Clause`
             Formats SQL clauses. These are only intended for use within the
-            :class:vital.sql.Query and vital.sql.QueryState objects, as they
+            :class:bloom.Query and bloom.QueryState objects, as they
             are for building the foundation of the SQL query.
 
             @clause: (#str) name of the clause

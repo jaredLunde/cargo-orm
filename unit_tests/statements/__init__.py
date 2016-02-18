@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 
 
-from vital import config
+from kola import config
 from unit_tests.sql.statements.BaseQuery import *
 from unit_tests.sql.statements.DELETE import *
 from unit_tests.sql.statements.INSERT import *

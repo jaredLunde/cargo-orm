@@ -1,16 +1,16 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.clients.create_client`
+    `Unit tests for bloom.clients.create_client`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import json
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.clients import create_client, create_vital_client, local_client,\
+from bloom.clients import create_client, create_kola_client, local_client,\
                               Postgres
 
 
@@ -37,12 +37,12 @@ class Testcreate_client(unittest.TestCase):
 
     def test_vital_create(self):
         local_client.clear()
-        client = create_vital_client()
+        client = create_kola_client()
         self.assertIn('db', local_client)
         self.assertIs(local_client['db'], client)
         self.assertIsInstance(client, Postgres)
 
-        client2 = create_vital_client(name='db2')
+        client2 = create_kola_client(name='db2')
         self.assertIn('db2', local_client)
         self.assertIs(local_client['db2'], client2)
 

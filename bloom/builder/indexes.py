@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder Indexes`
+  `Bloom SQL Builder Indexes`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.sql.orm import QueryState
+from bloom.orm import QueryState
 from vital.debug import prepr
 
 

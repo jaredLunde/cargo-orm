@@ -3,11 +3,11 @@
 import sys
 import unittest
 
-from vital import config
+from kola import config
 
 from vital.docr import Docr
-from vital.sql.fields import Decimal
-from vital.sql import create_pool
+from bloom.fields import Decimal
+from bloom import create_pool
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Numeric import TestNumeric

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital ORM`
+  `Bloom ORM`
   ``A lightweight, easy to use PostgreSQL ORM inspired by Peewee and others``
 
   ===================
@@ -10,17 +10,17 @@
 
   * Initiate a SQL connection pool
   ..
-    from vital.sql import *
+    from bloom import *
 
     #: Creates a thread-safe connection pool which all local SQL queries
     #  will use
     create_pool(minconn=2, maxconn=10)
   ..
   * Create your first Model with :class:Model or :class:RestModel
-  * Add fields to the model with :mod:vital.sql.fields
+  * Add fields to the model with :mod:bloom.fields
   * Add relationships to the model with :class:Relationship and
     :class:ForeignKey ..
-    from vital.sql import *
+    from bloom import *
     from cool_app.models import Images
 
     class Users(RestModel):
@@ -46,17 +46,17 @@
 
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.sql.exceptions import *
-from vital.sql.clients import *
-from vital.sql.cursors import *
-from vital.sql.fields import *
-from vital.sql.orm import *
-from vital.sql.statements import *
-from vital.sql.expressions import *
-from vital.sql.relationships import *
+from bloom.exceptions import *
+from bloom.clients import *
+from bloom.cursors import *
+from bloom.fields import *
+from bloom.orm import *
+from bloom.statements import *
+from bloom.expressions import *
+from bloom.relationships import *
 
 
 __author__ = "Jared Lunde"

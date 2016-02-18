@@ -5,7 +5,7 @@
   `Postgres Clients`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 try:
@@ -23,7 +23,7 @@ from multiprocessing import cpu_count
 
 from vital.cache import DictProperty, local_property
 from vital.tools.dicts import merge_dict
-from vital.sql.cursors import CNamedTupleCursor
+from bloom.cursors import CNamedTupleCursor
 from vital.debug import prepr
 
 
@@ -34,8 +34,8 @@ __all__ = (
     "create_client",
     "create_pool",
     # TODO: remove these
-    "create_vital_client",
-    "create_vital_pool"
+    "create_kola_client",
+    "create_kola_pool"
 )
 
 
@@ -69,11 +69,11 @@ class Postgres(BaseClient):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ``Usage Example``
 
-        Creates a new :class:vital.sql.Model with a customized
+        Creates a new :class:bloom.Model with a customized
         Postgres instance.
         ..
             from psycopg2.extras import NamedTupleCursor
-            from vital.sql import Model, Postgres
+            from bloom import Model, Postgres
 
             class MyModel(Model):
 
@@ -378,7 +378,7 @@ def create_pool(minconn=None, maxconn=None, name='db', *args, **kwargs):
 
 
 # TODO: Move to separate vital package
-def create_vital_client(*opt, name='db', **opts):
+def create_kola_client(*opt, name='db', **opts):
     """ :see::func:create_client
 
         The client created will be configured with :class:vital.config
@@ -388,12 +388,12 @@ def create_vital_client(*opt, name='db', **opts):
             the client within, and the name in the local :class:vital.config
             where the configuration arguments are stored
     """
-    from vital import config
+    from kola import config
     cfg = config.get(name, {})
     return create_client(*opt, name=name, **merge_dict(cfg, opts))
 
 
-def create_vital_pool(*opt, name='db', **opts):
+def create_kola_pool(*opt, name='db', **opts):
     """ :see::func:create_pool
 
         The pool created will be configured with :class:vital.config
@@ -403,6 +403,6 @@ def create_vital_pool(*opt, name='db', **opts):
             the pool within, and the name in the local :class:vital.config
             where the configuration arguments are stored
     """
-    from vital import config
+    from kola import config
     cfg = config.get(name, {})
     return create_pool(*opt, name=name, **merge_dict(cfg, opts))

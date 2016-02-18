@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for vital.sql.orm.Model`
+  `Unit tests for bloom.orm.Model`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -16,14 +16,14 @@ from collections import namedtuple
 
 from vital.debug import Timer
 from vital.security import randkey
-from vital import config, local, logg
+from kola import config, local, logg
 
-from vital.sql import *
-from vital.sql.orm import ORM, QueryState
+from bloom import *
+from bloom.orm import ORM, QueryState
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
-create_vital_client()
+create_kola_client()
 
 
 def new_field(type='char', value=None, name=None, table=None):

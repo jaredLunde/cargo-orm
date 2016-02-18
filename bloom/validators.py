@@ -5,12 +5,12 @@
   `Field-level Validators`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 from collections import UserList, deque
 
-from vital.sql.etc.types import *
+from bloom.etc.types import *
 
 
 __all__ = ('ValidationValue', 'Validate')

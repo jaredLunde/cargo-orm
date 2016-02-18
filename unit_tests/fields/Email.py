@@ -4,7 +4,7 @@ import sys
 import unittest
 import string
 
-from vital.sql.fields import Email
+from bloom.fields import Email
 from vital.debug import RandData, gen_rand_str
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')

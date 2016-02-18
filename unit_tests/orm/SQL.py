@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for vital.sql.orm.ORM`
+  `Unit tests for bloom.orm.ORM`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -15,14 +15,14 @@ from cnamedtuple import namedtuple
 
 from vital.debug import Timer
 from vital.security import randkey
-from vital import config, logg
+from kola import config, logg
 
-from vital.sql import *
-from vital.sql.orm import ORM, QueryState
+from bloom import *
+from bloom.orm import ORM, QueryState
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
-create_vital_client()
+create_kola_client()
 
 
 # TODO: :meth:raw_query
@@ -89,7 +89,7 @@ class TestORM(unittest.TestCase):
         self.assertIsNot(orm.client, self.client)
         orm = ORM(client=self.client)
         self.assertIs(orm.client, self.client)
-        create_vital_pool()
+        create_kola_pool()
         orm = ORM(client=None)
         self.assertIs(orm.client,  local_client['db'])
 

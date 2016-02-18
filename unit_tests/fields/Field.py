@@ -4,11 +4,11 @@ import unittest
 import pickle
 import copy
 
-from vital import config
+from kola import config
 from vital.docr import Docr
 
-from vital.sql import aliased, fields
-from vital.sql.fields import Field
+from bloom import aliased, fields
+from bloom.fields import Field
 
 
 class Tc(object):

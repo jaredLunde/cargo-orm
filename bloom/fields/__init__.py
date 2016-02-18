@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Fields`
-  ``Field-type classes for the Vital SQL ORM``
+  `Bloom SQL Fields`
+  ``Field-type classes for the Bloom SQL ORM``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
   ```Usage Example```
 
   Creates a model with three fields
   ..
-    from vital.sql import *
+    from bloom import *
 
     # Model object
     class UserModel(Model):
@@ -52,24 +52,24 @@
 
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.sql.fields.field import Field
-from vital.sql.fields.binary import *
-from vital.sql.fields.boolean import *
-from vital.sql.fields.character import *
-from vital.sql.fields.datetimes import *
-from vital.sql.fields.extras import *
-from vital.sql.fields.geometric import *
-from vital.sql.fields.identifier import *
-from vital.sql.fields.integer import *
-from vital.sql.fields.keyvalue import *
-from vital.sql.fields.networking import *
-from vital.sql.fields.numeric import *
-from vital.sql.fields.ranged import *
-from vital.sql.fields.sequence import *
-from vital.sql.fields.xml import *
+from bloom.fields.field import Field
+from bloom.fields.binary import *
+from bloom.fields.boolean import *
+from bloom.fields.character import *
+from bloom.fields.datetimes import *
+from bloom.fields.extras import *
+from bloom.fields.geometric import *
+from bloom.fields.identifier import *
+from bloom.fields.integer import *
+from bloom.fields.keyvalue import *
+from bloom.fields.networking import *
+from bloom.fields.numeric import *
+from bloom.fields.ranged import *
+from bloom.fields.sequence import *
+from bloom.fields.xml import *
 
 
 # TODO: IMMINENT

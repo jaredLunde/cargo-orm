@@ -1,18 +1,18 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.expressions.DateTimeLogic`
+    `Unit tests for bloom.expressions.DateTimeLogic`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.expressions import *
+from bloom.expressions import *
 from vital.security import randkey
-from vital.sql import ORM, Model
-from vital.sql.fields import Time, Field
+from bloom import ORM, Model
+from bloom.fields import Time, Field
 
 
 def new_field():

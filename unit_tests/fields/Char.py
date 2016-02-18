@@ -3,7 +3,7 @@
 import sys
 import unittest
 
-from vital.sql.fields import Char
+from bloom.fields import Char
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Field import *

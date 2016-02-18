@@ -4,9 +4,9 @@ import sys
 import string
 import unittest
 
-from vital import config
+from kola import config
 
-from vital.sql.fields import AuthKey
+from bloom.fields import AuthKey
 from vital.security import *
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')

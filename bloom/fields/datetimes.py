@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Date and Time Fields`
+  `Bloom SQL Date and Time Fields`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import copy
@@ -15,9 +15,9 @@ import arrow
 
 from vital.debug import prepr
 
-from vital.sql.etc.types import *
-from vital.sql.expressions import *
-from vital.sql.fields import Field
+from bloom.etc.types import *
+from bloom.expressions import *
+from bloom.fields import Field
 
 
 __all__ = ('Time', 'Date', 'Timestamp')

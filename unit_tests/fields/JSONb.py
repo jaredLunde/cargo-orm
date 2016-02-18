@@ -5,7 +5,7 @@ import unittest
 
 import psycopg2.extras
 from vital.debug import RandData
-from vital.sql.fields import JSONb
+from bloom.fields import JSONb
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Char import *

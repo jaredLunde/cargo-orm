@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL ORM`
+  `Bloom SQL ORM`
   ``SQL table object modelling classes``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import re
@@ -33,15 +33,15 @@ from vital.tools.dicts import merge_dict
 from vital.tools.strings import camel_to_underscore
 from vital.debug import prepr, table_mapping, line
 
-from vital.sql.clients import *
-from vital.sql.cursors import CNamedTupleCursor
-from vital.sql.etc.types import *
-from vital.sql.exceptions import *
-from vital.sql.expressions import *
-from vital.sql.statements import *
-from vital.sql.relationships import *
-from vital.sql.fields import *
-from vital.sql.validators import ValidationValue
+from bloom.clients import *
+from bloom.cursors import CNamedTupleCursor
+from bloom.etc.types import *
+from bloom.exceptions import *
+from bloom.expressions import *
+from bloom.statements import *
+from bloom.relationships import *
+from bloom.fields import *
+from bloom.validators import ValidationValue
 
 
 __all__ = (
@@ -95,7 +95,7 @@ class ORM(object):
         return self._client or local_client.get('db') or Postgres()
 
     def __enter__(self):
-        """ Context manager, connects to :prop:vital.sql.ORM.client
+        """ Context manager, connects to :prop:bloom.ORM.client
             ..
             with ORM() as sql:
                 sql.where(Expression("table.field", "=", "some_val"))
@@ -109,7 +109,7 @@ class ORM(object):
         return self
 
     def __exit__(self, type=None, value=None, tb=None):
-        """ Context manager, closes the :prop:vital.sql.ORM.client connection
+        """ Context manager, closes the :prop:bloom.ORM.client connection
         """
         self.close()
 
@@ -148,7 +148,7 @@ class ORM(object):
             fkey.forge(self, name)
 
     def connect(self, **options):
-        """ Connects the :prop:vital.sql.ORM.client.
+        """ Connects the :prop:bloom.ORM.client.
 
             Passes @*args and @**kwargs to the local instance of
             :class:Postgres
@@ -156,7 +156,7 @@ class ORM(object):
         return self.client.connect(**options)
 
     def close(self):
-        """ Closes the :prop:vital.sql.ORM.client, resets the
+        """ Closes the :prop:bloom.ORM.client, resets the
             :prop:state
         """
         self.reset()
@@ -215,7 +215,7 @@ class ORM(object):
             added to the state, a |FROM| clause will automatically be added
             using |self.table|
 
-            @*fields: :class:Field(s) or :mod:vital.sql.expressions
+            @*fields: :class:Field(s) or :mod:bloom.expressions
                 to retrieve values for
             @run: (#bool) True to execute :meth:run on the :class:Query.
                 Otherwise this method returns the :class:Query.
@@ -240,7 +240,7 @@ class ORM(object):
         """ Parses the :prop:state as an :class:UPDATE statement. An |UPDATE|
             will be performed on the fields given in @*exps
 
-            @*fields: :class:vital.sql.Field or :mod:vital.sql.expressions
+            @*fields: :class:bloom.Field or :mod:bloom.expressions
                 objects
             @run: (#bool) True to execute :meth:run on the :class:Query.
                 Otherwise this method returns the :class:Query.
@@ -415,7 +415,7 @@ class ORM(object):
             @a: (:class:Model, :class:Expression or :class:Field)
             @b: (:class:Field) to |JOIN| @a to
             @on: (:class:Expression or #tuple) of
-                :class:vital.sql.Expression(s) |JOIN| @a |ON|
+                :class:bloom.Expression(s) |JOIN| @a |ON|
             @using: (:class:Field or #tuple) of :class:Field objects, sets a
                 |USING| clause for the |JOIN| using the given fields.
 
@@ -514,7 +514,7 @@ class ORM(object):
         """ Sets a |WHERE| :class:Clause in the query :prop:state for
             :class:SELECT, :class:UPDATE, and :class:DELETE queries
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -611,7 +611,7 @@ class ORM(object):
         """ Sets a |SET| :class:Clause in the query :prop:state for
             :class:UPDATE queries.
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -649,7 +649,7 @@ class ORM(object):
         """ Sets a |GROUP BY| :class:Clause in the query :prop:state for
             :class:SELECT queries.
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -671,7 +671,7 @@ class ORM(object):
         """ Sets an |ORDER BY| :class:Clause in the query :prop:state for
             :class:SELECT queries.
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -820,7 +820,7 @@ class ORM(object):
     def having(self, *exps, **kwargs):
         """ Sets a |HAVING| :class:Clause in the query :prop:state
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -831,7 +831,7 @@ class ORM(object):
     def for_update(self, *exps, **kwargs):
         """ Sets a |FOR UPDATE| :class:Clause in the query :prop:state
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -842,7 +842,7 @@ class ORM(object):
     def for_share(self, *exps, **kwargs):
         """ Sets a |FOR SHARE| :class:Clause in the query :prop:state
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -853,7 +853,7 @@ class ORM(object):
     def returning(self, *exps, **kwargs):
         """ Sets a |RETURNING| :class:Clause in the query :prop:state
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -871,7 +871,7 @@ class ORM(object):
     def on(self, *exps, **kwargs):
         """ Sets a |ON| :class:Clause in the query :prop:state
 
-            @*exps: :mod:vital.sql.expressions objects
+            @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
 
             -> @self
@@ -886,7 +886,7 @@ class ORM(object):
         """ Runs all of the queries in @*qs or in :prop:queries,
             fetches all of the results if there are any and @run is True
 
-            @*queries: one or several :class:vital.sql.Query objects
+            @*queries: one or several :class:bloom.Query objects
             @fetch: #bool True if all query results should be automatically
                 fetched with :meth:psycopg2.extensions.cursor.fetchall
 
@@ -943,7 +943,7 @@ class ORM(object):
         """ Runs all of the queries in @*qs or in :prop:queries,
             fetches all of the results if there are any
 
-            @*queries: (:class:vital.sql.Query) one or several
+            @*queries: (:class:bloom.Query) one or several
 
             -> #list of results if more than one query is executed, otherwise
                 the cursor factory
@@ -1002,7 +1002,7 @@ class ORM(object):
     def subquery(self, alias=None):
         """ Parses the query :prop:state as a subquery. This query will not be
             executed and can be passed around like other
-            :class:vital.sql.expressions.
+            :class:bloom.expressions.
 
             Also see: :class:Subquery
 
@@ -1434,7 +1434,7 @@ class QueryState(object):
 
 
 #
-#  `` Model objects for VitalSQL ``
+#  `` Model objects for Bloom ORM ``
 #
 
 
@@ -1444,7 +1444,7 @@ class Model(ORM):
 
         Creates a new model with two fields
         ..
-            from vital.sql import Model, Text, Int
+            from bloom import Model, Text, Int
 
             class MyModel(Model):
                 table = 'my_model'  # If no table attribute is specified,
@@ -1685,7 +1685,7 @@ class Model(ORM):
 
     def _add_foreign_key(self, **foreign_keys):
         """ Adds one or several @foreign_keys to the model
-            @**relationships: (:class:vital.sql.ForeignKey) keyword
+            @**relationships: (:class:bloom.ForeignKey) keyword
                 arguments |field_name=ForeignKey|
         """
         for name, foreign_key in foreign_keys.items():
@@ -1693,7 +1693,7 @@ class Model(ORM):
 
     def add_relationship(self, **relationships):
         """ Adds one or several @relationships to the model
-            @**relationships: (:class:vital.sql.Relationship) keyword
+            @**relationships: (:class:bloom.Relationship) keyword
                 arguments |rel_name=Relationship|
         """
         for name, relationship in relationships.items():
@@ -1840,7 +1840,7 @@ class Model(ORM):
         """ Looks for the best index in the model, looking for a primary key,
             followed by unique keys, followed by any index
 
-            -> :class:vital.sql.Field object
+            -> :class:bloom.Field object
         """
         return self.best_indexes[0]
 
@@ -1850,7 +1850,7 @@ class Model(ORM):
             field has a value, looking for a primary key, followed by unique
             keys, followed by any index
 
-            -> :class:vital.sql.Expression object |index_field == index_value|
+            -> :class:bloom.Expression object |index_field == index_value|
         """
         _zero = {0, 0.0}
 
@@ -1906,7 +1906,7 @@ class Model(ORM):
         """ Looks for the best available index in the model where the index
             field has a value, and the index is unique.
 
-            -> :class:vital.sql.Expression object |index_field == index_value|
+            -> :class:bloom.Expression object |index_field == index_value|
         """
         best_available = self.best_available_index
         if best_available is not None:
@@ -2149,7 +2149,7 @@ class Model(ORM):
         """ Updates @fields within records from the DB based on the
             :prop:best_unique_index within the current model.
 
-            @fields: (:class:vital.sql.Field) objects within the Model,
+            @fields: (:class:bloom.Field) objects within the Model,
                 if None are specified, all will be updated
 
             -> result of query, differs depending on cursor settings
@@ -2174,7 +2174,7 @@ class Model(ORM):
             @limit: (#int) total number of results to fetch
             @buffer: (#int) cursor max results to fetch in one page
             @reverse: (#bool) True if returning in descending order
-            @order_field: (:class:vital.sql.Field) object to order the
+            @order_field: (:class:bloom.Field) object to order the
                 query by
         """
         for item in self.iter(offset=offset, limit=limit, buffer=buffer,
@@ -2191,7 +2191,7 @@ class Model(ORM):
             @limit: (#int) total number of results to fetch
             @buffer: (#int) cursor max results to fetch in one page
             @reverse: (#bool) True if returning in descending order
-            @order_field: (:class:vital.sql.Field) object to order the
+            @order_field: (:class:bloom.Field) object to order the
                 query by
             @raw: (#bool) True to yield the cursor factory rather than
                 models
@@ -2261,7 +2261,7 @@ class RestModel(Model):
         """ Updates one @field in the model based on the
             :prop:best_available_index
 
-            @field: an instance of :class:vital.sql.Field
+            @field: an instance of :class:bloom.Field
 
             -> result of query, differs depending on cursor settings
         """

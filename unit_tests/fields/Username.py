@@ -5,8 +5,8 @@ import re
 import unittest
 import string
 
-from vital.sql.etc.usernames import reserved_usernames
-from vital.sql.fields import Username
+from bloom.etc.usernames import reserved_usernames
+from bloom.fields import Username
 from vital.debug import RandData, gen_rand_str
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')

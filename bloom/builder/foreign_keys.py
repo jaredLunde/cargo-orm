@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder Foreign Keys`
+  `Bloom SQL Builder Foreign Keys`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 from vital.debug import prepr

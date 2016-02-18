@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Special Fields`
+  `Bloom SQL Special Fields`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import re
@@ -23,12 +23,12 @@ from vital.debug import prepr
 from vital.security import randkey
 from vital.tools import strings as string_tools
 
-from vital.sql.etc import passwords, usernames
-from vital.sql.etc.types import *
-from vital.sql.expressions import *
+from bloom.etc import passwords, usernames
+from bloom.etc.types import *
+from bloom.expressions import *
 
-from vital.sql.fields.field import Field
-from vital.sql.fields.character import Char
+from bloom.fields.field import Field
+from bloom.fields.character import Char
 
 # TODO: Currency field
 
@@ -505,7 +505,7 @@ class Username(Char):
         Field object for PostgreSQL CHAR/TEXT types.
 
         Validates that a given value looks like a username and is not
-        in :attr:vital.sql.etc.usernames.reserved_usernames before inserting
+        in :attr:bloom.etc.usernames.reserved_usernames before inserting
         it into the DB.
 
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

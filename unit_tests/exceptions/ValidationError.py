@@ -1,15 +1,15 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.exceptions.ValidationError`
+    `Unit tests for bloom.exceptions.ValidationError`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.exceptions import ValidationError
+from bloom.exceptions import ValidationError
 
 
 class TestValidationError(unittest.TestCase):

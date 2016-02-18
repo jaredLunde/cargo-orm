@@ -1,24 +1,24 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.statements.Insert`
+    `Unit tests for bloom.statements.Insert`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import pickle
 import unittest
-from vital import config
+from kola import config
 
 from vital.security import randkey
 
-from vital.sql import *
-from vital.sql.orm import QueryState
-from vital.sql.statements import Insert
+from bloom import *
+from bloom.orm import QueryState
+from bloom.statements import Insert
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
-create_vital_pool()
+create_kola_pool()
 
 
 def new_field(type='char', value=None, name=None, table=None):

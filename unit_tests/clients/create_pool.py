@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.clients.create_pool`
+    `Unit tests for bloom.clients.create_pool`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -10,8 +10,8 @@ import json
 import unittest
 from multiprocessing import cpu_count
 
-from vital import config
-from vital.sql.clients import create_pool, create_vital_pool, local_client,\
+from kola import config
+from bloom.clients import create_pool, create_kola_pool, local_client,\
                               PostgresPool
 
 
@@ -41,12 +41,12 @@ class Testcreate_pool(unittest.TestCase):
 
     def test_vital_create(self):
         local_client.clear()
-        pool = create_vital_pool()
+        pool = create_kola_pool()
         self.assertIn('db', local_client)
         self.assertIs(local_client['db'], pool)
         self.assertIsInstance(pool, PostgresPool)
         
-        pool2 = create_vital_pool(name='db2')
+        pool2 = create_kola_pool(name='db2')
         self.assertIn('db2', local_client)
         self.assertIs(local_client['db2'], pool2)
 

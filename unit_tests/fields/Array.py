@@ -3,9 +3,9 @@
 import sys
 import unittest
 
-from vital import config
+from kola import config
 
-from vital.sql.fields import Array
+from bloom.fields import Array
 from vital.debug import RandData
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')

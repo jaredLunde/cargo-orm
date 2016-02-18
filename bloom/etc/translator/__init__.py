@@ -1,1 +1,1 @@
-from vital.sql.etc.translator import postgres
+from bloom.etc.translator import postgres

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.expressions.Function`
+    `Unit tests for bloom.expressions.Function`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -11,9 +11,9 @@ import psycopg2
 
 from vital.security import randkey
 
-from vital.sql.expressions import *
-from vital.sql import *
-from vital.sql import fields
+from bloom.expressions import *
+from bloom import *
+from bloom import fields
 
 
 # TODO: :class:WindowFunction

@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital ORM Statements`
+  `Bloom ORM Statements`
   ``Objects for SQL statement generation``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import re
@@ -24,10 +24,10 @@ from vital import logg
 from vital.tools.dicts import merge_dict
 from vital.debug import prepr, line
 
-from vital.sql.etc.types import *
-from vital.sql.exceptions import *
-from vital.sql.expressions import *
-from vital.sql.fields import *
+from bloom.etc.types import *
+from bloom.exceptions import *
+from bloom.expressions import *
+from bloom.fields import *
 
 
 __all__ = (
@@ -223,7 +223,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 & q2
             ..
-            |<vital.sql.statements.UNION(                            |
+            |<bloom.statements.UNION(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true UNION             |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -253,7 +253,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 + q2
             ..
-            |<vital.sql.statements.UNION(                            |
+            |<bloom.statements.UNION(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true  UNION ALL        |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -283,7 +283,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 - q2
             ..
-            |<vital.sql.statements.UNION(                           |
+            |<bloom.statements.UNION(                           |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true  UNION DISTINCT   |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -313,7 +313,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 < q2
             ..
-            |<vital.sql.statements.EXCEPT(                          |
+            |<bloom.statements.EXCEPT(                          |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT            |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -343,7 +343,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 <= q2
             ..
-            |<vital.sql.statements.EXCEPT(                          |
+            |<bloom.statements.EXCEPT(                          |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT ALL        |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -373,7 +373,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 << q2
             ..
-            |<vital.sql.statements.EXCEPT(                          |
+            |<bloom.statements.EXCEPT(                          |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT DISTINCT   |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -403,7 +403,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 > q2
             ..
-            |<vital.sql.statements.INTERSECT(                       |
+            |<bloom.statements.INTERSECT(                       |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT         |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -433,7 +433,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 >= q2
             ..
-            |<vital.sql.statements.INTERSECT(                       |
+            |<bloom.statements.INTERSECT(                       |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT ALL     |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -463,7 +463,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 >> q2
             ..
-            |<vital.sql.statements.INTERSECT(                       |
+            |<bloom.statements.INTERSECT(                       |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT DISTINCT|
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -663,7 +663,7 @@ class RAW(Intersections):
         ..
             RAW(ORM().values(1))
         ..
-        |<vital.sql.statements.RAW(query_string=`VALUES (%(c5R053jXaKT4)s)`, |
+        |<bloom.statements.RAW(query_string=`VALUES (%(c5R053jXaKT4)s)`, |
         |   params={'c5R053jXaKT4': 1}):0x7f5f022ddf60>                       |
     """
     __querytype__ = "RAW"

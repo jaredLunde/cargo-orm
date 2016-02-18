@@ -4,7 +4,7 @@ import sys
 import uuid
 import unittest
 
-from vital.sql.fields import UUID
+from bloom.fields import UUID
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Field import *

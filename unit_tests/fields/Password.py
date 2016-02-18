@@ -3,11 +3,11 @@
 import sys
 import unittest
 
-from vital import config
+from kola import config
 
 from vital.docr import Docr
-from vital.sql.fields import Password
-from vital.sql import create_pool, ValidationError
+from bloom.fields import Password
+from bloom import create_pool, ValidationError
 from vital.security import randkey
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')

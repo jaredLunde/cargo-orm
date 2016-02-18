@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 
 
-from vital import config
+from kola import config
 from unit_tests.sql.builders.TableMeta import *
 from unit_tests.sql.builders.FieldMeta import *
 from unit_tests.sql.builders.Modeller import *

@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Postgres Translators`
-  ``Translates Postgres types to Vital SQL types``
+  `Bloom SQL Postgres Translators`
+  ``Translates Postgres types to Bloom SQL types``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.sql.exceptions import TranslationError
-from vital.sql.etc import types
+from bloom.exceptions import TranslationError
+from bloom.etc import types
 
 
 datatype_map = {

@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder Tables`
+  `Bloom SQL Builder Tables`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 from vital.cache import cached_property
 from vital.debug import prepr
 
-from vital.sql.builder.foreign_keys import ForeignKeyMeta
-from vital.sql.builder.indexes import IndexMeta
-from vital.sql.builder.utils import *
+from bloom.builder.foreign_keys import ForeignKeyMeta
+from bloom.builder.indexes import IndexMeta
+from bloom.builder.utils import *
 
 
 __all__ = ('TableMeta',)

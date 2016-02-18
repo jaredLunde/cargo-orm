@@ -7,8 +7,8 @@ from dateutil import tz
 
 import arrow
 from vital.docr import Docr
-from vital.sql import *
-from vital.sql.fields import Time
+from bloom import *
+from bloom.fields import Time
 
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.sql.fields.Field import *
@@ -58,7 +58,7 @@ class TestTime(TestField):
 
     def test_descriptors(self):
         self.base('October 31, 1984 at 11:17am')
-        d = Docr('vital.sql.Time')
+        d = Docr('bloom.Time')
         for attr, obj in d.data_descriptors.items():
             pass
 

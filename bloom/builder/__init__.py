@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Vital SQL Builder`
+  `Bloom SQL Builder`
   ``Creates models from tables and tables from models``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 import re
@@ -16,15 +16,15 @@ from vital.debug import prepr
 from vital.docr import Docr
 from vital.tools import strings as string_tools
 
-from vital.sql.exceptions import SchemaError
-from vital.sql.cursors import CNamedTupleCursor
-from vital.sql.orm import ORM, Model, QueryState
+from bloom.exceptions import SchemaError
+from bloom.cursors import CNamedTupleCursor
+from bloom.orm import ORM, Model, QueryState
 
-from vital.sql.builder.fields import *
-from vital.sql.builder.tables import *
-from vital.sql.builder.indexes import *
-from vital.sql.builder.foreign_keys import *
-from vital.sql.builder.utils import *
+from bloom.builder.fields import *
+from bloom.builder.tables import *
+from bloom.builder.indexes import *
+from bloom.builder.foreign_keys import *
+from bloom.builder.utils import *
 
 
 __all__ = (
@@ -174,8 +174,8 @@ class Modeller(BaseModeller):
             banner = "{}\n{}"
         else:
             banner = "#!/usr/bin/python" +\
-                     "{}\nfrom vital.sql import Model, ForeignKey\n" +\
-                     "from vital.sql.fields import *\n\n" +\
+                     "{}\nfrom bloom import Model, ForeignKey\n" +\
+                     "from bloom.fields import *\n\n" +\
                      "{}"
         return (banner).format(self.banner or "", models)
 

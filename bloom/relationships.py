@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 """
 
-  `Vital ORM Relationships`
+  `Bloom ORM Relationships`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2015 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -13,9 +13,9 @@ from pydoc import locate, ErrorDuringImport
 
 from vital.docr import Docr
 from vital.cache import cached_property
-from vital.sql.fields import *
-from vital.sql.etc.types import *
-from vital.sql.exceptions import RelationshipImportError, PullError
+from bloom.fields import *
+from bloom.etc.types import *
+from bloom.exceptions import RelationshipImportError, PullError
 from vital.debug import logg, prepr, get_obj_name
 
 
@@ -105,7 +105,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
         Adds a Foreign Key in Images that references the user id in Users
         ..
-            from vital.sql import *
+            from bloom import *
 
             class Users(Model):
                 uid = UID()
@@ -265,7 +265,7 @@ class Relationship(BaseRelationship):
 
         Forge a |JOIN| relationship between two models.
         ..
-            from vital.sql import *
+            from bloom import *
 
 
             class Users(Model):
@@ -282,7 +282,7 @@ class Relationship(BaseRelationship):
 
         This is the same as:
         ..
-            from vital.sql import *
+            from bloom import *
 
             class Users(Model):
                 uid = UID()
@@ -375,7 +375,7 @@ class Relationship(BaseRelationship):
             @offset: (#int) cursor start position
             @limit: (#int) total number of results to fetch
             @reverse: (#bool) True if returning in descending order
-            @order_field: (:class:vital.sql.Field) object to order the
+            @order_field: (:class:bloom.Field) object to order the
                 query by
             @*args and @**kwargs get passed to the :meth:Model.select query
         """

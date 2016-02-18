@@ -1,15 +1,15 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for vital.sql.orm.RestModel`
+  `Unit tests for bloom.orm.RestModel`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.orm import RestModel
+from bloom.orm import RestModel
 
 
 class TestRestModel(unittest.TestCase):

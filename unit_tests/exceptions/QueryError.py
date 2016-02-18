@@ -1,15 +1,15 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.exceptions.QueryError`
+    `Unit tests for bloom.exceptions.QueryError`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql.exceptions import QueryError
+from bloom.exceptions import QueryError
 
 
 class TestQueryError(unittest.TestCase):

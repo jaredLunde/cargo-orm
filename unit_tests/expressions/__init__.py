@@ -5,7 +5,7 @@ import sys
 import unittest
 sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 
-from vital import config
+from kola import config
 from unit_tests.sql.expressions.ArrayItems import *
 from unit_tests.sql.expressions.BaseLogic import *
 from unit_tests.sql.expressions.Case import *

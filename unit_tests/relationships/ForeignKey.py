@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.relationships.Relationship`
+    `Unit tests for bloom.relationships.Relationship`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,15 +9,15 @@
 import copy
 import pickle
 import unittest
-from vital import config
+from kola import config
 
-from vital.sql import Model, create_vital_pool, UID, RelationshipImportError,\
+from bloom import Model, create_kola_pool, UID, RelationshipImportError,\
                       Field
-from vital.sql.relationships import Relationship, ForeignKey
+from bloom.relationships import Relationship, ForeignKey
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
-create_vital_pool()
+create_kola_pool()
 
 
 class Foo(Model):

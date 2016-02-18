@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Exceptions Raised by Vital SQL`
+  `Exceptions Raised by Bloom SQL`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/VitalSQL
+   http://github.com/jaredlunde/bloom-orm
 
 """
 
@@ -25,7 +25,7 @@ __all__ = (
 
 
 class QueryError(Exception):
-    """ Raised when there was an error executing a :class:vital.sql.Query """
+    """ Raised when there was an error executing a :class:bloom.Query """
     def __init__(self, message):
         self.message = message
 
@@ -64,8 +64,8 @@ class SchemaError(Exception):
 
 class ValidationError(Exception):
     """ Raised when there was an error validating one of your
-        :class:vital.sql.Field objects with
-        :class:vital.sql.validators.Validate
+        :class:bloom.Field objects with
+        :class:bloom.validators.Validate
     """
     def __init__(self, message, field=None):
         self.message = message

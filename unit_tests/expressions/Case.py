@@ -1,21 +1,21 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for vital.sql.expressions.Case`
+    `Unit tests for bloom.expressions.Case`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-from vital import config
-from vital.sql import fields, ORM, create_vital_client, safe
+from kola import config
+from bloom import fields, ORM, create_kola_client, safe
 from vital.security import randkey
 
-from vital.sql.expressions import Case
+from bloom.expressions import Case
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
-create_vital_client()
+create_kola_client()
 
 
 def new_field(type='char', table=None, name=None):
