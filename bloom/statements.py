@@ -20,7 +20,7 @@ except ImportError:
 import psycopg2
 import psycopg2.extras
 
-from vital import logg
+from vital.debug import Logg as logg
 from vital.tools.dicts import merge_dict
 from vital.debug import prepr, line
 
@@ -136,6 +136,12 @@ class BaseQuery(BaseLogic, StringLogic, NumericLogic, DateTimeLogic):
         """
         self.ordered_clauses = list(filter(
             lambda x: x is not _empty, query_clauses))
+
+    @property
+    def mogrified(self):
+        """ -> (#str) the query post-parameterization """
+        cur = self.orm.client.cursor()
+        return cur.mogrify(self.string, self.params).decode()
 
     def execute(self):
         """ Executes :prop:query in the :prop:orm """

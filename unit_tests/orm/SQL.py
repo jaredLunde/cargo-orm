@@ -230,7 +230,8 @@ class TestORM(unittest.TestCase):
                 s = join(*args, **kwargs)
                 clause = self.orm.state.clauses.popitem(last=True)[1][0]
                 self.assertIs(s, self.orm)
-                self.assertEqual(str(clause), validate.format(clause.clause))
+                self.assertEqual(str(clause.string % clause.params),
+                                 validate.format(clause.clause))
         self.orm.reset()
 
     def test_where(self):
@@ -537,7 +538,7 @@ class TestORM(unittest.TestCase):
         self.orm.values(12345, 'bar')
         self.orm.values(123456, 'bar')
         self.orm.returning(f1, f2)
-        res = self.orm.insert(f1, f2, run=False)
+        res = self.orm.dry().insert(f1, f2)
         self.assertIsInstance(res, Query)
         self.assertFalse(len(self.orm.queries))
         self.assertFalse(len(self.orm.state.clauses))
@@ -587,7 +588,7 @@ class TestORM(unittest.TestCase):
         self.orm.use(f1.table)
         self.orm.where(f2 == 'bar')
         self.orm.limit(2)
-        res = self.orm.select(f1, f2, run=False)
+        res = self.orm.dry().select(f1, f2)
         self.assertIsInstance(res, Query)
         self.assertFalse(len(self.orm.queries))
         self.assertFalse(len(self.orm.state.clauses))
@@ -654,7 +655,7 @@ class TestORM(unittest.TestCase):
         # Non-executing UPDATE
         self.orm.returning()
         f1.value = 12345
-        res = self.orm.update(f1, f2 == 'bar', run=False)
+        res = self.orm.dry().update(f1, f2 == 'bar')
         self.assertIsInstance(res, Query)
         self.assertFalse(len(self.orm.queries))
         self.assertFalse(len(self.orm.state.clauses))
@@ -687,7 +688,7 @@ class TestORM(unittest.TestCase):
         self.orm.use('foo')
         self.orm.where(f1 == 12345)
         self.orm.returning()
-        res = self.orm.delete(run=False)
+        res = self.orm.dry().delete()
         self.assertIsInstance(res, Query)
         self.assertFalse(len(self.orm.queries))
         self.assertFalse(len(self.orm.state.clauses))
@@ -703,7 +704,7 @@ class TestORM(unittest.TestCase):
         self.assertEqual(len(self.orm.queries), 1)
         self.orm.reset_multi()
 
-    def test_naked(self):
+    def test_raw(self):
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
         f2 = new_field('char', name='textfield', table='foo')
@@ -712,7 +713,7 @@ class TestORM(unittest.TestCase):
         self.orm.use(f1.table)
         self.orm.where(f2 == 'bar')
         self.orm.limit(2)
-        q = self.orm.naked(run=False)
+        q = self.orm.dry().raw()
         self.assertEqual(q.string % q.params,
                          'SELECT uid FROM foo WHERE foo.textfield = bar ' +
                          'LIMIT 2')
@@ -725,9 +726,9 @@ class TestORM(unittest.TestCase):
 
     def test_run_iter(self):
         queries = [
-            self.orm.select(1, run=False),
-            self.orm.select(2, run=False),
-            self.orm.select(3, run=False),
+            self.orm.dry().select(1),
+            self.orm.dry().select(2),
+            self.orm.dry().select(3),
         ]
         res = self.orm.run_iter(*queries)
         self.assertIsInstance(res, types.GeneratorType)
@@ -740,9 +741,9 @@ class TestORM(unittest.TestCase):
 
     def test_run(self):
         queries = [
-            self.orm.select(1, run=False),
-            self.orm.select(2, run=False),
-            self.orm.select(3, run=False),
+            self.orm.dry().select(1),
+            self.orm.dry().select(2),
+            self.orm.dry().select(3),
         ]
         res = self.orm.run(*queries)
         self.assertIsInstance(res, list)
@@ -799,7 +800,7 @@ class TestORM(unittest.TestCase):
         orm.values(1234567, 'fish').returning()
         orm.insert(f1, f2)
         orm.values(1234567, 'fish').returning()
-        q = orm.insert(f1, f2, run=False)
+        q = orm.dry().insert(f1, f2)
         res = orm.run(q)
         self.assertEqual(len(res), 1)
         self.assertTrue(orm._multi)

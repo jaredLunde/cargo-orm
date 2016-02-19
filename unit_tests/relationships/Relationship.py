@@ -69,18 +69,18 @@ class TestRelationship(unittest.TestCase):
         model = Foo()
         model['uid'] = 6719
         model.b.offset(3).limit(1).order_by(model.b.uid.desc())
-        q = model.b.pull(model.b.uid, run=False)
+        q = model.b.pull(model.b.uid, dry=True)
         q2 = model.b.pull(
             model.b.uid, offset=3, limit=1, order_field=model.b.uid,
-            reverse=True, run=False)
+            reverse=True, dry=True)
         self.assertEqual(
-            q.query % q.params,
-            q2.query % q2.params)
+            q.string % q.params,
+            q2.string % q2.params)
         self.assertEqual(
-            q.query % q.params,
+            q.string % q.params,
             'SELECT foo_b.uid FROM foo_b WHERE foo_b.owner = 6719 ' +
             'ORDER BY foo_b.uid DESC LIMIT 1 OFFSET 3')
-        q = model.pull(run=False)
+        q = model.pull(dry=True)
         self.assertIsInstance(q, list)
         self.assertEqual(len(q), 1)
         self.assertEqual(
@@ -88,7 +88,7 @@ class TestRelationship(unittest.TestCase):
             "SELECT * FROM foo_b WHERE foo_b.owner = 6719")
         model.uid.clear()
         with self.assertRaises(PullError):
-            model.b.pull(run=False)
+            model.b.pull(dry=True)
 
     def test_join(self):
         model = Foo()

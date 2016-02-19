@@ -31,11 +31,13 @@ __all__ = (
     "local_client",
     "Postgres",
     "PostgresPool",
+    "db",
     "create_client",
     "create_pool",
     # TODO: remove these
     "create_kola_client",
-    "create_kola_pool"
+    "create_kola_pool",
+    "create_kola_db"
 )
 
 
@@ -349,6 +351,50 @@ local_client = local_property()
 local_client = {}
 
 
+class _db(object):
+    """ Thread-local ORM session """
+    engine = None
+
+    def __init__(self):
+        self.engine = local_property()
+
+    def __getattr__(self, name):
+        if name != 'engine' and hasattr(self.engine, name):
+            return self.engine.__getattribute__(name)
+        return self.__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+    def __delattr__(self, name):
+        return self.engine.__detattr__(name)
+
+    def __repr__(self):
+        try:
+            return self.engine.__repr__()
+        except RuntimeError:
+            return "<_db id={}>".format(id(self))
+
+    def __get__(self):
+        if self.engine:
+            return self.engine
+        return self
+
+
+db = _db()
+
+
+def create_db(*opt, client=None, **opts):
+    """ Creates a global :class:ORM object which
+
+        @*opt and **opts are passed to :class:Postgres
+    """
+    from bloom.orm import ORM
+    if not client:
+        create_client(*opt, **opts)
+    db.engine = ORM(*opt, client=client, **opts)
+
+
 def create_client(*opt, name='db', **opts):
     """ Creates a connection client in the :attr:local_client thread which
         will be used as the default client in the ORM.
@@ -356,7 +402,7 @@ def create_client(*opt, name='db', **opts):
         @name: (#str) name in the :attr:local_client thread dictionary to cache
             the client within
 
-        See also: :class:PostgresClient
+        See also: :class:Postgres
     """
     local_client[name] = Postgres(*opt, **opts)
     return local_client[name]
@@ -406,3 +452,14 @@ def create_kola_pool(*opt, name='db', **opts):
     from kola import config
     cfg = config.get(name, {})
     return create_pool(*opt, name=name, **merge_dict(cfg, opts))
+
+
+def create_kola_db(*opt, client=None, **opts):
+    """ Creates a global :class:ORM object which
+
+        @*opt and **opts are passed to :class:Postgres
+    """
+    from bloom.orm import ORM
+    if not client:
+        create_kola_client(*opt, **opts)
+    db.engine = ORM(*opt, client=client, **opts)

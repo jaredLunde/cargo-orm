@@ -10,8 +10,7 @@
 """
 import os
 
-from vital.cache import memoize
-from vital.docr import Docr
+from docr import Docr
 
 from bloom import fields
 from bloom.etc.translator import postgres
@@ -38,6 +37,17 @@ def _get_sql_file(name, searchpath=''):
     return sql_file
 
 
-@memoize
 def _get_docr(field):
     return Docr(getattr(fields, field))
+
+
+class BaseCreator(object):
+
+    def __init__(self, orm, name):
+        self.orm = orm.copy()
+        self.name = name
+
+    def execute(self):
+        query = self.query
+        params = self.query.params
+        return self.orm.execute(query, params)

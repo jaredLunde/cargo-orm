@@ -13,18 +13,22 @@ import re
 
 from vital.cache import cached_property, memoize
 from vital.debug import prepr
-from vital.docr import Docr
 from vital.tools import strings as string_tools
 
 from bloom.exceptions import SchemaError
 from bloom.cursors import CNamedTupleCursor
 from bloom.orm import ORM, Model, QueryState
+from bloom.expressions import *
+from bloom.statements import *
 
 from bloom.builder.fields import *
 from bloom.builder.tables import *
 from bloom.builder.indexes import *
 from bloom.builder.foreign_keys import *
+from bloom.builder.schemas import Schema
+from bloom.builder.types import Type, EnumType
 from bloom.builder.utils import *
+from bloom.builder.views import View
 
 
 __all__ = (
@@ -53,6 +57,8 @@ class {clsname}(Model):{comment}
 #
 # `Modelling data structures`
 #
+
+
 class BaseModeller(object):
 
     def __init__(self, orm):
@@ -217,7 +223,13 @@ class Builder(BaseModeller):
 
              Generates the tables for given models.
         """
+        self.orm = orm
         self.schema = schema or orm.schema or orm.client.schema or 'public'
+
+    def run(self):
+        query = create_schema(self.orm, self.schema)
+        print(query)
+        return query
 
 
 def create_models(orm, *tables, banner=None, schema='public',
@@ -230,7 +242,16 @@ def create_tables(model):
     pass
 
 
-def create_extension(name, schema):
+def _cast_return(q, run=False):
+    if not run:
+        return q
+    return q.execute()
+
+
+def create_extension(orm, name, schema):
+    """ -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
     '''
     CREATE EXTENSION [ IF NOT EXISTS ] extension_name
         [ WITH ] [ SCHEMA schema_name ]
@@ -242,16 +263,24 @@ def create_extension(name, schema):
     pass
 
 
-def create_schema(name):
-    '''
-    CREATE SCHEMA schema_name [ AUTHORIZATION user_name ]
-                              [ schema_element [ ... ] ]
-    '''
-    # http://www.postgresql.org/docs/9.1/static/sql-createschema.html
+def create_schema(orm, name, authorization=None, not_exists=True, run=True):
+    """ @name: (#str) name of the schema
+        @authorization: (#str) username to create a schema for
+        @not_exists: (#bool) adds |IF NOT EXISTS| clause to the statement
+        @run: (#bool) |True| to execute the query before returning
+
+        -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
+    schema = Schema(orm, name, authorization, not_exists)
+    return _cast_return(schema.query, run)
 
 
 def create_index(orm, field, method='btree', name=None, collate=None,
                  order=None, nulls=None, unique=False, concurrent=False):
+    """ -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
     '''
     CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] [ name ] ON table [ USING method ]
         ( { column | ( expression ) } [ COLLATE collation ]
@@ -262,7 +291,10 @@ def create_index(orm, field, method='btree', name=None, collate=None,
     '''
 
 
-def create_sequence(name):
+def create_sequence(orm, name):
+    """ -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
     '''
     CREATE [ TEMPORARY | TEMP ] SEQUENCE name [ INCREMENT [ BY ] increment ]
         [ MINVALUE minvalue | NO MINVALUE ] [ MAXVALUE maxvalue | NO MAXVALUE ]
@@ -272,7 +304,10 @@ def create_sequence(name):
     # http://www.postgresql.org/docs/9.1/static/sql-createsequence.html
 
 
-def create_function(file):
+def create_function(orm, file):
+    """ -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
     '''
     CREATE [ OR REPLACE ] FUNCTION
         name ( [ [ argmode ] [ argname ] argtype
@@ -297,7 +332,10 @@ def create_function(file):
     # http://www.postgresql.org/docs/9.1/static/sql-createfunction.html
 
 
-def create_type(name, *opt):
+def create_type(orm, name, *opt):
+    """ -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
     '''
     CREATE TYPE name (
         INPUT = input_function,
@@ -338,15 +376,28 @@ def create_type(name, *opt):
     '''
 
 
-def create_enum_type(name, options):
-    '''CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');'''
+def create_enum_type(orm, name, *types, run=True):
+    """ @orm: (:class:ORM)
+        @name: (#str) the name of the type
+        @types: (#str) types to create
+        @run: (#bool) |True| to execute the query before returning
+
+        -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
+    enum = EnumType(orm, name, *types)
+    return _cast_return(enum.query, run)
 
 
-def create_user(name, options):
+def create_user(orm, name, in_role=None, in_group=None, role=None,
+                admin=None, user=None, **options):
+    """ -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
     '''
     CREATE USER name [ [ WITH ] option [ ... ] ]
 
-    where option can be:
+    where @options can be:
 
           SUPERUSER | NOSUPERUSER
         | CREATEDB | NOCREATEDB
@@ -367,12 +418,31 @@ def create_user(name, options):
     '''
 
 
-def create_view(name, opt):
-    '''
-    CREATE [ OR REPLACE ] [ TEMP | TEMPORARY ]
-        VIEW name [ ( column_name [, ...] ) ]
-        AS query
-    '''
+def create_view(orm, name, as_, *columns, security_barrier=False,
+                temporary=False, materialized=False, run=True):
+    """ @orm: (:class:ORM)
+        @name: (#str) name of the view
+        @as_: (:class:Select) query to create a view for
+        @columns: (#str|:class:Field) optional names to be used for columns
+            of the view. If not given, the column names are deduced from
+            the query.
+        @security_barrier: (#bool) True to enable WITH (security_barrier)
+        @temporary: (#bool) True to create a temporary view
+        @materialized: (#bool) True to create materialized view
+        @run: (#bool) |True| to execute the query before returning
+
+        -> :class:Raw if run is |False|, otherwise the client cursor is
+            returned
+    """
+    view = View(orm, name, as_)
+    view.columns(*columns)
+    if security_barrier:
+        view.security_barrier()
+    if temporary:
+        view.temporary()
+    if materialized:
+        view.materialized()
+    return _cast_return(view.query, run)
 
 
 if __name__ == '__main__':

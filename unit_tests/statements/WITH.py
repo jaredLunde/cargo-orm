@@ -38,7 +38,8 @@ def new_expression(cast=int):
 
 def new_function(cast=int, alias=None):
     if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
+        def cast(x):
+            psycopg2.Binary(str(x).encode())
     return Function('some_func', cast(12345), alias=alias)
 
 
@@ -68,8 +69,8 @@ class TestWith(unittest.TestCase):
 
         q = With(
             self.orm,
-            RAW(ORM().values(1), alias=t, recursive=(n,)) +
-            SELECT(ORM().use(t), n+1))
+            Raw(ORM().values(1), alias=t, recursive=(n,)) +
+            Select(ORM().use(t), n+1))
         q.orm.use(t).limit(10).select(n)
         self.assertEqual(len(q.execute().fetchall()), 10)
 

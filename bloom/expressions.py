@@ -322,6 +322,10 @@ class BaseLogic(object):
             order_by=order_by,
             alias=alias)
 
+    def cast(self, as_):
+        """ :see::meth:Functions.func """
+        return Functions.func(self, as_)
+
     def func(self, *args, **kwargs):
         """ :see::meth:Functions.func """
         return Functions.func(args[0], self, *args[1:], **kwargs)
@@ -1136,7 +1140,7 @@ class Clause(BaseExpression):
     __slots__ = ('clause', 'params', 'args', 'alias', 'string',
                  'use_field_name', 'join_with', 'wrap')
 
-    def __init__(self, clause, *args, join_with=", ", wrap=False, params=None,
+    def __init__(self, clause, *args, join_with=" ", wrap=False, params=None,
                  use_field_name=False, alias=None):
         """`Clause`
             Formats SQL clauses. These are only intended for use within the
@@ -1178,8 +1182,8 @@ class Clause(BaseExpression):
             self.wrap = wrap
         if use_field_name is not None:
             self.use_field_name = use_field_name
-        clause_params = self._compile_expressions(
-            *self.args, use_field_name=self.use_field_name)
+        clause_params = filter(lambda x: len(x), self._compile_expressions(
+                *self.args, use_field_name=self.use_field_name))
         self._inherit_parameters(*self.args)
         clause_params = self.join_with.join(map(str, clause_params)) \
             if clause_params else ""
@@ -1255,8 +1259,8 @@ class Case(BaseExpression):
         if use_field_name is not None:
             self.use_field_name = use_field_name
         self._inherit_parameters(*self.conditions)
-        expressions = self._compile_expressions(
-            *self.conditions, use_field_name=self.use_field_name)
+        expressions = list(filter(lambda x: len(x), self._compile_expressions(
+            *self.conditions, use_field_name=self.use_field_name)))
         when_thens = " ".join(
             "WHEN {} THEN {}".format(when, then)
             for when, then in zip(expressions[0::2], expressions[1::2])
@@ -1377,8 +1381,8 @@ class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
         if use_field_name is not None:
             self.use_field_name = use_field_name
         self._inherit_parameters(*self.args)
-        func_params = self._compile_expressions(
-            *self.args, use_field_name=self.use_field_name)
+        func_params = filter(lambda x: len(x), self._compile_expressions(
+            *self.args, use_field_name=self.use_field_name))
         func_params = ", ".join(map(str, func_params)) \
             if func_params is not None else ""
         self.string = "{}({}) {}".format(
@@ -2167,6 +2171,11 @@ class Functions(WindowFunctions):
     @staticmethod
     def not_exists(val, **kwargs):
         return Function('NOT EXISTS', val, **kwargs)
+
+    @staticmethod
+    def cast(field, as_):
+        """ cast(mytable.myfield AS integer) """
+        return Function('cast', Expression(field, 'AS', safe(as_)))
 
     @staticmethod
     def func(*args, **kwargs):

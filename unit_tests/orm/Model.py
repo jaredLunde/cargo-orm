@@ -103,10 +103,10 @@ class TestModel(unittest.TestCase):
     modele = FooE()
     modelf = FooF()
     model_prim = FooMultiPrimary()
-    raw_model = Foo(raw=True)
-    dict_model = Foo(cursor_factory=psycopg2.extras.DictCursor, raw=True)
+    raw_model = Foo(naked=True)
+    dict_model = Foo(cursor_factory=psycopg2.extras.DictCursor, naked=True)
     real_dict_model = Foo(cursor_factory=psycopg2.extras.RealDictCursor,
-                          raw=True)
+                          naked=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -239,7 +239,7 @@ class TestModel(unittest.TestCase):
         self.assertIsNot(ret, self)
 
         #: Expects a single raw psycopg2 cursor factory
-        ret = self.model.add(uid=1234567, textfield='bar', raw=True)
+        ret = self.model.naked().add(uid=1234567, textfield='bar')
         self.assertEqual(ret.uid, 1234567)
         self.assertEqual(ret.textfield, 'bar')
         self.assertIsInstance(ret, tuple)
@@ -261,7 +261,7 @@ class TestModel(unittest.TestCase):
         self.model.add(uid=1234567, textfield='bar')
         self.model.add(uid=1234568, textfield='bar')
         self.model.add(uid=1234569, textfield='bar')
-        ret = self.model.run(raw=True)
+        ret = self.model.naked().run()
         self.assertIsInstance(ret, list)
         for r in ret:
             self.assertEqual(r.textfield, 'bar')
@@ -344,7 +344,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(result.uid.value, rds['uid'])
         # Single w/ returning
         self.model['uid'] = 67
-        q = self.model.insert(self.model.uid, run=False)
+        q = self.model.dry().insert(self.model.uid)
         for clause in q.ordered_clauses:
             if clause.startswith('RETURNING'):
                 self.assertEqual(clause, 'RETURNING foo.uid')
@@ -353,7 +353,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(result.uid.value, 67)
         # Single raw
         self.model.fill(**rds)
-        result = self.model.insert(raw=True)
+        result = self.model.naked().insert()
         self.assertTrue(hasattr(result, '_asdict'))
         self.assertEqual(self.model.textfield.value, rds['textfield'])
         self.assertEqual(self.model.uid.value, rds['uid'])
@@ -383,7 +383,7 @@ class TestModel(unittest.TestCase):
             }
             self.model.fill(**rds)
             self.model.insert()
-        result = self.model.run(raw=True)
+        result = self.model.naked().run()
         self.assertIsInstance(result, list)
         for x in result:
             self.assertIsInstance(x, tuple)
@@ -398,19 +398,19 @@ class TestModel(unittest.TestCase):
         self.model.insert()
         self.model['textfield'] = 'bar'
         #: Test single field update
-        q = self.model.update(self.model.textfield, run=False)
+        q = self.model.dry().update(self.model.textfield)
         self.assertEqual(q.query % q.params,
                          ('UPDATE foo SET textfield = bar WHERE foo.uid = {}' +
                           ' RETURNING foo.textfield').format(rds['uid']))
         #: Multi-field update
-        q = self.model.update(self.model.textfield, self.model.uid, run=False)
+        q = self.model.dry().update(self.model.textfield, self.model.uid)
         self.assertEqual(q.query % q.params,
                          ('UPDATE foo SET textfield = bar, uid = {uid} ' +
                           'WHERE foo.uid = {uid} ' +
                           'RETURNING foo.textfield, foo.uid'
                           ).format(uid=rds['uid']))
         #: Update all
-        q = self.model.update(run=False)
+        q = self.model.dry().update()
         self.assertIn(q.query % q.params, [
                       ('UPDATE foo SET textfield = bar, uid = {uid} ' +
                        'WHERE foo.uid = {uid}' +
@@ -425,12 +425,12 @@ class TestModel(unittest.TestCase):
         result = self.model.update()
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], self.model.__class__)
-        result = self.model.update(raw=True)
+        result = self.model.naked().update()
         self.assertTrue(hasattr(result[0], '_asdict'))
         # Update one returns self
         result = self.model.one().update()
         self.assertIs(result, self.model)
-        result = self.model.update(raw=True)
+        result = self.model.naked().update()
         self.assertTrue(hasattr(result[0], '_asdict'))
         self.model.clear()
         #: With no model info, update should raise ORMIndexError if
@@ -452,7 +452,7 @@ class TestModel(unittest.TestCase):
         }
         self.model.fill(**rds)
         # Insert expects one result returned (self)
-        q = self.model.save(run=False)
+        q = self.model.dry().save()
         self.assertEqual(q.__querytype__, 'INSERT')
         result = self.model._cast_return(self.model.run(q))
         self.assertTrue(q.one)
@@ -461,7 +461,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(result.uid.value, rds['uid'])
         self.model['textfield'] = 'bar'
         # Update expects one result returned (self)
-        q = self.model.save(run=False)
+        q = self.model.dry().save()
         result = self.model._cast_return(self.model.run(q))
         self.assertTrue(q.one)
         self.assertIs(self.model, result)
@@ -469,7 +469,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(result.uid.value, rds['uid'])
         self.assertEqual(q.__querytype__, 'UPDATE')
         # Update expects one result returned (cursor factory)
-        result = self.model.save(raw=True)
+        result = self.model.naked().save()
         self.assertTrue(hasattr(result, '_asdict'))
         self.assertEqual(result.textfield, 'bar')
         self.assertEqual(result.uid, rds['uid'])
@@ -487,18 +487,18 @@ class TestModel(unittest.TestCase):
         }
         self.model.fill(**rds)
         self.model.save()
-        #: Select always returns a list if run=True
+        #: Select always returns a list if the query isn't dry
         #  By default, results are casted to models which are copies of the
         #  current one.
         result = self.model.select()
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], self.model.__class__)
         #: Expects list of raw cursor factories
-        result = self.model.select(raw=True)
+        result = self.model.naked().select()
         self.assertIsInstance(result, list)
         self.assertTrue(hasattr(result[0], '_asdict'))
         #: Expects :class:Query
-        result = self.model.select(raw=True, run=False)
+        result = self.model.naked().dry().select()
         self.assertIsInstance(result, Query)
         self.model.clear()
 
@@ -514,10 +514,10 @@ class TestModel(unittest.TestCase):
         result = self.model.get()
         self.assertIs(result, self.model)
         #: Expects :class:Query
-        result = self.model.get(run=False)
+        result = self.model.dry().get()
         self.assertIsInstance(result, Query)
         #: Expects raw cursor factory
-        result = self.model.get(raw=True)
+        result = self.model.naked().get()
         self.assertTrue(hasattr(result, '_asdict'))
         self.model.clear()
 
@@ -529,7 +529,7 @@ class TestModel(unittest.TestCase):
         self.model.fill(**rds)
         self.model.save()
         #: Delete always returns a list
-        result = self.model.delete(run=False)
+        result = self.model.dry().delete()
         self.assertIsInstance(result, Query)
         #: Delete always returns a list when running
         result = self.model.delete()
@@ -540,7 +540,7 @@ class TestModel(unittest.TestCase):
         self.model.fill(**rds)
         self.model.save()
         #: Expects list of raw cursor factories
-        result = self.model.delete(raw=True)
+        result = self.model.naked().delete()
         self.assertIsInstance(result, list)
         self.assertTrue(hasattr(result[0], '_asdict'))
         self.assertEqual(self.model.uid.value, result[0].uid)
@@ -566,7 +566,7 @@ class TestModel(unittest.TestCase):
         self.model.fill(**rds)
         self.model.save()
         #: Expects a single raw cursor factory
-        result = self.model.remove(raw=True)
+        result = self.model.naked().remove()
         self.assertTrue(hasattr(result, '_asdict'))
         self.model.clear()
         #: With no model info, update should raise ORMIndexError if
@@ -591,7 +591,7 @@ class TestModel(unittest.TestCase):
         self.model.fill(**rds)
         self.model.save()
         #: Expects a single result as cursor factory
-        result = self.model.pop(raw=True)
+        result = self.model.naked().pop()
         self.assertIsNone(self.model.get())
         self.assertTrue(hasattr(result, '_asdict'))
         self.assertEqual(rds['textfield'], result.textfield)
@@ -600,7 +600,7 @@ class TestModel(unittest.TestCase):
         self.model.fill(**rds)
         self.model.save()
         #: Expects a single :class:Query
-        result = self.model.pop(run=False)
+        result = self.model.dry().pop()
         self.assertIsNotNone(self.model.get())
         self.assertIsInstance(result, Query)
         self.model.clear()
@@ -615,16 +615,16 @@ class TestModel(unittest.TestCase):
             'uid': randint(1, 10000)
         }
         self.model.fill(**rds).save()
-        self.modelb.fill(**rds_b).save()
-        q1 = self.model.get(run=False)
+        q1 = self.model.dry().get()
         self.assertIsInstance(q1, Query)
         self.assertEqual(q1.__querytype__, 'SELECT')
-        q2 = self.modelb.get(run=False)
+        q2 = self.modelb.dry().get()
         result = self.model.multi(q1, q2).run()
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], self.model.__class__)
         self.assertIsInstance(result[1], self.model.__class__)
         self.model.clear()
+        self.modelb.clear()
 
     def test_multi_many_orm(self):
         self.model.many()
@@ -655,6 +655,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(len(result[0]), 10)
         self.assertEqual(len(result[1]), 10)
         self.model.clear()
+        self.modelb.clear()
 
     def test_join(self):
         s = self.model.join(self.modelb)
@@ -664,10 +665,10 @@ class TestModel(unittest.TestCase):
         self.assertEqual(clause.string, 'JOIN foo_b ON foo_b.uid = foo.uid')
         self.model.clear()
 
-    def test_rawiter(self):
+    def test_iternaked(self):
         self.fill(10)
         raws = []
-        for x in self.model.rawiter():
+        for x in self.model.iternaked():
             self.assertTrue(hasattr(x, '_asdict'))
             raws.append(x)
         self.assertEqual(len(raws), 10)
@@ -681,7 +682,7 @@ class TestModel(unittest.TestCase):
             res.append(x)
         self.assertEqual(len(res), 10)
 
-        for i, x in enumerate(self.model.iter(reverse=True, raw=True), 1):
+        for i, x in enumerate(self.model.naked().iter(reverse=True), 1):
             self.assertEqual(res[i*-1].uid.value, x.uid)
 
         res2 = []
@@ -786,7 +787,7 @@ class TestModel(unittest.TestCase):
         self.raw_model.fill(**rds)
         result = self.raw_model.save()
         self.assertTrue(hasattr(result, '_asdict'))
-        result = self.raw_model.save(raw=False)
+        result = self.raw_model.models().save()
         self.assertIs(result, self.raw_model)
 
     def test_dict(self):
@@ -797,9 +798,9 @@ class TestModel(unittest.TestCase):
         self.dict_model.fill(**rds)
         result = self.dict_model.save()
         self.assertTrue(hasattr(result, 'items'))
-        result = self.dict_model.save(raw=False)
-        self.assertIs(result, self.dict_model)
-        self.dict_model.clear()
+        result = self.dict_model.models().save()
+        #self.assertIs(result, self.dict_model)
+        #self.dict_model.clear()
         result = self.real_dict_model.limit(3).select()
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], dict)
@@ -812,7 +813,7 @@ class TestModel(unittest.TestCase):
         self.real_dict_model.fill(**rds)
         result = self.real_dict_model.save()
         self.assertTrue(hasattr(result, 'items'))
-        result = self.real_dict_model.save(raw=False)
+        result = self.real_dict_model.models().save()
         self.assertIs(result, self.real_dict_model)
         self.real_dict_model.clear()
         result = self.real_dict_model.limit(3).select()

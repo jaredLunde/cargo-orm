@@ -31,7 +31,7 @@ from psycopg2.extensions import cursor as _cursor
 from vital.cache import cached_property
 from vital.tools.dicts import merge_dict
 from vital.tools.strings import camel_to_underscore
-from vital.debug import prepr, table_mapping, line
+from vital.debug import prepr, line
 
 from bloom.clients import *
 from bloom.cursors import CNamedTupleCursor
@@ -64,7 +64,7 @@ class ORM(object):
             The base model which interacts with :class:Postgres
             and provides the basic ORM interface.
 
-            @client: an instance of :class:Postgres
+            @client: (:class:Postgres or :class:PostgresPool)
             @cursor_factory: :mod:psycopg2.extras cursor factories
             @schema: (#str) the name of the schema search path
             @table: (#str) default table
@@ -79,6 +79,9 @@ class ORM(object):
         self._state = QueryState(self)
         self._many = False
         self._with = False
+        self._dry = False
+        self._naked = None
+        self._new = None
         self._cursor_factory = cursor_factory
         if not hasattr(self, 'table'):
             self.table = table
@@ -87,9 +90,8 @@ class ORM(object):
     @prepr('client', 'table')
     def __repr__(self): return
 
-    #
-    # ``ORM Connection handing``
-    #
+    # ``Connection handing``
+
     @cached_property
     def client(self):
         return self._client or local_client.get('db') or Postgres()
@@ -112,6 +114,31 @@ class ORM(object):
         """ Context manager, closes the :prop:bloom.ORM.client connection
         """
         self.close()
+
+    def connect(self, **options):
+        """ Connects the :prop:bloom.ORM.client.
+
+            Passes @*args and @**kwargs to the local instance of
+            :class:Postgres
+        """
+        return self.client.connect(**options)
+
+    def close(self):
+        """ Closes the :prop:bloom.ORM.client, resets the
+            :prop:state
+        """
+        self.reset()
+        return self.client.close()
+
+    def set_table(self, table):
+        """ Sets the ORM table to @table (#str) """
+        self.table = table
+
+    def set_cursor_factory(self, factory):
+        """ Sets the ORM default cursor factory to @factory """
+        self._cursor_factory = factory
+
+    # Pickling and copying
 
     def __getstate__(self):
         """ For pickling """
@@ -147,37 +174,27 @@ class ORM(object):
         for name, fkey in fkeys:
             fkey.forge(self, name)
 
-    def connect(self, **options):
-        """ Connects the :prop:bloom.ORM.client.
+    # ``Insert/Select/Delete/Update Clauses``
 
-            Passes @*args and @**kwargs to the local instance of
-            :class:Postgres
+    def dry(self):
+        """ Prevents queries from executing when they are declared and
+            makes the ORM return a :class:Query object rather than
+            a list of query results.
         """
-        return self.client.connect(**options)
+        self._dry = True
+        return self
 
-    def close(self):
-        """ Closes the :prop:bloom.ORM.client, resets the
-            :prop:state
-        """
-        self.reset()
-        return self.client.close()
-
-    def set_table(self, table):
-        """ Sets the ORM table to @table (#str) """
-        self.table = table
-
-    def set_cursor_factory(self, factory):
-        self._cursor_factory = factory
-
-    #
-    # ``ORM Insert/Select/Delete/Update Clauses``
-    #
-    def _cast_query(self, q, run, raw):
+    def _cast_query(self, q):
         """ Decides how to return the result of a query call.
             @q: (:class:Query)
         """
-        if not run:
+        if q.is_subquery:
+            sub = Subquery(q)
+            self.reset()
+            return sub
+        elif self._dry:
             self.reset_state()
+            self.reset_dry()
             return q
         elif self._many:
             return self
@@ -187,29 +204,23 @@ class ORM(object):
                 self.reset()
             return self
         else:
-            return self.run(q, raw=raw)
+            self.add_query(q)
+            return self.run()
 
-    def _insert(self, *fields, run=True, raw=True, **kwargs):
+    def _insert(self, *fields, **kwargs):
         """ Parses the :prop:state as an :class:INSERT statement
 
             @*fields: :class:Field(s) to set VALUES for, if None are given,
                 all fields in a given model will be evaluated
-            @run: (#bool) True to execute :meth:run on the :class:Query.
-                Otherwise this method returns the :class:Query.
             @**kwargs: keyword arguments to pass to :class:INSERT
 
             -> result of :class:INSERT query
         """
-        q = Insert(self, *fields, **kwargs)
-        if q.is_subquery:
-            sub = Subquery(q)
-            self.reset()
-            return sub
-        return self._cast_query(q, run, raw)
+        return self._cast_query(Insert(self, *fields, **kwargs))
 
     insert = _insert
 
-    def _select(self, *fields, run=True, raw=True, **kwargs):
+    def _select(self, *fields, **kwargs):
         """ Parses the :prop:state as a :class:SELECT statement. If a table
             is specified within the model and a |FROM| clause hasn't been
             added to the state, a |FROM| clause will automatically be added
@@ -217,69 +228,49 @@ class ORM(object):
 
             @*fields: :class:Field(s) or :mod:bloom.expressions
                 to retrieve values for
-            @run: (#bool) True to execute :meth:run on the :class:Query.
-                Otherwise this method returns the :class:Query.
             @**kwargs: keyword arguments to pass to :class:SELECT
 
             -> result of :class:SELECT query, :class:Subquery object if this
-                :prop:state is a subquery, or :class:Query if @run
-                is False
+                :prop:state is a subquery, or :class:Query if :prop:_dry
+                is True
         """
         if not self.state.has('FROM'):
             self.from_()
-        q = Select(self, *fields, **kwargs)
-        if q.is_subquery:
-            sub = Subquery(q)
-            self.reset()
-            return sub
-        return self._cast_query(q, run, raw)
+        return self._cast_query(Select(self, *fields, **kwargs))
 
     select = _select
 
-    def _update(self, *exps, run=True, raw=True, **kwargs):
+    def _update(self, *exps, **kwargs):
         """ Parses the :prop:state as an :class:UPDATE statement. An |UPDATE|
             will be performed on the fields given in @*exps
 
             @*fields: :class:bloom.Field or :mod:bloom.expressions
                 objects
-            @run: (#bool) True to execute :meth:run on the :class:Query.
-                Otherwise this method returns the :class:Query.
             @**kwargs: keyword arguments to pass to :class:SELECT
 
             -> result of :class:UPDATE query, :class:Subquery object if this
-                :prop:state is a subquery, or the :class:Query if @@run
-                is |False|
+                :prop:state is a subquery, or the :class:Query if :prop:_dry
+                is |True|
         """
-        q = UPDATE(self, *exps, **kwargs)
-        if q.is_subquery:
-            sub = Subquery(q)
-            self.reset()
-            return sub
-        return self._cast_query(q, run, raw)
+        return self._cast_query(Update(self, *exps, **kwargs))
 
     update = _update
 
-    def _delete(self, run=True, raw=True, **kwargs):
+    def _delete(self, **kwargs):
         """ Parses the :prop:state as a :class:DELETE statement. If a table
             is specified within the model and a |FROM| clause hasn't been
             added to the state, a |FROM| clause will automatically be added
             using |self.table|
 
-            @run: (#bool) True to execute :meth:run on the :class:Query.
-                Otherwise this method returns the :class:Query.
             @**kwargs: keyword arguments to pass to :class:SELECT
 
             -> result of :class:DELETE query, :class:Subquery object if this
-                :prop:state is a subquery, or the :class:Query if @run
-                is |False|
+                :prop:state is a subquery, or the :class:Query if :prop:_dry
+                is |True|
         """
         self.from_()
         q = Delete(self, **kwargs)
-        if q.is_subquery:
-            sub = Subquery(q)
-            self.reset()
-            return sub
-        return self._cast_query(q, run, raw)
+        return self._cast_query(Delete(self, **kwargs))
 
     delete = _delete
     remove = _delete
@@ -309,54 +300,22 @@ class ORM(object):
 
     upsert = _upsert
 
-    def _naked(self, *args, run=True, raw=True, **kwargs):
+    def _raw(self, *args, **kwargs):
         """ Parses the :prop:state as a :class:Raw statement. All clauses
             added to the ORM :prop:state will be parsed in the order of
             which they were added.
 
-            @run: (#bool) True to execute :meth:run on the :class:Query.
-                Otherwise this method returns the :class:Query.
             @**kwargs: keyword arguments to pass to :class:SELECT
 
             -> result of :class:Raw query, :class:Subquery object if this
-                :prop:state is a subquery, or the :class:Raw if @run
-                is |False|
+                :prop:state is a subquery, or the :class:Raw if :prop:_dry
+                is |True|
         """
-        q = Raw(self, *args, **kwargs)
-        if q.is_subquery:
-            sub = Subquery(q)
-            self.reset()
-            return sub
-        return self._cast_query(q, run, raw)
+        return self._cast_query(Raw(self, *args, **kwargs))
 
-    naked = _naked
+    raw = _raw
 
-    # ``ORM Clauses``
-    #
-    #  [ SELECT ]
-    #  [√] WITH
-    #  [√] FROM
-    #  [√] JOIN
-    #  [√] WHERE
-    #  [√] GROUP BY
-    #  [√] HAVING
-    #  [√] WINDOW
-    #  [√] UNION[ALL|DISTINCT]
-    #  [√] INTERSECT[ALL|DISTINCT]
-    #  [√] EXCEPT[ALL|DISTINCT]
-    #  [√] ORDER BY
-    #  [√] LIMIT
-    #  [√] OFFSET
-    #  [√] FETCH
-    #  [√] FOR (FOR UPDATE/FOR SHARE Clause)
-    #
-    #  [ INSERT-SPECIFIC ]
-    #  [√] VALUES
-    #  [√] RETURNING
-    #  [√] ON CONFLICT
-    #
-    #  [ UPDATE-SPECIFIC ]
-    #  [√] SET
+    # ``Clauses``
 
     def from_(self, table=None, alias=None):
         """ Sets a |FROM| clause in the :prop:state
@@ -369,7 +328,8 @@ class ORM(object):
         """
         table = table if table else self.table
         if table:
-            self.state.add(Clause("FROM", safe(table), alias=alias))
+            self.state.add(Clause("FROM", safe(table), join_with=", ",
+                                  alias=alias))
         return self
 
     use = from_
@@ -565,7 +525,8 @@ class ORM(object):
             |INSERT INTO foo_table|
         """
         if table is not None:
-            self.state.add(Clause("INTO", safe(table), alias=alias))
+            self.state.add(Clause("INTO", safe(table), join_with=", ",
+                                  alias=alias))
         else:
             raise ValueError("INTO clause cannot be 'None'")
         return self
@@ -603,8 +564,8 @@ class ORM(object):
             else:
                 return safe('DEFAULT')
 
-        vals = map(_do_insert, vals)
-        self.state.add(Clause("VALUES ", *vals, wrap=True))
+        vals = tuple(map(_do_insert, vals))
+        self.state.add(Clause("VALUES ", vals))
         return self
 
     def set(self, *exps, **kwargs):
@@ -642,7 +603,8 @@ class ORM(object):
                 return field
 
         exps = filter(lambda x: x is not None,  map(_do_update, exps))
-        self.state.add(Clause("SET", *exps, use_field_name=True, **kwargs))
+        self.state.add(Clause("SET", *exps, use_field_name=True,
+                              join_with=", ", **kwargs))
         return self
 
     def group_by(self, *exps, **kwargs):
@@ -664,7 +626,7 @@ class ORM(object):
                 m.select()
             ..
         """
-        self.state.add(Clause("GROUP BY", *exps, **kwargs))
+        self.state.add(Clause("GROUP BY", *exps, join_with=", ", **kwargs))
         return self
 
     def order_by(self, *exps, **kwargs):
@@ -686,7 +648,7 @@ class ORM(object):
                 m.select()
             ..
         """
-        self.state.add(Clause("ORDER BY", *exps, **kwargs))
+        self.state.add(Clause("ORDER BY", *exps, join_with=", ", **kwargs))
         return self
 
     def asc(self, exp):
@@ -738,7 +700,8 @@ class ORM(object):
                 m.select()
             ..
         """
-        clause = Clause("LIMIT", limit_offset if limit is None else limit)
+        clause = Clause("LIMIT", limit_offset if limit is None else limit,
+                        join_with=", ")
         self.state.add(clause)
         if limit:
             self.offset(limit_offset)
@@ -778,7 +741,7 @@ class ORM(object):
 
             -> @self
         """
-        self.state.add(Clause("OFFSET", offset))
+        self.state.add(Clause("OFFSET", offset, join_with=", "))
         return self
 
     def one(self):
@@ -825,7 +788,7 @@ class ORM(object):
 
             -> @self
         """
-        self.state.add(Clause("HAVING", *exps, **kwargs))
+        self.state.add(Clause("HAVING", *exps, join_with=", ", **kwargs))
         return self
 
     def for_update(self, *exps, **kwargs):
@@ -865,10 +828,10 @@ class ORM(object):
         except TypeError:
             pass
         exps = exps or (safe("*"),)
-        self.state.add(Clause("RETURNING", *exps, **kwargs))
+        self.state.add(Clause("RETURNING", *exps, join_with=", ", **kwargs))
         return self
 
-    def on(self, *exps, **kwargs):
+    def on(self, *exps, join_with='AND', **kwargs):
         """ Sets a |ON| :class:Clause in the query :prop:state
 
             @*exps: :mod:bloom.expressions objects
@@ -876,26 +839,28 @@ class ORM(object):
 
             -> @self
         """
-        self.state.add(Clause("ON", *exps, **kwargs))
+        self.state.add(Clause("ON", *exps, join_with=join_with, **kwargs))
         return self
 
-    #
     # ``Query execution``
-    #
-    def run_iter(self, *queries, fetch=False, raw=True):
+
+    def run_iter(self, *queries, fetch=False):
         """ Runs all of the queries in @*qs or in :prop:queries,
-            fetches all of the results if there are any and @run is True
+            fetches all of the results if there are any and :prop:_dry
+            is |False|
 
             @*queries: one or several :class:bloom.Query objects
             @fetch: #bool True if all query results should be automatically
                 fetched with :meth:psycopg2.extensions.cursor.fetchall
+            @conn: (:class:Postgres|:class:PostgresPool)
 
             -> yields results of the query if @fetch is True otherwise
                 yields the cursor from each query
         """
-        multi = self._multi
         #: Do not commit if it is a multi query
+        multi = self._multi
         commit = False if multi else True
+        #: Prepare the state if the this is an implicit run
         if not queries:
             #: Implicitly running compiles and closes multi/many queries
             if self._many:
@@ -923,12 +888,14 @@ class ORM(object):
                     pass
             yield result
 
+        self._decide_reset_method(multi, queries, conn)
+
+    def _decide_reset_method(self, multi, queries, conn):
         if queries:
             #: Explicit 'run', the user is in control of everything except
             #  for the query state and client connection
             self.reset_state()
-            self.client.put(conn)
-        elif self.queries:
+        else:
             #: Implicit 'run', the ORM is in control
             self.reset(multi=True)
             if multi and not self.client.autocommit:
@@ -937,9 +904,9 @@ class ORM(object):
                 except psycopg2.ProgrammingError as e:
                     conn.rollback()
                     raise QueryError(e.args[0].strip())
-            self.client.put(conn)
+        self.client.put(conn)
 
-    def run(self, *queries, raw=True):
+    def run(self, *queries):
         """ Runs all of the queries in @*qs or in :prop:queries,
             fetches all of the results if there are any
 
@@ -1022,9 +989,8 @@ class ORM(object):
         self.state.alias = alias
         return self
 
-    #
     #  `` Query chaining ``
-    #
+
     def multi(self, *queries):
         """ Starts chaining multiple queries - queries which will be executed
             atomically in the future in one transaction. This cannot be used
@@ -1097,9 +1063,8 @@ class ORM(object):
         self.reset_many()
         return self.queries[-1]
 
-    #
     # ``Query State``
-    #
+
     def add_query(self, *queries):
         """ Adds a @query to the :meth:run queue """
         self.queries.extend(queries)
@@ -1108,32 +1073,63 @@ class ORM(object):
     def remove_query(self, query):
         """ Removes a @query from the :meth:run queue """
         self.queries.remove(query)
+        return self
 
     @property
     def state(self):
         """ -> :class:QueryState object """
         return self._state
 
+    def reset_dry(self):
+        """ Resets the dry option """
+        self._dry = False
+        return self
+
+    def reset_naked(self):
+        """ Resets the naked option """
+        self._naked = None
+        return self
+
+    def reset_new(self):
+        """ Resets the new option """
+        self._new = None
+        return self
+
     def reset_state(self):
+        """ Resets the :prop:state object """
         self.state.reset()
+        return self
 
     def reset_many(self):
+        """ Removes many mode from the ORM state """
         self._many = False
+        return self
 
     def reset_multi(self):
+        """ Removes multi mode from the ORM state """
         self._multi = False
+        self.reset_dry()
+        self.reset_naked()
+        self.reset_new()
         self.queries = []
         self.reset_state()
+        return self
 
     def reset(self, multi=False):
-        """ Resets the query :prop:state """
+        """ Resets the query :prop:state, many mode and optionally
+            multi-mode
+        """
         self._with = False
         self.reset_many()
         if not self._multi:
             self.queries = []
+            self.reset_dry()
+            self.reset_naked()
+            self.reset_new()
         if multi:
             self.reset_multi()
         self.reset_state()
+        return self
 
     def debug(self, conn, query, params):
         """ Prints query information including :prop:state,
@@ -1162,8 +1158,7 @@ class ORM(object):
 
 class QueryState(object):
     """`Query State`
-        Manages the active ORM clauses, joins, parameters and subqueries within
-        the ORM.
+        Manages the active ORM clauses, joins, parameters and subqueries.
     """
     _multi_clauses = {'VALUES', 'JOIN'}
 
@@ -1269,7 +1264,7 @@ class QueryState(object):
         if using:
             #: Join 'using' the given fields of the same name
             table = using[0].table
-            on = Clause('USING', *using, wrap=True)
+            on = Clause('USING', *using, join_with=", ", wrap=True)
             clause = Clause(clause, safe(table, alias=alias), on,
                             use_field_name=True, join_with=" ")
         else:
@@ -1330,7 +1325,7 @@ class QueryState(object):
                 on = [
                     self._join_expression_on_alias(o, table, alias)
                     for o in on]
-            on = Clause('ON', *on, join_with=" AND ")
+            on = Clause('ON', *on)
         else:
             if alias:
                 self._join_expression_on_alias(on, table, alias)
@@ -1434,7 +1429,7 @@ class QueryState(object):
 
 
 #
-#  `` Model objects for Bloom ORM ``
+#  ``Models``
 #
 
 
@@ -1499,13 +1494,13 @@ class Model(ORM):
         ..
     """
 
-    def __init__(self, client=None, cursor_factory=None, raw=None, debug=False,
-                 **kwargs):
+    def __init__(self, client=None, cursor_factory=None, naked=None,
+                 debug=False, **kwargs):
         """ `Basic Model`
             A basic model for Postgres tables.
 
             :see::class:ORM
-            @raw: (#bool) True to default to raw query results in the form
+            @naked: (#bool) True to default to raw query results in the form
                 of the :prop:_cursor_factory, rather than the default which
                 is to return query results as copies of the current model.
         """
@@ -1515,7 +1510,7 @@ class Model(ORM):
         self._relationships = []
         self._foreign_keys = []
         self._alias = None
-        self._raw = raw or False
+        self._always_naked = naked or False
         self._compile()
         self.fill(**kwargs)
 
@@ -1604,6 +1599,28 @@ class Model(ORM):
             setattr(self,
                     cname + 'Record',
                     namedtuple(cname + 'Record', self.field_names))
+
+    def naked(self):
+        """ Causes the ORM to return the default cursor factory as results
+            rather than copies of the model.
+        """
+        self._naked = True
+        return self
+
+    def new(self):
+        """ Causes the ORM to fill a new model and return it rather than
+            filling the active one.
+        """
+        self._new = True
+        return self
+
+    def models(self):
+        """ Causes the ORM to return copies of the model rather than
+            :prop:naked results. This is only useful when the default
+            behavior of the model is to return naked results
+        """
+        self._naked = False
+        return self
 
     def fill(self, **kwargs):
         """ Populates the model with |name=value| pairs
@@ -1734,7 +1751,7 @@ class Model(ORM):
             -> #int number of results counted if no alias is given, otherwise
                 the raw cursor factory result
         """
-        result = self.one()._select(self.best_index.count(alias=alias))
+        result = self.one().naked()._select(self.best_index.count(alias=alias))
         if alias is None:
             if hasattr(result, '_asdict'):
                 result = result.count
@@ -1948,22 +1965,18 @@ class Model(ORM):
         else:
             return model.fill(**result)
 
-    def _is_raw(self, raw):
-        return raw if raw is not None else self._raw
+    def _is_naked(self, naked):
+        return naked if naked is not None else self._always_naked
 
-    def _cast_return(self, results, raw=None, run=True, new=False):
+    def _cast_return(self, results):
         """ Casts the return value for model queries
             @results: set of query results
-            @raw: (#bool) True if the query is supposed to return raw results
-            @run: (#bool) False if the query was no executed
-            @new: (#bool) True to fill a new model rather than the
-                current one
         """
-        raw = self._is_raw(raw)
+        naked = self._is_naked(self._naked)
         if not results or \
            self._multi or \
-           raw or \
-           not run or \
+           naked or \
+           self._dry or \
            isinstance(results, (_cursor, ORM)):
             return results
         if isinstance(results, list) and not \
@@ -1971,36 +1984,34 @@ class Model(ORM):
             return [self._fill_from_cursor_factory(
                         self.copy().clear(), result)
                     for result in results]
-        m = self if not new else self.copy()
+        m = self if not self._new else self.copy()
         return self._fill_from_cursor_factory(m, results)
 
-    def run_iter(self, *args, raw=None, **kwargs):
+    def run_iter(self, *queries, **kwargs):
         """ :see::meth:ORM.run_iter
-            @raw: (#bool) True to return raw :prop:_cursor_factory results
-                instead of :class:Model(s). Only relevant for :meth:many
-                queries.
             -> yields :prop:_cursor_factory if this isn't a :meth:many query
-                or @raw is |True|, otherwise returns :class:Model
+                or :prop:_naked is |True|, otherwise returns :class:Model
         """
         multi = self._multi
-        for x in ORM.run_iter(self, *args, **kwargs):
-            yield self._cast_return(x, raw, True, new=multi)
+        if multi:
+            self.new()
+        for x in ORM.run_iter(self, *queries, **kwargs):
+            yield self._cast_return(x)
 
-    def run(self, *queries, raw=None):
+    def run(self, *queries):
         """ :see::meth:ORM.run
-            @raw: (#bool) True to return raw :prop:_cursor_factory results
-                instead of :class:Model(s)
-            -> #list of raw :prop:_cursor_factory query results if @raw
+
+            -> #list of raw :prop:_cursor_factory query results if :prop:_naked
                 is |True|, otherwise :class:Model
         """
         results = [result
-                   for result in self.run_iter(*queries, raw=raw, fetch=True)]
+                   for result in self.run_iter(*queries, fetch=True)]
         if len(results) == 1:
             return results[0]
         else:
             return results
 
-    def add(self, raw=None, **kwargs):
+    def add(self, **kwargs):
         """ Adds a new record to the DB without affecting the current model.
             @**kwargs: |field=value| pairs to insert
 
@@ -2012,8 +2023,7 @@ class Model(ORM):
             field = getattr(self, name).copy()
             field(val)
             add_field(field)
-        result = self.returning().one()._insert(*fields, raw=True)
-        return self._cast_return(result, raw, new=True)
+        return self.returning().one().new().insert(*fields)
 
     def save(self, *fields, **kwargs):
         """ Inserts a single record into the DB if it doesn't already exist
@@ -2031,7 +2041,7 @@ class Model(ORM):
                                 .format(self.table))
         best_index = self.best_unique_index
         if best_index is not None:
-            exists = self.where(best_index).get(raw=True)
+            exists = self.copy().reset_dry().naked().where(best_index).get()
             if exists:
                 #: UPDATE
                 return self.one().update(*fields, **kwargs)
@@ -2040,11 +2050,9 @@ class Model(ORM):
 
     upsert = save
 
-    def insert(self, *fields, raw=None, run=True, **kwargs):
+    def insert(self, *fields, **kwargs):
         """ @fields: (:class:Field) objects to insert. If none are given, all
                 fields with user-defined values in the model will be used.
-            @raw: (#bool) If |True| query results will return
-                :prop:_cursor_factory rather than models.
 
             See also: :meth:_insert
         """
@@ -2054,40 +2062,38 @@ class Model(ORM):
             self.one()
         fields = fields or filter(lambda x: x.value is not x.empty,
                                   self.fields)
-        return self._insert(*fields, raw=raw, run=run)
+        return self._insert(*fields)
 
-    def select(self, *fields, raw=None, run=True, **kwargs):
+    def select(self, *fields, **kwargs):
         """ Gets a record or records from the DB based on the
             :prop:best_available_index within the current model if no
             |WHERE| clauses is already specified, otherwise obeys the
             |WHERE| clause in the :prop:state.
 
             See also: :meth:_select
-            @raw: (#bool) If |True| query results will return
-                :prop:_cursor_factory rather than models.
 
             -> #list of results of query as copies of this :class:Model if
-                @raw is false, otherwise the #list will be of
+                :prop:_naked is |False|, otherwise the #list will be of
                 :prop:_cursor_factory. Will return :class:Select objects
-                if @run is false.
+                if :prop:_dry is |True|.
         """
         if not self.state.has('WHERE'):
             self.where(self.best_available_index or True)
-        return self._select(*fields, raw=raw, run=run, **kwargs)
+        return self._select(*fields, **kwargs)
 
-    def get(self, *fields, raw=None, run=True, **kwargs):
+    def get(self, *fields, **kwargs):
         """ Gets a single record from the DB based on the
             :prop:best_available_index if no |WHERE| clause has been
-            specified and fills the current model if raw is False and
-            run is True.
+            specified and fills the current model if :prop:_naked is |False|
+            and :prop:dry is |False|.
 
             See also: :meth:select
 
-            -> |self| if @raw is false, otherwise will return
+            -> |self| if :prop:_naked is false, otherwise will return
                 :prop:_cursor_factory. Will return :class:Select object
-                if @run is false.
+                if :prop:_dry is |True|.
         """
-        return self.one().select(*fields, raw=raw, run=run, **kwargs)
+        return self.one().select(*fields, **kwargs)
 
     get_one = get
 
@@ -2101,24 +2107,24 @@ class Model(ORM):
                                     'be explicit. No WHERE clause was found ' +
                                     'and no unique index was found.')
 
-    def delete(self, *args, raw=None, run=True, **kwargs):
+    def delete(self, *args, **kwargs):
         """ :see::meth:_delete
 
             Deletes records from the DB based on the
             :prop:best_unique_index within the current model if no
             |WHERE| clause has been specified.
 
-            -> |self| if @raw is false, otherwise will return
+            -> |self| if :prop:_naked is false, otherwise will return
                 :prop:_cursor_factory or the cursor object if no |RETURNING|
                 clause was given. Will return :class:Delete object
-                if @run is false.
+                if :prop:_dry is |True|.
         """
         self._explicit_where()
         if not self.state.has('RETURNING'):
             self.returning()
-        return self._delete(*args, raw=raw, run=run, **kwargs)
+        return self._delete(*args, **kwargs)
 
-    def remove(self, *args, raw=None, **kwargs):
+    def remove(self, *args, **kwargs):
         """ :see::meth:_delete
 
             Deletes one record from the DB based on the
@@ -2127,12 +2133,13 @@ class Model(ORM):
 
             -> :meth:clear(ed) self
         """
-        result = self.one().delete(*args, raw=raw, **kwargs)
-        if not raw:
+        naked = self._is_naked(self._naked)
+        result = self.one().delete(*args, **kwargs)
+        if not naked:
             return self.clear()
         return result
 
-    def pop(self, *args, raw=False, run=True, **kwargs):
+    def pop(self, *args, **kwargs):
         """ :see::meth:_delete
 
             Deletes one record from the DB based on the
@@ -2142,10 +2149,9 @@ class Model(ORM):
 
             -> a copy of |self| populated with the deleted field info
         """
-        result = self.one().delete(*args, raw=True, run=run, **kwargs)
-        return self._cast_return(result, raw, run, new=True)
+        return self.new().one().delete(*args, **kwargs)
 
-    def update(self, *fields, raw=None, run=True, **kwargs):
+    def update(self, *fields, **kwargs):
         """ Updates @fields within records from the DB based on the
             :prop:best_unique_index within the current model.
 
@@ -2158,16 +2164,16 @@ class Model(ORM):
             return_fields = filter(lambda x: isinstance(x, Field), fields)
             self.returning(*return_fields)
         self._explicit_where()
-        return self._update(*fields, raw=raw, run=run, **kwargs)
+        return self._update(*fields, **kwargs)
 
-    def pull(self, *args, **kwargs):
+    def pull(self, *args, dry=False, **kwargs):
         """ :see::meth:Relationship.pull """
         return [
-            relationship.pull(*args, **kwargs)
+            relationship.pull(*args, dry=dry, **kwargs)
             for relationship in self.relationships]
 
-    def rawiter(self, offset=0, limit=0, buffer=100, order_field=None,
-                reverse=False):
+    def iternaked(self, offset=0, limit=0, buffer=100, order_field=None,
+                  reverse=False):
         """ Yields cursor factory until there are no more results to fetch.
 
             @offset: (#int) cursor start position
@@ -2177,13 +2183,15 @@ class Model(ORM):
             @order_field: (:class:bloom.Field) object to order the
                 query by
         """
-        for item in self.iter(offset=offset, limit=limit, buffer=buffer,
-                              order_field=order_field, reverse=reverse,
-                              raw=True):
+        for item in self.naked().iter(offset=offset,
+                                      limit=limit,
+                                      buffer=buffer,
+                                      order_field=order_field,
+                                      reverse=reverse):
             yield item
 
     def iter(self, offset=0, limit=0, buffer=100, order_field=None,
-             reverse=False, raw=None):
+             reverse=False):
         """ Yields populated models until there are no more
             results to fetch.
 
@@ -2193,8 +2201,6 @@ class Model(ORM):
             @reverse: (#bool) True if returning in descending order
             @order_field: (:class:bloom.Field) object to order the
                 query by
-            @raw: (#bool) True to yield the cursor factory rather than
-                models
         """
         if not self.state.has('WHERE'):
             self.where(self.best_available_index or True)
@@ -2205,13 +2211,13 @@ class Model(ORM):
         self.offset(offset)
         if limit:
             self.limit(limit)
-        q = self._select(run=False).execute()
+        q = self.dry()._select().execute()
         while True:
             results = q.fetchmany(buffer)
             if not results:
                 break
             for result in results:
-                if raw:
+                if self._naked:
                     yield result
                 else:
                     m = self.copy().clear()
@@ -2219,6 +2225,7 @@ class Model(ORM):
                         result = result._asdict()
                     m.fill(**result)
                     yield m
+        self.reset()
 
     def copy(self):
         """ Returns a safe copy of the model """
@@ -2239,11 +2246,6 @@ class Model(ORM):
         for foreign_key in self.foreign_keys:
             setattr_(foreign_key.field_name, foreign_key.copy())
         return cls
-
-
-#
-#  `` Rest-flavored base model ``
-#
 
 
 class RestModel(Model):

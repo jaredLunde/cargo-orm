@@ -10,14 +10,21 @@ import unittest
 import psycopg2
 
 from kola import config
-from bloom.builder import TableMeta
+from bloom import ORM, create_kola_client
+from bloom.builder import Builder
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
+config.bind(cfile)
+create_kola_client()
 
 
 class TestTableMeta(unittest.TestCase):
-    pass
+    orm = ORM()
+
+    def test_builder(self):
+        b = Builder(self.orm, 'xfaps')
+        b.run()
 
 
 if __name__ == '__main__':

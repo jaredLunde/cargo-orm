@@ -5,7 +5,7 @@ import unittest
 
 from kola import config
 
-from vital.docr import Docr
+from docr import Docr
 from bloom.fields import Password
 from bloom import create_pool, ValidationError
 from vital.security import randkey
@@ -26,7 +26,7 @@ class TestPassword(TestChar):
         self.assertEqual(self.base.salt_size, 16)
         self.assertEqual(self.base.strict, True)
         self.assertEqual(self.base.value, None)
-        self.assertEqual(self.base.notNull, None)
+        self.assertEqual(self.base.notNull, True)
         self.assertEqual(self.base.scheme, 'argon2')
         self.assertEqual(self.base.primary, None)
         self.assertEqual(self.base.unique, None)

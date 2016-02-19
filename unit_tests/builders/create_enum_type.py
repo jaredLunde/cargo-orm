@@ -10,14 +10,24 @@ import unittest
 import psycopg2
 
 from kola import config
-from bloom.builder import TableMeta
+from bloom import ORM, create_kola_client
+from bloom.builder import create_enum_type
+
+
+cfile = '/home/jared/apps/xfaps/vital.json'
+config.bind(cfile)
+create_kola_client()
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
 
 
-class TestTableMeta(unittest.TestCase):
-    pass
+class TestCreateEnumType(unittest.TestCase):
+    orm = ORM()
+
+    def test_create(self):
+        print(create_enum_type(
+            self.orm, 'colors', 'red', 'white', 'blue', run=False))
 
 
 if __name__ == '__main__':

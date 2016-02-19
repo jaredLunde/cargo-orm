@@ -1,31 +1,29 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.build.TableMeta`
+    `Unit tests for bloom.clients.create_client`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
+import json
 import unittest
-import psycopg2
-
 from kola import config
-from bloom import ORM, create_kola_client
-from bloom.builder import Builder
+
+from bloom.clients import create_client, create_kola_client, local_client,\
+                              Postgres, create_db, create_kola_db
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_client()
 
 
-class TestBuilder(unittest.TestCase):
-    orm = ORM()
+class Testcreate_client(unittest.TestCase):
 
-    def test_builder(self):
-        b = Builder(self.orm, 'xfaps')
-        print(b.run())
+    with open(cfile, 'r') as f:
+        config = json.load(f)
 
+    def test_create_db(self):
+        pass
 
 if __name__ == '__main__':
     # Unit test

@@ -11,12 +11,13 @@ import copy
 import importlib
 from pydoc import locate, ErrorDuringImport
 
-from vital.docr import Docr
+from docr import Docr
 from vital.cache import cached_property
+from vital.debug import logg, prepr, get_obj_name
+
 from bloom.fields import *
 from bloom.etc.types import *
 from bloom.exceptions import RelationshipImportError, PullError
-from vital.debug import logg, prepr, get_obj_name
 
 
 __all__ = (
@@ -368,7 +369,7 @@ class Relationship(BaseRelationship):
                 string, 'The object found was not a ForeignKey.')
 
     def pull(self, *args, offset=0, limit=0, order_field=None, reverse=None,
-             **kwargs):
+             dry=False, **kwargs):
         """ Pulls data from the relationship model based on the data in
             the :prop:join_field
 
@@ -393,6 +394,8 @@ class Relationship(BaseRelationship):
             model.order_by(order_field.asc() if not reverse else
                            order_field.desc())
         model.where(self.foreign_key == self.join_field.real_value)
+        if dry:
+            model.dry()
         results = model._select(*args, **kwargs)
         if kwargs.get('run') is False:
             return results

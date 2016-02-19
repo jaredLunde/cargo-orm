@@ -151,7 +151,7 @@ class Password(Field, StringLogic):
 
     def __init__(self, value=None, minlen=8, maxlen=-1, scheme="argon2",
                  schemes=None, salt_size=16, rounds=15, strict=True,
-                 **kwargs):
+                 not_null=True, **kwargs):
         """ `Password`
 
             :see::meth:Field.__init__
@@ -169,7 +169,7 @@ class Password(Field, StringLogic):
 
             TODO: Explicitly state if something is a hash coming in
         """
-        super().__init__(**kwargs)
+        super().__init__(not_null=not_null, **kwargs)
         self.minlen, self.maxlen = minlen, maxlen
         self.rounds = rounds
         self.scheme = scheme

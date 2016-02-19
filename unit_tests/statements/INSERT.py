@@ -65,8 +65,10 @@ class TestInsert(unittest.TestCase):
         self.orm.returning("*")
         q = Insert(self.orm, *self.fields)
         cur = q.execute()
+        item = q.orm.state.get('VALUES')
         self.assertSetEqual(
-            set([x for x in cur.fetchall()[0]]), set(q.params.values()))
+            set([x for x in cur.fetchall()[0]]),
+            set(item[0].params.popitem()[1]))
         self.orm.reset()
 
     def test__evaluate_state(self):
