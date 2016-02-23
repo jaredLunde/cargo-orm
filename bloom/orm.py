@@ -1493,6 +1493,7 @@ class Model(ORM):
             my_model.delete()
         ..
     """
+    ordinal = []
 
     def __init__(self, client=None, cursor_factory=None, naked=None,
                  debug=False, **kwargs):
@@ -1699,6 +1700,7 @@ class Model(ORM):
             field.field_name = field_name
             sa(field_name, field)
             add_field(field)
+        self._order_fields()
 
     def _add_foreign_key(self, **foreign_keys):
         """ Adds one or several @foreign_keys to the model
@@ -1759,9 +1761,17 @@ class Model(ORM):
                 result = result['count']
         return result
 
+    def _order_fields(self, ordinal=None):
+        if ordinal or self.ordinal:
+            self._fields = [self.__getattribute__(name)
+                            for name in self.ordinal]
+        return self._fields
+
     @property
     def fields(self):
-        """ -> yields the fields in the model based on :desc:__dict__ """
+        """ -> yields the fields in the model based on :desc:__dict__ or
+                :attr:ordinal if it exists
+        """
         return self._fields
 
     @cached_property

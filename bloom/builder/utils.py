@@ -51,6 +51,13 @@ class BaseCreator(object):
         else:
             self._name = None
 
+    def __repr__(self):
+        try:
+            return "<{}:`{}`>".format(self.__class__.__name__,
+                                      self.query.mogrified)
+        except AttributeError:
+            return "<{}:`{}`>".format(self.__class__.__name__, self.query)
+
     def _add(self, *clauses):
         for clause in clauses:
             if clause:

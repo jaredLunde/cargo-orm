@@ -21,13 +21,11 @@ class View(BaseCreator):
     def __init__(self, orm, name, *columns, query=None, security_barrier=False,
                  materialized=False, temporary=False):
         """ `Create a View`
-            @orm: (:class:ORM)
-            @name: (#str) name of the view
-            @query: (:class:Select|:class:Query or a VALUES :class:Clause)
+            :see::bloom.builders.create_view
         """
         super().__init__(orm, name)
         self._query = query
-        self._columns = columns
+        self.columns(*columns)
         self._security_barrier = security_barrier
         self._materialized = materialized
         self._temporary = temporary
@@ -36,7 +34,7 @@ class View(BaseCreator):
         self._query = query
 
     def columns(self, *columns):
-        self._columns = columns
+        self._columns = tuple(self._cast_safe(col) for col in columns)
 
     def security_barrier(self):
         self._security_barrier = True
@@ -60,11 +58,10 @@ class View(BaseCreator):
             security_barrier = Clause('WITH',
                                       safe('security_barrier'),
                                       wrap=True)
-        columns = list(map(lambda x: x if isinstance(x, Field) else safe(x),
-                           self._columns))
         create_clause = Clause('CREATE {}VIEW'.format(tmp),
                                safe(self.name),
-                               Clause("", *columns, join_with=", ", wrap=True),
+                               Clause("", *self._columns, join_with=", ",
+                                      wrap=True),
                                security_barrier,
                                use_field_name=True)
         self.orm.state.add(create_clause)

@@ -10,8 +10,14 @@
 
 """
 import re
+from collections import OrderedDict
 
-from vital.cache import cached_property, memoize
+try:
+    from cnamedtuple import namedtuple
+except ImportError:
+    from collections import namedtuple
+
+from vital.cache import cached_property
 from vital.debug import prepr
 from vital.tools import strings as string_tools
 
@@ -34,6 +40,7 @@ from bloom.builder.drop_shortcuts import *
 __all__ = (
     'Modeller',
     'Builder',
+    'Build',
     'create_cast',
     'create_database',
     'create_domain',
@@ -85,14 +92,7 @@ class {clsname}(Model):{comment}
 #
 
 
-class BaseModeller(object):
-
-    def __init__(self, orm):
-        self.orm = orm
-        self.orm.set_cursor_factory(CNamedTupleCursor)
-
-
-class Modeller(BaseModeller):
+class Modeller(object):
 
     def __init__(self, orm, *tables, schema=None, banner=None):
         """`Model Builder`
@@ -103,7 +103,8 @@ class Modeller(BaseModeller):
                 given, the entire @schema will be searched.
             @schema: (#str) name of the table schema/search path to search
         """
-        super().__init__(orm)
+        self.orm = orm
+        self.orm.set_cursor_factory(CNamedTupleCursor)
         self.tables = tables
         self.schema = schema or orm.schema or orm.client.schema or 'public'
         self.banner = banner
@@ -205,7 +206,8 @@ class Modeller(BaseModeller):
         if write_mode and 'a' in write_mode:
             banner = "{}\n{}"
         else:
-            banner = "#!/usr/bin/python" +\
+            banner = "#!/usr/bin/python3" +\
+                     "# -*- coding: utf-8 -*-" +\
                      "{}\nfrom bloom import Model, ForeignKey\n" +\
                      "from bloom.fields import *\n\n" +\
                      "{}"
@@ -242,24 +244,76 @@ class Modeller(BaseModeller):
             self.to_file(results, output_to, write_mode=write_mode)
 
 
-class Build(object):
-    pass
+class Builder(Table):
+    model = None
+    ordinal = None
 
-
-class Builder(object):
-
-    def __init__(self, *models, schema=None):
+    def __init__(self, model=None, schema=None):
         """ `Table Builder`
 
              Generates the tables for given models.
         """
-        self.models = models
-        self.schema = schema or orm.schema or orm.client.schema or 'public'
+        self.model = model or self.model
+        super().__init__(self.model.copy(), self.model.table)
+        self.schema = schema or self.orm.schema or \
+            self.orm.client.schema or 'public'
+        self.from_fields(*self.columns)
+
+    def before(self):
+        """ Executed immediately before the builder runs. This is where
+            you'll want to do things like make edits to your :prop:columns
+            and :prop:indexes, and add :meth:constraints.
+        """
+        pass
+
+    def after(self):
+        """ Executed immediately after the bulder runs """
+        pass
+
+    @cached_property
+    def columns(self):
+        fields = self.orm.fields
+        if self.ordinal:
+            fields = [self.orm.__getattribute__(name) for name in self.ordinal]
+        nt = namedtuple('Columns', (field.field_name for field in fields))
+        fields = dict((field.field_name, Column(field)) for field in fields)
+        return nt(**fields)
+
+    @cached_property
+    def indexes(self):
+        fields = (field.field_name for field in self.orm.indexes)
+        nt = namedtuple('Indexes', fields)
+        fields = dict((field.field_name, Index(self.orm, field))
+                      for field in self.orm.indexes)
+        return nt(**fields)
+
+    def create_schema(self):
+        if self.schema != 'public':
+            create_schema(self.orm, self.schema)
 
     def run(self):
-        query = create_schema(self.orm, self.schema)
-        print(query)
-        return query
+        self.before()
+        self.from_fields(*self.columns)
+        self.create_schema()
+        self.after()
+
+
+class Build(object):
+
+    def __init__(self, *builders, recursive=False):
+        """ Finds all of the :class:Builder objects in @path or optionally
+            builds all of the models in @*builders
+
+            @*builders: (:class:Builder|#str) one or several :class:Builder
+                or a #str importable python path to where the model is located,
+                e.g. |cool_app.models.builders.User|
+            @recursive: (#bool) |True| to recursively search @path for
+                :class:Builder(s)
+        """
+
+    def run(self):
+        for builder in self.builders:
+            builder.run()
 
 
 def create_models(orm, *tables, banner=None, schema='public',

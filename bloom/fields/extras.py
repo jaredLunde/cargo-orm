@@ -161,8 +161,6 @@ class Password(Field, StringLogic):
             @schemes: (#list) of :class:CryptContext schemes, not required if
                 scheme is |argon2|
             @salt_size: (#int) length of chars to salt password with
-            @default_scheme: (#str) default scheme to use in
-                :class:CryptContext
             @rounds: (#int) number of rounds to hash the value for
             @strict: (#bool) True if you wish to blacklist the most commonly
                 used passwords

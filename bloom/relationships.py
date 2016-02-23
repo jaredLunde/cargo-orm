@@ -220,7 +220,15 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             the foreign key refers. :class:Reference provides both the
             model and the field referenced.
         """
-        _class = self.ref.__class__
+        _class = copy.copy(self.ref.__class__)
+        if _class.sqltype == SERIAL:
+            _class.sqltype = INT
+        elif _class.sqltype == BIGSERIAL:
+            _class.sqltype = BIGINT
+        elif _class.sqltype == SMALLSERIAL:
+            _class.sqltype = SMALLINT
+        elif _class.sqltype in {STRUID, UIDTYPE}:
+            _class.sqltype = BIGINT
         _args, _kwargs = self._args, self._kwargs
         _owner, _owner_attr = self._owner, self._owner_attr
         _relation = self._relation

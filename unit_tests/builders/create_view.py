@@ -19,7 +19,7 @@ config.bind(cfile)
 create_kola_db()
 
 
-class TestCreateEnumType(unittest.TestCase):
+class TestCreateView(unittest.TestCase):
     orm = ORM()
 
     def test_create(self):
@@ -27,13 +27,15 @@ class TestCreateEnumType(unittest.TestCase):
         print(create_view(
             self.orm,
             'fisher',
-            self.orm.dry().select(1), 'fish', 'fosh', 'nosh',
+            'fish', 'fosh', 'nosh',
+            query=self.orm.dry().select(1),
             temporary=True,
             dry=True))
         print(create_view(
             self.orm,
             'fisher',
-            self.orm.dry().select(1), 'fish', 'fosh', 'nosh',
+            'fish', 'fosh', 'nosh',
+            query=self.orm.dry().select(1),
             temporary=True,
             materialized=True,
             security_barrier=True,

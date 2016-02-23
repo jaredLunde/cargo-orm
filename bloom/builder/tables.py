@@ -98,7 +98,7 @@ class Table(BaseCreator):
                  unlogged=False, not_exists=True, storage_parameters=None,
                  on_commit=None, inherits=None, tablespace=None,
                  type_name=None, like=None, constraints=None, **columns):
-        """ `Create a Table`
+        """`Create a Table`
             :see::func:bloom.builder.create_table
         """
         super().__init__(orm, name)
@@ -148,7 +148,7 @@ class Table(BaseCreator):
             self.from_fields(*columns)
 
         if columns:
-            self.columns(**columns)
+            self.set_columns(**columns)
 
         self._like = None
         if like:
@@ -218,7 +218,7 @@ class Table(BaseCreator):
             txt += 'IF NOT EXISTS '
         return Clause(txt.strip())
 
-    def columns(self, **cols):
+    def set_columns(self, **cols):
         self._columns = []
         for col_name, opts in cols.items():
             opts = map(self._cast_safe, opts)
@@ -273,6 +273,21 @@ class Table(BaseCreator):
             else:
                 cls = Clause(name)
             self._constraints.append(cls)
+
+    def timing(self, timing):
+        """ @timing: (#str|:class:bloom.BaseExpression)
+            * |[ DEFERRABLE | NOT DEFERRABLE ]|
+            * |[ INITIALLY DEFERRED | INITIALLY IMMEDIATE ]|
+        """
+        cls = Clause(timing)
+        self._constraints.append(cls)
+        return self
+
+    def check(self, expression):
+        """ @expression: (#str|:class:bloom.BaseExpression) """
+        cls = Clause('CHECK', self._cast_safe(expression), wrap=True)
+        self._constraints.append(cls)
+        return self
 
     def _cast_fields(self, fields, clause_name=""):
         fields = fields if isinstance(fields, (tuple, list)) else [fields]
@@ -389,6 +404,7 @@ class Table(BaseCreator):
             ..
         '''
         self.orm.reset()
+        cols = None
         if self._columns or self._constraints:
             cols = self._columns + self._constraints
             cols = Clause("", *cols,  join_with=', ', wrap=True,
@@ -435,6 +451,7 @@ class Column(BaseCreator):
             @parameters: (#str|:class:BaseExpression) column data type
                 parameters
             @data_type: (#str|:class:BaseExpression) column data type
+            @typed: (#bool) |True| if this is for a typed table
         """
         self._name = field.field_name
         self._clauses = []
@@ -450,7 +467,7 @@ class Column(BaseCreator):
         self._default = None
         default = default if default is not None else field.default
         if default is not None:
-            self.default(fdefault)
+            self.default(default)
 
         self._check = None
         if check:
@@ -466,7 +483,7 @@ class Column(BaseCreator):
         self._primary = None
         primary = primary if primary is not None else field.primary
         if primary:
-            primary = [primary] if not isinstance(primary, (tuple, list)) else \
+            primary = [primary] if not isinstance(primary, (tuple, list)) else\
                 primary
             self.primary(*primary)
 
@@ -482,6 +499,9 @@ class Column(BaseCreator):
         if timing:
             self.timing(timing)
 
+    def set_type(self, data_type):
+        self._data_type = safe(data_type)
+
     def typed(self):
         self._typed = True
         return self
@@ -495,7 +515,7 @@ class Column(BaseCreator):
         return self
 
     def check(self, expression):
-        """ @expression: (:class:bloom.BaseExpression) """
+        """ @expression: (#str|:class:bloom.BaseExpression) """
         self._check = Clause('CHECK', self._cast_safe(expression), wrap=True)
         return self
 
@@ -544,12 +564,14 @@ class Column(BaseCreator):
             return self._data_type
         opt = None
         sqltype = self._field.sqltype
+        lentypes = {types.CHAR, types.VARCHAR, types.USERNAME, types.EMAIL}
         if self._parameters:
             opt = self._parameters
-        elif sqltype in {types.CHAR, types.VARCHAR} and self._field.maxlen:
+        elif sqltype in lentypes and self._field.maxlen and \
+          self._field.maxlen > 0:
             opt = self._field.maxlen
         elif sqltype in {types.NUMERIC, types.DECIMAL} and \
-          self._field.precision:
+          self._field.precision and self._field.precision > 0:
             opt = self._field.precision
         return safe(self._translator.translate_to(self._field.sqltype, opt))
 

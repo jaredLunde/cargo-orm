@@ -41,11 +41,11 @@ class IndexMeta(object):
 
 class Index(BaseCreator):
 
-    def __init__(self, orm, field, method='btree', name=None, collate=None,
+    def __init__(self, orm, field, method=None, name=None, collate=None,
                  order=None, nulls=None, unique=False, concurrent=False,
                  fillfactor=None, fastupdate=None, buffering=False,
                  table=None, tablespace=None, partial=None):
-        """ `Create an Index`
+        """`Create an Index`
             :see::func:bloom.builder.create_index
         """
         super().__init__(orm, name)
@@ -88,6 +88,9 @@ class Index(BaseCreator):
         if buffering is not None and self.type == 'gist':
             self.buffering(buffering)
 
+    def set_name(self, name):
+        self._name = name
+
     def set_type(self, val):
         self._type = val
         return self
@@ -100,7 +103,6 @@ class Index(BaseCreator):
 
     @property
     def name(self):
-        print(self._name, self._name is None)
         if self._name is None:
             idx_pref = self.field
             if isinstance(self.field, Field):
@@ -108,7 +110,7 @@ class Index(BaseCreator):
             return safe("{}_{}_{}index".format(
                 self.table,
                 idx_pref,
-                "unique_" if self.unique else ""))
+                "unique_" if self._unique else ""))
         else:
             return self._cast_safe(self._name)
 

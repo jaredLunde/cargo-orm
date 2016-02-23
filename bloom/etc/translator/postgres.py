@@ -95,7 +95,6 @@ sqltype_map = {
     'PASSWORD': 'text',  # Depends if maxlen defined
     'KEY': 'text',
     'UUIDTYPE': 'uuid',
-    'CHAR': 'char',
     'VARCHAR': 'varchar',
     'JSONTYPE': 'json',
     'JSONB': 'jsonb',
