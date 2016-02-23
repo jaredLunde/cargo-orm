@@ -84,14 +84,6 @@ class Field(BaseLogic):
             self._set_value(value)
         return self.value
 
-    def __len__(self):
-        """ -> __len__ of the field's :prop:value """
-        if hasattr(self, 'value'):
-            if hasattr(self, 'value') and self.value is not None:
-                return len(str(self.value))
-            return 0
-        return 1
-
     def __getstate__(self):
         return dict(
             (slot, getattr(self, slot))

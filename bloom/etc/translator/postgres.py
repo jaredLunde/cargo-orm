@@ -97,7 +97,7 @@ sqltype_map = {
     'UUIDTYPE': 'uuid',
     'CHAR': 'char',
     'VARCHAR': 'varchar',
-    'JSON': 'json',
+    'JSONTYPE': 'json',
     'JSONB': 'jsonb',
     'UIDTYPE': 'biginteger',
     'STRUID': 'biginteger',
@@ -136,7 +136,11 @@ def translate_from(datatype=None, udtype=None, category=None):
                            'udtype={}, category={}')
 
 
-def translate_to(sqltype, opt):
-    trans = sqltype_map[sqltype]
+def translate_to(sqltype, opt=None):
+    for name, realtype in sqltype_map.items():
+        if sqltype == getattr(types, name):
+            break
     if opt:
-        trans = '{}({})'.format(trans, opt)
+        return '{}({})'.format(realtype, opt)
+    else:
+        return realtype

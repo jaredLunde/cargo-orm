@@ -36,12 +36,11 @@ class Schema(BaseCreator):
 
     @property
     def query(self):
+        self.orm.reset()
         auth, ine = _empty, _empty
         if self._authorization:
             auth = Clause('AUTHORIZATION', safe(self._authorization))
         if self._not_exists:
             ine = Clause('IF NOT EXISTS')
         self.orm.state.add(Clause('CREATE SCHEMA', ine, auth, safe(self.name)))
-        query = Raw(self.orm)
-        self.orm.reset()
-        return query
+        return Raw(self.orm)

@@ -13,10 +13,11 @@ import os
 from docr import Docr
 
 from bloom import fields
+from bloom.expressions import safe
 from bloom.etc.translator import postgres
 
 
-__all__ = ('_get_sql_file', '_get_docr', '_find_sql_field')
+__all__ = ('_get_sql_file', '_get_docr', '_find_sql_field', 'BaseCreator')
 
 
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,9 +46,35 @@ class BaseCreator(object):
 
     def __init__(self, orm, name):
         self.orm = orm.copy()
-        self.name = name
+        if name is not None:
+            self._name = safe(name)
+        else:
+            self._name = None
+
+    def _add(self, *clauses):
+        for clause in clauses:
+            if clause:
+                self.orm.state.add(clause)
+
+    def _cast_safe(self, val):
+        if isinstance(val, str):
+            return safe(val)
+        else:
+            return val
+
+    @property
+    def name(self):
+        return self._cast_safe(self._name)
+
+    @property
+    def string(self):
+        return self.query.string
+
+    @property
+    def params(self):
+        return self.query.params
 
     def execute(self):
-        query = self.query
-        params = self.query.params
-        return self.orm.execute(query, params)
+        return self.query.execute()
+
+    create = execute

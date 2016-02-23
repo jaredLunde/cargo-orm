@@ -13,8 +13,8 @@ from kola import config
 from vital.security import randkey
 
 from bloom import ORM, db, create_kola_db, fields
-from bloom.builder import create_extension
-from bloom.builder.extensions import Extension
+from bloom.builder import create_tablespace
+from bloom.builder.tablespaces import Tablespace
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
@@ -29,18 +29,17 @@ def new_field(type='char', value=None, name=None, table=None):
     return field
 
 
-class TestCreateExtension(unittest.TestCase):
+class TestCreateTablespace(unittest.TestCase):
     orm = ORM()
 
     def test_create(self):
-        extension = create_extension(self.orm, 'citext', dry=True)
-        print(extension.query)
-        field = new_field('int', table='foo', name='bar')
-        extension = Extension(self.orm, 'citext')
-        extension.old_version('3.0.0')
-        extension.version('3.0.1')
-        extension.schema('pandora')
-        print(extension.query)
+        tablespace = create_tablespace(self.orm, 'foo', '/data/foo', dry=True)
+        print(tablespace.query.mogrified)
+        tablespace = Tablespace(self.orm, 'foo', '/data/foo')
+        tablespace.owner('jared')
+        tablespace.options(random_page_cost=4.0, seq_page_cost=1.0)
+        print(tablespace.query)
+        print(tablespace.query.mogrified)
 
 
 if __name__ == '__main__':

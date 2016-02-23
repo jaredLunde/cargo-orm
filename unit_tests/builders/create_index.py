@@ -13,8 +13,8 @@ from kola import config
 from vital.security import randkey
 
 from bloom import ORM, db, create_kola_db, fields
-from bloom.builder import create_extension
-from bloom.builder.extensions import Extension
+from bloom.builder import create_index
+from bloom.builder.indexes import Index
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
@@ -29,18 +29,26 @@ def new_field(type='char', value=None, name=None, table=None):
     return field
 
 
-class TestCreateExtension(unittest.TestCase):
+class TestCreateIndex(unittest.TestCase):
     orm = ORM()
 
     def test_create(self):
-        extension = create_extension(self.orm, 'citext', dry=True)
-        print(extension.query)
+        index = create_index(self.orm, 'bar', table='foo', dry=True)
+        print(index.query.mogrified)
         field = new_field('int', table='foo', name='bar')
-        extension = Extension(self.orm, 'citext')
-        extension.old_version('3.0.0')
-        extension.version('3.0.1')
-        extension.schema('pandora')
-        print(extension.query)
+        index = Index(self.orm,
+                      field,
+                      partial=(field > 1000))
+        (index.
+         concurrent().
+         unique().
+         nulls('LAST').
+         asc().
+         fillfactor(65).
+         fastupdate().
+         buffering(False).
+         set_type('gin'))
+        print(index.query)
 
 
 if __name__ == '__main__':

@@ -17,3 +17,4 @@ __all__ = []
 
 
 # TODO: Range fields e.g. 'int4range'
+# NOTE: http://initd.org/psycopg/docs/extras.html#range-data-types

@@ -13,10 +13,11 @@ from pydoc import locate, ErrorDuringImport
 
 from docr import Docr
 from vital.cache import cached_property
-from vital.debug import logg, prepr, get_obj_name
+from vital.debug import prepr, get_obj_name
 
 from bloom.fields import *
 from bloom.etc.types import *
+from bloom.expressions import Clause
 from bloom.exceptions import RelationshipImportError, PullError
 
 
@@ -67,7 +68,7 @@ class BaseRelationship(object):
 
 class Reference(object):
 
-    def __init__(self, model, field_name):
+    def __init__(self, model, field_name, constraints=None):
         """ `Reference`
             This object is added to :class:ForeignKey fields as
             the |ref| property. It provides accessed to the model
@@ -75,14 +76,40 @@ class Reference(object):
         """
         self._model = model
         self.field_name = field_name
+        self.constraints = constraints or []
 
     @prepr('_model', 'field_name')
     def __repr__(self): return
+
+    def add_constraint(self, name, val=None):
+        """ Adds foreign key constraints to the reference.
+
+            @name: (#str) the clause, e.g. |name='MATCH PARTIAL'|
+            @val: (#str) the clause value,
+                e.g. |name='on update', val='cascade'|
+
+            ..
+                # OPTIONS:
+                # [ MATCH FULL | MATCH PARTIAL | MATCH SIMPLE ]
+                # [ ON DELETE action ] [ ON UPDATE action ]
+                field.ref.add_constraint('on delete', 'cascade')
+                field.ref.add_constraint('on update', 'cascade')
+            ..
+        """
+        if not isinstance(name, Clause):
+            clause = Clause(name, val or _empty)
+        else:
+            clause = name
+        self.constraints.append(clause)
 
     @cached_property
     def model(self):
         """ The referenced :class:Model """
         return self._model()
+
+    @cached_property
+    def table(self):
+        return self.field.table
 
     @cached_property
     def field(self):

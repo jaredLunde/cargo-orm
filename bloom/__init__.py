@@ -49,6 +49,7 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
+from bloom import etc
 from bloom.exceptions import *
 from bloom.clients import *
 from bloom.cursors import *

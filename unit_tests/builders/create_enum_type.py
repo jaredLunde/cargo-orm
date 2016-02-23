@@ -27,7 +27,7 @@ class TestCreateEnumType(unittest.TestCase):
 
     def test_create(self):
         print(create_enum_type(
-            self.orm, 'colors', 'red', 'white', 'blue', run=False))
+            self.orm, 'colors', 'red', 'white', 'blue', dry=True))
 
 
 if __name__ == '__main__':

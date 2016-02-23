@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.builder.TableMeta`
+    `Unit tests for bloom.builder.create_view`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -19,9 +19,6 @@ config.bind(cfile)
 create_kola_db()
 
 
-cfile = '/home/jared/apps/xfaps/vital.json'
-
-
 class TestCreateEnumType(unittest.TestCase):
     orm = ORM()
 
@@ -32,7 +29,7 @@ class TestCreateEnumType(unittest.TestCase):
             'fisher',
             self.orm.dry().select(1), 'fish', 'fosh', 'nosh',
             temporary=True,
-            run=False))
+            dry=True))
         print(create_view(
             self.orm,
             'fisher',
@@ -40,7 +37,7 @@ class TestCreateEnumType(unittest.TestCase):
             temporary=True,
             materialized=True,
             security_barrier=True,
-            run=False))
+            dry=True))
 
 
 if __name__ == '__main__':

@@ -127,10 +127,6 @@ class Array(Field):
           self.field_name,
         )
 
-    def __len__(self):
-        """ -> #int size of the array """
-        return len(self.data)
-
     def __getitem__(self, index):
         """ -> the item at @index """
         return self.data[index]

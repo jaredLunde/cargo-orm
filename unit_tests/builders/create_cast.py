@@ -13,8 +13,8 @@ from kola import config
 from vital.security import randkey
 
 from bloom import ORM, db, create_kola_db, fields
-from bloom.builder import create_extension
-from bloom.builder.extensions import Extension
+from bloom.builder import create_cast
+from bloom.builder.casts import Cast
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
@@ -29,18 +29,18 @@ def new_field(type='char', value=None, name=None, table=None):
     return field
 
 
-class TestCreateExtension(unittest.TestCase):
+class TestCreateCast(unittest.TestCase):
     orm = ORM()
 
     def test_create(self):
-        extension = create_extension(self.orm, 'citext', dry=True)
-        print(extension.query)
+        cast = create_cast(self.orm, 'bigint', 'int8', dry=True)
+        print(cast.query)
         field = new_field('int', table='foo', name='bar')
-        extension = Extension(self.orm, 'citext')
-        extension.old_version('3.0.0')
-        extension.version('3.0.1')
-        extension.schema('pandora')
-        print(extension.query)
+        cast = Cast(self.orm, 'citext', 'text')
+        cast.as_assignment()
+        cast.as_implicit()
+        cast.inout()
+        print(cast.query)
 
 
 if __name__ == '__main__':

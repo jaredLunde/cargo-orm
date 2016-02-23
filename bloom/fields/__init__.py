@@ -73,23 +73,29 @@ from bloom.fields.xml import *
 
 
 # TODO: IMMINENT
-# TODO: Binary field
-# TODO: Currency field
+# TODO: Binary field (30 MIN)
+# TODO: Currency field (40 MIN)
 #   see: http://www.postgresql.org/message-id/
 #           AANLkTikwEScC8bjpmLPT2XkNy_WeWCrxnWeYiw3DQxU7@mail.gmail.com
-# TODO: Range fields e.g. 'int4range'
-# TODO: HStore field 'hstore'
-# TODO: AES-256 encrypted
-# TODO: 'CIDR': 'cidr'
-# TODO: 'MACADDR': 'macaddr'
-# TODO: 'XML': 'xml'
+# TODO: Range fields e.g. 'int4range'  (90 MIN)
+# TODO: HStore field 'hstore'  (120 MIN)
+# TODO: 'CIDR': 'cidr'  (40 MIN)
+# TODO: 'MACADDR': 'macaddr'  (40 MIN)
+# TODO: AES-256 encrypted (30 MIN)
+# NOTE: EST 6.5-8 HOURS
+
 
 # TODO: SOON (Geometric Fields)
 #   see:  http://www.postgresql.org/docs/8.2/static/functions-geometry.html
-# TODO: 'BOX': 'box'
-# TODO: 'CIRCLE': 'circle'
-# TODO: 'LINE': 'line'
-# TODO: 'LSEG': 'lseg'
-# TODO: 'PATH': 'path'
-# TODO: 'POINT': 'point'
-# TODO: 'POLYGON': 'polygon'
+# TODO: 'BOX': 'box' (60 MIN)
+# TODO: 'CIRCLE': 'circle' (60 MIN)
+# TODO: 'LINE': 'line' (60 MIN)
+# TODO: 'LSEG': 'lseg' (60 MIN)
+# TODO: 'PATH': 'path' (60 MIN)
+# TODO: 'POINT': 'point' (60 MIN)
+# TODO: 'POLYGON': 'polygon' (60 MIN)
+# NOTE: EST 7-10 HOURS
+
+# TODO: DOWN THE LINE
+# TODO: 'XML': 'xml' (120 MIN)
+# NOTE: EST 2-3 HOURS

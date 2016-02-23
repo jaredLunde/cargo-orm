@@ -50,11 +50,11 @@
 --
 --------------------------------------------------------------------------------
 -- Creates the schema for this function if it doesn't already exist
-create schema {schema};
+CREATE SCHEMA {schema};
 
 -- Creates a sequence called 'global_id_sequence'
 -- used for the entire shared
-create sequence {schema}.global_id_sequence;
+CREATE SEQUENCE {schema}.global_id_sequence CACHE 10000;
 
 -- Creates a function named 'create_uid'
 CREATE OR REPLACE FUNCTION {schema}.create_uid(OUT result bigint) AS $$

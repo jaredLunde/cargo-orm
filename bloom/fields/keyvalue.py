@@ -22,6 +22,8 @@ from bloom.expressions import *
 from bloom.fields.field import Field
 
 # TODO: HStore field 'hstore'
+# NOTE: http://www.postgresql.org/docs/9.4/static/hstore.html
+
 
 __all__ = ('JSONb', 'JSON')
 
@@ -80,10 +82,6 @@ class JSONb(Field):
 
     def __delitem__(self, name):
         del self.value[name]
-
-    def __len__(self):
-        return len(self.value)
-
     def __iter__(self):
         return self.value.__iter__()
 

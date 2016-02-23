@@ -24,26 +24,52 @@ from bloom.statements import *
 from bloom.builder.fields import *
 from bloom.builder.tables import *
 from bloom.builder.indexes import *
-from bloom.builder.foreign_keys import *
-from bloom.builder.schemas import Schema
 from bloom.builder.types import Type, EnumType
 from bloom.builder.utils import *
-from bloom.builder.views import View
+
+from bloom.builder.create_shortcuts import *
+from bloom.builder.drop_shortcuts import *
 
 
 __all__ = (
     'Modeller',
     'Builder',
-    'create_models',
-    'create_tables',
+    'create_cast',
+    'create_database',
+    'create_domain',
+    'create_operator',
     'create_extension',
     'create_schema',
+    'create_index',
     'create_sequence',
     'create_function',
-    'create_enum_type',
+    'create_table',
     'create_type',
-    'create_view',
-    'create_user'
+    'create_range_type',
+    'create_enum_type',
+    'create_role',
+    'create_rule',
+    'create_tablespace',
+    'create_trigger',
+    'create_user',
+    'create_view'
+    'drop_cast',
+    'drop_domain',
+    'drop_database',
+    'drop_operator',
+    'drop_extension',
+    'drop_schema',
+    'drop_index',
+    'drop_sequence',
+    'drop_function',
+    'drop_tablespace',
+    'drop_trigger',
+    'drop_type',
+    'drop_enum_type',
+    'drop_role',
+    'drop_rule',
+    'drop_user',
+    'drop_view'
 )
 
 
@@ -216,14 +242,18 @@ class Modeller(BaseModeller):
             self.to_file(results, output_to, write_mode=write_mode)
 
 
-class Builder(BaseModeller):
+class Build(object):
+    pass
 
-    def __init__(self, orm, schema=None, *models):
+
+class Builder(object):
+
+    def __init__(self, *models, schema=None):
         """ `Table Builder`
 
              Generates the tables for given models.
         """
-        self.orm = orm
+        self.models = models
         self.schema = schema or orm.schema or orm.client.schema or 'public'
 
     def run(self):
@@ -240,209 +270,6 @@ def create_models(orm, *tables, banner=None, schema='public',
 
 def create_tables(model):
     pass
-
-
-def _cast_return(q, run=False):
-    if not run:
-        return q
-    return q.execute()
-
-
-def create_extension(orm, name, schema):
-    """ -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    '''
-    CREATE EXTENSION [ IF NOT EXISTS ] extension_name
-        [ WITH ] [ SCHEMA schema_name ]
-                 [ VERSION version ]
-                 [ FROM old_version ]
-    '''
-    # http://www.postgresql.org/docs/9.1/static/sql-createextension.html
-    # CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
-    pass
-
-
-def create_schema(orm, name, authorization=None, not_exists=True, run=True):
-    """ @name: (#str) name of the schema
-        @authorization: (#str) username to create a schema for
-        @not_exists: (#bool) adds |IF NOT EXISTS| clause to the statement
-        @run: (#bool) |True| to execute the query before returning
-
-        -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    schema = Schema(orm, name, authorization, not_exists)
-    return _cast_return(schema.query, run)
-
-
-def create_index(orm, field, method='btree', name=None, collate=None,
-                 order=None, nulls=None, unique=False, concurrent=False):
-    """ -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    '''
-    CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] [ name ] ON table [ USING method ]
-        ( { column | ( expression ) } [ COLLATE collation ]
-          [ opclass ] [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] )
-        [ WITH ( storage_parameter = value [, ... ] ) ]
-        [ TABLESPACE tablespace ]
-        [ WHERE predicate ]
-    '''
-
-
-def create_sequence(orm, name):
-    """ -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    '''
-    CREATE [ TEMPORARY | TEMP ] SEQUENCE name [ INCREMENT [ BY ] increment ]
-        [ MINVALUE minvalue | NO MINVALUE ] [ MAXVALUE maxvalue | NO MAXVALUE ]
-        [ START [ WITH ] start ] [ CACHE cache ] [ [ NO ] CYCLE ]
-        [ OWNED BY { table.column | NONE } ]
-    '''
-    # http://www.postgresql.org/docs/9.1/static/sql-createsequence.html
-
-
-def create_function(orm, file):
-    """ -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    '''
-    CREATE [ OR REPLACE ] FUNCTION
-        name ( [ [ argmode ] [ argname ] argtype
-               [ { DEFAULT | = } default_expr ] [, ...] ] )
-        [ RETURNS rettype
-          | RETURNS TABLE ( column_name column_type [, ...] ) ]
-      { LANGUAGE lang_name
-        | WINDOW
-        | IMMUTABLE | STABLE | VOLATILE
-        | CALLED ON NULL INPUT | RETURNS NULL ON NULL INPUT | STRICT
-        | [ EXTERNAL ] SECURITY INVOKER | [ EXTERNAL ] SECURITY DEFINER
-        | COST execution_cost
-        | ROWS result_rows
-        | SET configuration_parameter { TO value | = value | FROM CURRENT }
-        | AS 'definition'
-        | AS 'obj_file', 'link_symbol'
-      } ...
-        [ WITH ( attribute [, ...] ) ]
-
-       create uid type -> schema and epoch required
-    '''
-    # http://www.postgresql.org/docs/9.1/static/sql-createfunction.html
-
-
-def create_type(orm, name, *opt):
-    """ -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    '''
-    CREATE TYPE name (
-        INPUT = input_function,
-        OUTPUT = output_function
-        [ , RECEIVE = receive_function ]
-        [ , SEND = send_function ]
-        [ , TYPMOD_IN = type_modifier_input_function ]
-        [ , TYPMOD_OUT = type_modifier_output_function ]
-        [ , ANALYZE = analyze_function ]
-        [ , INTERNALLENGTH = { internallength | VARIABLE } ]
-        [ , PASSEDBYVALUE ]
-        [ , ALIGNMENT = alignment ]
-        [ , STORAGE = storage ]
-        [ , LIKE = like_type ]
-        [ , CATEGORY = category ]
-        [ , PREFERRED = preferred ]
-        [ , DEFAULT = default ]
-        [ , ELEMENT = element ]
-        [ , DELIMITER = delimiter ]
-    )
-
-    CATEGORIES
-    --------------------------
-    A	Array types
-    B	Boolean types
-    C	Composite types
-    D	Date/time types
-    E	Enum types
-    G	Geometric types
-    I	Network address types
-    N	Numeric types
-    P	Pseudo-types
-    S	String types
-    T	Timespan types
-    U	User-defined types
-    V	Bit-string types
-    X	unknown type
-    '''
-
-
-def create_enum_type(orm, name, *types, run=True):
-    """ @orm: (:class:ORM)
-        @name: (#str) the name of the type
-        @types: (#str) types to create
-        @run: (#bool) |True| to execute the query before returning
-
-        -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    enum = EnumType(orm, name, *types)
-    return _cast_return(enum.query, run)
-
-
-def create_user(orm, name, in_role=None, in_group=None, role=None,
-                admin=None, user=None, **options):
-    """ -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    '''
-    CREATE USER name [ [ WITH ] option [ ... ] ]
-
-    where @options can be:
-
-          SUPERUSER | NOSUPERUSER
-        | CREATEDB | NOCREATEDB
-        | CREATEROLE | NOCREATEROLE
-        | CREATEUSER | NOCREATEUSER
-        | INHERIT | NOINHERIT
-        | LOGIN | NOLOGIN
-        | REPLICATION | NOREPLICATION
-        | CONNECTION LIMIT connlimit
-        | [ ENCRYPTED | UNENCRYPTED ] PASSWORD 'password'
-        | VALID UNTIL 'timestamp'
-        | IN ROLE role_name [, ...]
-        | IN GROUP role_name [, ...]
-        | ROLE role_name [, ...]
-        | ADMIN role_name [, ...]
-        | USER role_name [, ...]
-        | SYSID uid
-    '''
-
-
-def create_view(orm, name, as_, *columns, security_barrier=False,
-                temporary=False, materialized=False, run=True):
-    """ @orm: (:class:ORM)
-        @name: (#str) name of the view
-        @as_: (:class:Select) query to create a view for
-        @columns: (#str|:class:Field) optional names to be used for columns
-            of the view. If not given, the column names are deduced from
-            the query.
-        @security_barrier: (#bool) True to enable WITH (security_barrier)
-        @temporary: (#bool) True to create a temporary view
-        @materialized: (#bool) True to create materialized view
-        @run: (#bool) |True| to execute the query before returning
-
-        -> :class:Raw if run is |False|, otherwise the client cursor is
-            returned
-    """
-    view = View(orm, name, as_)
-    view.columns(*columns)
-    if security_barrier:
-        view.security_barrier()
-    if temporary:
-        view.temporary()
-    if materialized:
-        view.materialized()
-    return _cast_return(view.query, run)
 
 
 if __name__ == '__main__':

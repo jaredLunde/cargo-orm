@@ -18,18 +18,19 @@ __all__ = ('View',)
 
 class View(BaseCreator):
 
-    def __init__(self, orm, name, query=None):
+    def __init__(self, orm, name, *columns, query=None, security_barrier=False,
+                 materialized=False, temporary=False):
         """ `Create a View`
             @orm: (:class:ORM)
             @name: (#str) name of the view
-            @query: (:class:Select or a VALUES :class:Clause)
+            @query: (:class:Select|:class:Query or a VALUES :class:Clause)
         """
         super().__init__(orm, name)
-        self._query = None
-        self._columns = None
-        self._security_barrier = False
-        self._materialized = False
-        self._temporary = False
+        self._query = query
+        self._columns = columns
+        self._security_barrier = security_barrier
+        self._materialized = materialized
+        self._temporary = temporary
 
     def set_query(self, query):
         self._query = query
@@ -48,6 +49,7 @@ class View(BaseCreator):
 
     @property
     def query(self):
+        self.orm.reset()
         tmp = ""
         if self._temporary:
             tmp = "TEMP "
@@ -55,7 +57,9 @@ class View(BaseCreator):
             tmp += 'MATERIALIZED '
         security_barrier = _empty
         if self._security_barrier:
-            security_barrier = Clause('WITH', safe('security_barrier'), wrap=True)
+            security_barrier = Clause('WITH',
+                                      safe('security_barrier'),
+                                      wrap=True)
         columns = list(map(lambda x: x if isinstance(x, Field) else safe(x),
                            self._columns))
         create_clause = Clause('CREATE {}VIEW'.format(tmp),
@@ -65,6 +69,4 @@ class View(BaseCreator):
                                use_field_name=True)
         self.orm.state.add(create_clause)
         self.orm.state.add(Clause('AS', self._query))
-        query = Raw(self.orm)
-        self.orm.reset()
-        return query
+        return Raw(self.orm)

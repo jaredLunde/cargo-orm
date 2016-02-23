@@ -15,7 +15,7 @@ from hashlib import sha1
 
 from vital.debug import prepr
 from vital.security import randhex
-from bloom.etc import passwords, usernames, logic
+from bloom.etc import passwords, usernames, operators
 
 
 __all__ = (
@@ -66,7 +66,7 @@ class BaseLogic(object):
             ..
             |field = 1 AND field != 2|
         """
-        return Expression(self, logic.AND, other)
+        return Expression(self, operators.AND, other)
 
     __and__ = and_
 
@@ -87,7 +87,7 @@ class BaseLogic(object):
             ..
             |field = 1 OR field = 2|
         """
-        return Expression(self, logic.OR, other)
+        return Expression(self, operators.OR, other)
 
     __or__ = or_
 
@@ -104,7 +104,7 @@ class BaseLogic(object):
             ..
             |field  = 1|
         """
-        return Expression(self, logic.EQ, other)
+        return Expression(self, operators.EQ, other)
 
     __eq__ = eq
 
@@ -121,7 +121,7 @@ class BaseLogic(object):
             ..
             |field <> 2|
         """
-        return Expression(self, logic.NE, other)
+        return Expression(self, operators.NE, other)
 
     __ne__ = not_eq
 
@@ -147,7 +147,7 @@ class BaseLogic(object):
             |DISTINCT FROM field|
         """
         return Expression(self, "{} {} {}".format(
-            logic.IS, logic.DISTINCT, logic.FROM), other)
+            operators.IS, operators.DISTINCT, operators.FROM), other)
 
     def not_distinct_from(self, other):
         """ Creates a |NOT DISTINCT FROM| SQL clause
@@ -162,8 +162,12 @@ class BaseLogic(object):
             ..
             |NOT DISTINCT FROM field|
         """
-        return Expression(self, "{} {} {} {}".format(
-            logic.IS, logic.NOT, logic.DISTINCT, logic.FROM), other)
+        op = "{} {} {} {}".format(
+            operators.IS,
+            operators.NOT,
+            operators.DISTINCT,
+            operators.FROM)
+        return Expression(self, op, other)
 
     def in_(self, *others):
         """ Creates an |IN| SQL expression
@@ -178,7 +182,7 @@ class BaseLogic(object):
             ..
             |field IN (1, 2, 3, 4)|
         """
-        return Expression(self, logic.IN, others)
+        return Expression(self, operators.IN, others)
 
     __rshift__ = in_
 
@@ -195,7 +199,8 @@ class BaseLogic(object):
             ..
             |field NOT IN (1, 2, 3, 4)|
         """
-        return Expression(self, "{} {}".format(logic.NOT, logic.IN), others)
+        op = "{} {}".format(operators.NOT, operators.IN)
+        return Expression(self, op, others)
 
     __lshift__ = not_in
 
@@ -212,7 +217,7 @@ class BaseLogic(object):
             ..
             |field IS NULL|
         """
-        return Expression(self, "{} {}".format(logic.IS, logic.NULL))
+        return Expression(self, "{} {}".format(operators.IS, operators.NULL))
 
     def not_null(self):
         """ Creates a |IS NOT NULL| SQL expression
@@ -228,7 +233,7 @@ class BaseLogic(object):
             |field IS NOT NULL|
         """
         return Expression(self, "{} {} {}".format(
-            logic.IS, logic.NOT, logic.NULL))
+            operators.IS, operators.NOT, operators.NULL))
 
     def asc(self, val=False):
         """ Creates an |ASC| SQL expression
@@ -243,7 +248,7 @@ class BaseLogic(object):
             |field ASC|
         """
         return Expression(self if val is not True else self.real_value,
-                          logic.ASC)
+                          operators.ASC)
 
     def desc(self, val=False):
         """ Creates a |DESC| SQL expression
@@ -258,7 +263,7 @@ class BaseLogic(object):
             |field DESC|
         """
         return Expression(self if val is not True else self.real_value,
-                          logic.DESC)
+                          operators.DESC)
 
     def nullif(self, other, alias=None, **kwargs):
         """ :see::meth:Functions.nullif """
@@ -346,7 +351,7 @@ class BaseNumericLogic(object):
             ..
             |field < 4|
         """
-        return Expression(self, logic.LT, other)
+        return Expression(self, operators.LT, other)
 
     __lt__ = lt
 
@@ -363,7 +368,7 @@ class BaseNumericLogic(object):
             ..
             |field <= 4|
         """
-        return Expression(self, logic.LE, other)
+        return Expression(self, operators.LE, other)
 
     __le__ = le
 
@@ -380,7 +385,7 @@ class BaseNumericLogic(object):
             ..
             |field > 4|
         """
-        return Expression(self, logic.GT, other)
+        return Expression(self, operators.GT, other)
 
     __gt__ = gt
 
@@ -397,7 +402,7 @@ class BaseNumericLogic(object):
             ..
             |field >= 4|
         """
-        return Expression(self, logic.GE, other)
+        return Expression(self, operators.GE, other)
 
     __ge__ = ge
 
@@ -414,7 +419,7 @@ class BaseNumericLogic(object):
             ..
             |field / 4|
         """
-        return Expression(self, logic.DIV, other)
+        return Expression(self, operators.DIV, other)
 
     __truediv__ = divide
     __div__ = divide
@@ -432,7 +437,7 @@ class BaseNumericLogic(object):
             ..
             |field * 4|
         """
-        return Expression(self, logic.MUL, other)
+        return Expression(self, operators.MUL, other)
 
     __mul__ = multiply
 
@@ -449,7 +454,7 @@ class BaseNumericLogic(object):
             ..
             |field + 4|
         """
-        return Expression(self, logic.ADD, other)
+        return Expression(self, operators.ADD, other)
 
     __add__ = add
 
@@ -466,7 +471,7 @@ class BaseNumericLogic(object):
             ..
             |field ^ 2|
         """
-        return Expression(self, logic.EXP, other)
+        return Expression(self, operators.EXP, other)
 
     __pow__ = power
 
@@ -483,7 +488,7 @@ class BaseNumericLogic(object):
             ..
             |field - 4|
         """
-        return Expression(self, logic.SUB, other)
+        return Expression(self, operators.SUB, other)
 
     __sub__ = subtract
 
@@ -512,8 +517,9 @@ class BaseNumericLogic(object):
             ..
             |field BETWEEN 10 AND 20|
         """
-        return Expression(
-            self, logic.BETWEEN, Expression(others[0], logic.AND, others[1]))
+        return Expression(self,
+                          operators.BETWEEN,
+                          Expression(others[0], operators.AND, others[1]))
 
     def not_between(self, a, b):
         """ Creates a |NOT BETWEEN| SQL expression
@@ -529,8 +535,8 @@ class BaseNumericLogic(object):
             |field NOT BETWEEN 10 AND 20|
         """
         return Expression(
-            self, "{} {}".format(logic.NOT, logic.BETWEEN),
-            Expression(a, logic.AND, b))
+            self, "{} {}".format(operators.NOT, operators.BETWEEN),
+            Expression(a, operators.AND, b))
 
 
 class NumericLogic(BaseNumericLogic):
@@ -635,7 +641,7 @@ class StringLogic(object):
             ..
             |field LIKE 'some%'|
         """
-        return Expression(self, logic.LIKE, other)
+        return Expression(self, operators.LIKE, other)
 
     __mod__ = like
 
@@ -652,7 +658,8 @@ class StringLogic(object):
             ..
             |field NOT LIKE 'some%'|
         """
-        return Expression(self, "{} {}".format(logic.NOT, logic.LIKE), other)
+        op = "{} {}".format(operators.NOT, operators.LIKE)
+        return Expression(self, op, other)
 
     def ilike(self, other):
         """ Creates an |ILIKE| SQL expression
@@ -667,7 +674,7 @@ class StringLogic(object):
             ..
             |field ILIKE 'some%'|
         """
-        return Expression(self, logic.ILIKE, other)
+        return Expression(self, operators.ILIKE, other)
 
     __xor__ = ilike
 
@@ -684,7 +691,8 @@ class StringLogic(object):
             ..
             |field NOT ILIKE 'some%'|
         """
-        return Expression(self, "{} {}".format(logic.NOT, logic.ILIKE), other)
+        op = "{} {}".format(operators.NOT, operators.ILIKE)
+        return Expression(self, op, other)
 
     def startswith(self, other):
         """ Creates an |ILIKE| SQL expression
@@ -699,7 +707,7 @@ class StringLogic(object):
             ..
             |field ILIKE 'hello%'|
         """
-        return Expression(self, logic.ILIKE, "{}%".format(other))
+        return Expression(self, operators.ILIKE, "{}%".format(other))
 
     def endswith(self, other):
         """ Creates an |ILIKE| SQL expression
@@ -714,7 +722,7 @@ class StringLogic(object):
             ..
             |field ILIKE '%world'|
         """
-        return Expression(self, logic.ILIKE, "%{}".format(other))
+        return Expression(self, operators.ILIKE, "%{}".format(other))
 
     def contains(self, other):
         """ Creates an |ILIKE| SQL expression
@@ -729,7 +737,7 @@ class StringLogic(object):
             ..
             |field ILIKE '%llo wor%'|
         """
-        return Expression(self, logic.ILIKE, "%{}%".format(other))
+        return Expression(self, operators.ILIKE, "%{}%".format(other))
 
     def similar_to(self, other):
         """ Creates a |SIMILAR TO| SQL expression
@@ -744,7 +752,7 @@ class StringLogic(object):
             ..
             |field SIMILAR TO '%(b|d)%'|
         """
-        return Expression(self, logic.SIMILAR_TO, other)
+        return Expression(self, operators.SIMILAR_TO, other)
 
     def not_similar_to(self, other):
         """ Creates a |NOT SIMILAR TO| SQL expression
@@ -760,7 +768,7 @@ class StringLogic(object):
             |field NOT SIMILAR TO '%(b|d)%'|
         """
         return Expression(
-            self, "{} {}".format(logic.NOT, logic.SIMILAR_TO), other)
+            self, "{} {}".format(operators.NOT, operators.SIMILAR_TO), other)
 
     def posix(self, other, op="~", invert=False):
         """ Creates a |POSIX| SQL expression
@@ -802,9 +810,9 @@ class TimeLogic(BaseNumericLogic):
         return Expression(_empty, 'interval', length, alias=alias)
 
     def last(self, length):
-        return Expression(
-            self, logic.GE, Expression(self.now(), logic.SUB, self.interval(
-                length)).group())
+        right = Expression(
+            self.now(), operators.SUB, self.interval(length)).group()
+        return Expression(self, operators.GE, right)
 
     def age(self, *args, alias=None):
         """ :see::meth:Functions.age """
@@ -850,8 +858,8 @@ class DateLogic(BaseNumericLogic):
 
     def last(self, length):
         interval = Expression(
-            self.Today(), logic.SUB, self.interval(length)).group()
-        return Expression(self, logic.GE, interval)
+            self.Today(), operators.SUB, self.interval(length)).group()
+        return Expression(self, operators.GE, interval)
 
     def age(self, *args, alias=None):
         """ :see::meth:Functions.age """
@@ -1171,9 +1179,6 @@ class Clause(BaseExpression):
     def __str__(self):
         return self.string
 
-    def __call__(self):
-        return self.string
-
     def compile(self, join_with=None, wrap=None, use_field_name=None):
         """ Turns the clause into a string """
         if join_with is not None:
@@ -1231,9 +1236,6 @@ class Case(BaseExpression):
     def __repr__(self): return
 
     def __str__(self):
-        return self.string
-
-    def __call__(self):
         return self.string
 
     def when(self, *when_then):
@@ -1332,9 +1334,6 @@ class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
     def __repr__(self): return
 
     def __str__(self):
-        return self.string
-
-    def __call__(self):
         return self.string
 
     def over(self, *expressions, window_name=None, partition_by=None,
@@ -1929,7 +1928,7 @@ class Functions(WindowFunctions):
                 condition = Functions.nullif('some value')
             ..
         """
-        return Function(logic.NULLIF, *args, **kwargs)
+        return Function(operators.NULLIF, *args, **kwargs)
 
     @staticmethod
     def count(val, alias=None, **kwargs):
@@ -2090,7 +2089,7 @@ class Functions(WindowFunctions):
             ..
             |USING(field)|
         """
-        return Function(logic.USING, a, b, **kwargs)
+        return Function(operators.USING, a, b, **kwargs)
 
     @staticmethod
     def substring(a, b, **kwargs):
@@ -2107,7 +2106,7 @@ class Functions(WindowFunctions):
             |substring(field FROM 'o.b')|
         """
         return Function(
-            'substring', a, Expression(_empty, logic.FROM, b), **kwargs)
+            'substring', a, Expression(_empty, operators.FROM, b), **kwargs)
 
     @staticmethod
     def regexp_replace(string, *args, **kwargs):
@@ -2157,7 +2156,7 @@ class Functions(WindowFunctions):
         return Function(
             'extract',
             Expression(
-                text, Expression(_empty, logic.FROM, timestamp), **kwargs))
+                text, Expression(_empty, operators.FROM, timestamp), **kwargs))
 
     @staticmethod
     def isfinite(timestamp, **kwargs):
@@ -2216,9 +2215,6 @@ class aliased(BaseLogic, NumericLogic, DateTimeLogic, StringLogic):
     def __str__(self):
         return str(self.value)
 
-    def __call__(self):
-        return self.value
-
     def alias(self, alias):
         """ ..
             field.table = 'foo'
@@ -2245,9 +2241,14 @@ class safe(BaseLogic, NumericLogic, DateTimeLogic, StringLogic):
     def __init__(self, value, alias=None):
         self.value = value
         self.alias = alias or ""
+        self.params = {}
 
     @prepr('value')
     def __repr__(self): return
+
+    @property
+    def string(self):
+        return self.value
 
     def __str__(self):
         return "{} {}".format(self.value, self.alias).strip()
