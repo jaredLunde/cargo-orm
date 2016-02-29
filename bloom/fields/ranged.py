@@ -18,3 +18,4 @@ __all__ = []
 
 # TODO: Range fields e.g. 'int4range'
 # NOTE: http://initd.org/psycopg/docs/extras.html#range-data-types
+# NOTE: http://www.postgresql.org/docs/9.3/static/functions-range.html

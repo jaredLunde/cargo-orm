@@ -12,7 +12,7 @@ import pickle
 import unittest
 from random import randint
 import psycopg2.extras
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from vital.debug import Timer
 from vital.security import randkey
@@ -66,21 +66,21 @@ class FooB(BaseFoo):
 class FooC(Model):
     foo_a = UID()
     foo_b = Int(index=True)
-    foo_c = Int(unique=True)
-    foo_d = Text(unique=True)
+    foo_c = Int(unique=True, index=True)
+    foo_d = Text(unique=True, index=True)
     foo_e = Text(index=True)
 
 
 class FooD(Model):
     foo_b = Int(index=True)
-    foo_c = Int(unique=True)
-    foo_d = Text(unique=True)
+    foo_c = Int(unique=True, index=True)
+    foo_d = Text(unique=True, index=True)
     foo_e = Text(index=True)
 
 
 class FooE(Model):
     foo_b = Int(index=True)
-    foo_d = Text(unique=True)
+    foo_d = Text(unique=True, index=True)
     foo_e = Text(index=True)
 
 
@@ -107,6 +107,7 @@ class TestModel(unittest.TestCase):
     dict_model = Foo(cursor_factory=psycopg2.extras.DictCursor, naked=True)
     real_dict_model = Foo(cursor_factory=psycopg2.extras.RealDictCursor,
                           naked=True)
+    o_dict_model = Foo(cursor_factory=OrderedDictCursor, naked=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -171,7 +172,7 @@ class TestModel(unittest.TestCase):
 
     def test_indexes(self):
         ui = [self.modelc.foo_b, self.modelc.foo_e]
-        self.assertEqual(len(self.modelc.indexes), 2)
+        self.assertEqual(len(self.modelc.indexes), 4)
         for idx in self.modelc.indexes:
             self.assertIn(idx, ui)
 
@@ -208,7 +209,7 @@ class TestModel(unittest.TestCase):
         self.assertIsNone(self.modelf.best_available_index)
         for mod in (self.modelc, self.modeld, self.modele):
             _idx = None
-            for idx in mod.indexes:
+            for idx in mod.plain_indexes:
                 _idx = idx
                 idx(1234)
                 break
@@ -271,9 +272,9 @@ class TestModel(unittest.TestCase):
     def test_approx_size(self):
         self.fill(4)
         row = self.model.approx_size()
-        self.assertTrue(row > 0)
+        self.assertTrue(str(row).isdigit())
         row = self.model.approx_size('num')
-        self.assertTrue(row.num > 0)
+        self.assertTrue(str(row.num).isdigit())
 
     def test_exact_size(self):
         self.fill(4)
@@ -345,10 +346,10 @@ class TestModel(unittest.TestCase):
         # Single w/ returning
         self.model['uid'] = 67
         q = self.model.dry().insert(self.model.uid)
-        for clause in q.ordered_clauses:
+        for clause in q.evaluate_state():
             if clause.startswith('RETURNING'):
                 self.assertEqual(clause, 'RETURNING foo.uid')
-        self.assertIs(self.model._cast_return(self.model.run(q)), self.model)
+        self.assertIs(self.model.run(q), self.model)
         self.assertEqual(result.textfield.value, rds['textfield'])
         self.assertEqual(result.uid.value, 67)
         # Single raw
@@ -454,7 +455,7 @@ class TestModel(unittest.TestCase):
         # Insert expects one result returned (self)
         q = self.model.dry().save()
         self.assertEqual(q.__querytype__, 'INSERT')
-        result = self.model._cast_return(self.model.run(q))
+        result = self.model.run(q)
         self.assertTrue(q.one)
         self.assertIs(self.model, result)
         self.assertEqual(result.textfield.value, rds['textfield'])
@@ -462,7 +463,7 @@ class TestModel(unittest.TestCase):
         self.model['textfield'] = 'bar'
         # Update expects one result returned (self)
         q = self.model.dry().save()
-        result = self.model._cast_return(self.model.run(q))
+        result = self.model.run(q)
         self.assertTrue(q.one)
         self.assertIs(self.model, result)
         self.assertEqual(result.textfield.value, 'bar')
@@ -820,6 +821,21 @@ class TestModel(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], dict)
 
+    def test_o_dict(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.o_dict_model.fill(**rds)
+        result = self.o_dict_model.save()
+        self.assertTrue(hasattr(result, 'items'))
+        result = self.o_dict_model.models().save()
+        self.assertIs(result, self.o_dict_model)
+        self.o_dict_model.clear()
+        result = self.o_dict_model.limit(3).select()
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], OrderedDict)
+
     def test_copy(self):
         orm_a = Foo()
         orm_a.add_query(1, 2)
@@ -834,9 +850,9 @@ class TestModel(unittest.TestCase):
         self.assertDictEqual(orm_a.state.clauses, orm_b.state.clauses)
         orm_b.state.add(new_clause('INTO'))
         orm_a.add_query(3)
-        self.assertNotEqual(orm_a.queries, orm_b.queries)
+        self.assertIsNot(orm_a.queries, orm_b.queries)
         self.assertNotEqual(orm_a.state.clauses, orm_b.state.clauses)
-        self.assertNotEqual(orm_a.state.params, orm_b.state.params)
+        self.assertIsNot(orm_a.state.params, orm_b.state.params)
         self.assertIsNot(orm_a.fields, orm_b.fields)
 
     def test_deepcopy(self):
@@ -846,7 +862,7 @@ class TestModel(unittest.TestCase):
             if k not in ('unique_indexes', 'indexes', 'foreign_keys',
                          'field_names', 'names', 'FooRecord') \
                and not isinstance(v, (type(False), type(None), type(True),
-                                      str, self.model.client.__class__)):
+                                      str, self.model.db.__class__)):
                 self.assertIsNot(v, x)
 
     def test_pickle(self):

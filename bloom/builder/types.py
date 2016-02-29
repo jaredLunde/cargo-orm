@@ -43,7 +43,7 @@ class Type(BaseCreator):
     def as_attrs(self, *attrs):
         options = [Clause('', *map(self._cast, opt))
                    for opt in attrs]
-        self._options = Clause('AS', *options, join_with=', ', wrap=True)
+        self._options = ValuesClause('AS', *options)
         print(self._options)
         return self
 
@@ -52,7 +52,7 @@ class Type(BaseCreator):
                if v is not True else
                safe(k.upper())
                for k, v in opt.items()]
-        self._options = Clause("", *opt, join_with=", ", wrap=True)
+        self._options = ValuesClause("", *opt)
         return self
 
     @property
@@ -97,7 +97,7 @@ class RangeType(Type):
     def options(self, **opt):
         opt = [safe(k).eq(self._cast_safe(v)) if v is not True else Clause(k)
                for k, v in opt.items()]
-        self._options = Clause("AS RANGE", *opt, join_with=", ", wrap=True)
+        self._options = ValuesClause("AS RANGE", *opt)
         return self
 
 

@@ -7,7 +7,6 @@ from kola import config
 
 from bloom.fields import UID
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Int import TestInt
 
 
@@ -15,11 +14,13 @@ class TestUID(TestInt):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().__init__(*args, **kwargs)
         self.base = UID()
         self.base.table = 'test'
         self.base.field_name = 'uid'
-        self.assertIsNone(self.base.value)
+
+    def test_init_(self):
+        self.base = UID()
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertTrue(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)

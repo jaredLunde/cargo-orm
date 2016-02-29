@@ -71,5 +71,5 @@ class Operator(BaseCreator):
         if self._merges:
             _opts.append(self._merges)
         self._add(Clause('CREATE OPERATOR', self.name),
-                  Clause('', *_opts, wrap=True, join_with=", "))
+                  ValuesClause('', *_opts))
         return Raw(self.orm)

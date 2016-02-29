@@ -180,7 +180,7 @@ class Table(BaseCreator):
 
     def inherits(self, *tables):
         tables = map(self._cast_safe, tables)
-        self._inherits = Clause('INHERITS', *tables, join_with=", ")
+        self._inherits = CommaClause('INHERITS', *tables)
         return self
 
     def storage_params(self, **params):
@@ -191,7 +191,7 @@ class Table(BaseCreator):
             else:
                 cls = safe(k).eq(v)
             opt_.append(cls)
-        self._storage_params = Clause("WITH", *opt_, join_with=", ", wrap=True)
+        self._storage_params = ValuesClause("WITH", *opt_)
         return self
 
     def on_commit(self, what):
@@ -263,15 +263,15 @@ class Table(BaseCreator):
         """
         _wrap = {'check', 'exclude'}
         self._constraints = list(map(self._cast_safe, constraint))
-        for name, val in constraints.items():
-            name = name.replace('_', ' ')
+        for type, val in constraints.items():
+            type = type.replace('_', ' ')
             wrap = False
-            if name.lower() in _wrap:
+            if type.lower() in _wrap:
                 wrap = True
             if val is not True:
-                cls = Clause(name, self._cast_safe(val), wrap=wrap)
+                cls = Clause(type, self._cast_safe(val), wrap=wrap)
             else:
-                cls = Clause(name)
+                cls = Clause(type)
             self._constraints.append(cls)
 
     def timing(self, timing):
@@ -292,10 +292,11 @@ class Table(BaseCreator):
     def _cast_fields(self, fields, clause_name=""):
         fields = fields if isinstance(fields, (tuple, list)) else [fields]
         fields = map(self._cast_safe, fields)
-        return Clause("", *fields, join_with=", ", wrap=True)
+        return ValuesClause("", *fields)
 
     def primary_key(self, fields, *params):
-        """ @fields: (#tuple|:class:Field|#str) one or more fields
+        """ `Defines the primary key(s)`
+            @fields: (#tuple|:class:Field|#str) one or more fields
             @params: (#str|:class:Clause) index parameters
         """
         fields = self._cast_fields(fields)
@@ -304,8 +305,9 @@ class Table(BaseCreator):
         return self
 
     def unique(self, fields, *params):
-        """ @fields: (#tuple|:class:Field|#str) one or more fields
-            @params: (#str|:class:Clause) index parameters
+        """ `Creates a unique constraint`
+            @fields: (#tuple|:class:Field|#str) one or more fields
+            @params: (#str|:class:Clause) unique parameters
         """
         fields = self._cast_fields(fields)
         cls = Clause('UNIQUE', fields, *params, use_field_name=True)
@@ -314,7 +316,8 @@ class Table(BaseCreator):
 
     def foreign_key(self, fields, ref_table, ref_fields, *params,
                     on_delete=None, on_update=None):
-        """ @fields: (#tuple|:class:Field|#str) one or more fields
+        """ `Defines foreign key field(s)`
+            @fields: (#tuple|:class:Field|#str) one or more fields
             @ref_table: (#str|:class:BaseExpression) referenced table
             @ref_fields: (#tuple|:class:Field|#str) one or more fields from
                 the referenced table
@@ -407,8 +410,7 @@ class Table(BaseCreator):
         cols = None
         if self._columns or self._constraints:
             cols = self._columns + self._constraints
-            cols = Clause("", *cols,  join_with=', ', wrap=True,
-                          use_field_name=True)
+            cols = ValuesClause("", *cols, use_field_name=True)
         self._add(Clause('CREATE', self.table_type, self.name),
                   cols,
                   self._like,
@@ -421,11 +423,13 @@ class Table(BaseCreator):
 
 class Column(BaseCreator):
 
-    def __init__(self, field, check=None, not_null=None, unique=None,
-                 primary=None, default=None, references=None, timing=None,
-                 translator=bloom.etc.translator.postgres, parameters=None,
-                 data_type=None, typed=False):
-        """ @field: (:class:Field)
+    def __init__(self, field, check=_empty, not_null=_empty, unique=_empty,
+                 primary=_empty, default=_empty, references=_empty,
+                 timing=_empty, translator=bloom.etc.translator.postgres,
+                 parameters=_empty, data_type=_empty, typed=_empty):
+        """`Column wrapper for :class:Field(s)`
+
+            @field: (:class:Field)
             @check: (#str|:class:BaseExpression) check constraint is the most
                 generic constraint type. It allows you to specify that the
                 value in a certain column must satisfy a Boolean (truth-value)
@@ -456,16 +460,21 @@ class Column(BaseCreator):
         self._name = field.field_name
         self._clauses = []
         self._field = field
-        self._not_null = not_null if not_null is not None else field.notNull
         self._parameters = parameters
         self._data_type = data_type
         self._translator = translator
+
+        self._not_null = None
+        nn = not_null if not_null is not _empty else field.notNull
+        if nn:
+            self.not_null()
+
         self._typed = None
         if typed:
             self.typed()
 
         self._default = None
-        default = default if default is not None else field.default
+        default = default if default is not _empty else field.default
         if default is not None:
             self.default(default)
 
@@ -474,21 +483,21 @@ class Column(BaseCreator):
             self.check(check)
 
         self._unique = None
-        unique = unique if unique is not None else field.unique
+        unique = unique if unique is not _empty else field.unique
         if unique:
             unique = [unique] if not isinstance(unique, (tuple, list)) else \
                 unique
             self.unique(*unique)
 
         self._primary = None
-        primary = primary if primary is not None else field.primary
+        primary = primary if primary is not _empty else field.primary
         if primary:
             primary = [primary] if not isinstance(primary, (tuple, list)) else\
                 primary
             self.primary(*primary)
 
         self._references = None
-        if references is not None:
+        if references is not _empty:
             references = references
         elif hasattr(field, 'ref'):
             references = field.ref
@@ -500,62 +509,128 @@ class Column(BaseCreator):
             self.timing(timing)
 
     def set_type(self, data_type):
+        """ Sets the column data type to @data_type """
         self._data_type = safe(data_type)
 
     def typed(self):
+        """ Puts the field options in a |WITH OPTIONS| clause """
         self._typed = True
         return self
 
     def not_null(self):
-        self._not_null = True
+        """ Adds a |NOT NULL| constraint to the column """
+        self._not_null = Clause('NOT NULL')
+        return self
+
+    def nullable(self):
+        """ Removes the |NOT NULL| constraint from the column if there is
+            one
+        """
+        self._not_null = None
         return self
 
     def default(self, val=None):
-        self._default = Clause('DEFAULT', val)
+        """ Sets the |DEFAULT| column value to @val. If @val is |None|,
+            any default value currently set will be removed.
+        """
+        if val is None:
+            self._default = None
+        else:
+            self._default = Clause('DEFAULT', val)
         return self
 
     def check(self, expression):
-        """ @expression: (#str|:class:bloom.BaseExpression) """
-        self._check = Clause('CHECK', self._cast_safe(expression), wrap=True)
+        """ @expression: (#str|:class:bloom.BaseExpression|None) """
+        if expression is None:
+            self._check = None
+        else:
+            self._check = WrappedClause('CHECK', self._cast_safe(expression))
         return self
 
     def unique(self, *params):
-        if len(params) == 1 and params[0] in {True, False}:
+        """ @params: (#str|:class:bloom.BaseExpression|None) UNIQUE constraint
+                parameter, if |None| is passed to this method, e.g.,
+                |col.unique(None)|, the unique constraint applied to the
+                column will be removed
+        """
+        if len(params) == 1 and params[0] is True:
             params = [_empty]
+        elif len(params) == 1 and params[0] is None:
+            params = None
         else:
             params = map(self._cast_safe, params)
-        self._unique = Clause('UNIQUE', *params)
+        if params is not None:
+            self._unique = Clause('UNIQUE', *params)
         return self
 
     def primary(self, *params):
-        if len(params) == 1 and params[0] in {True, False, None}:
+        """ @params: (#str|:class:bloom.BaseExpression|None) PRIMARY
+                constraint parameter, if |None| is passed to this method,
+                e.g., |col.primary(None)|, the primary constraint applied
+                to the column will be removed
+        """
+        if len(params) == 1 and params[0] in {True}:
             params = [_empty]
+        elif len(params) == 1 and params[0] is None:
+            params = None
         else:
             params = map(self._cast_safe, params)
-        self._primary = Clause('PRIMARY KEY', *params)
+        if params is not None:
+            self._primary = Clause('PRIMARY KEY', *params)
         return self
 
     def timing(self, when):
-        self._timing = Clause(str(when))
+        if when is None:
+            self._timing = None
+        else:
+            self._timing = Clause(str(when))
         return self
 
-    def _get_col_ref(self):
+    def _get_col_ref(self, ref):
         field = self._field
         return Clause('REFERENCES',
-                      Function(field.ref.field.table,
-                               safe(field.ref.field.field_name)),
+                      Function(ref.field.table,
+                               safe(ref.field.field_name)),
                       *field.ref.constraints)
 
     def references(self, val):
-        if not isinstance(val, Reference):
-            self._references = Clause('REFERENCES', self._cast_safe(val))
+        """ @val: (:class:bloom.relationships.Reference|None) If |None|
+                is passed to this method, e.g., |col.references(None)|,
+                the constraint applied to the column will be removed if
+                it exists
+        """
+        if isinstance(val, Reference):
+            self._references = self._get_col_ref(val)
+        elif val is None:
+            self._references = None
         else:
-            self._references = self._get_col_ref()
+            self._references = Clause('REFERENCES', self._cast_safe(val))
         return self
 
     def _add(self, *clauses):
         self._clauses = []
         self._clauses.extend(filter(lambda x: x is not None, clauses))
+
+    def _cast_type(self, type):
+        field = self._field
+        typecast = type
+        if type == 'ARRAY':
+            maxlen = field.maxlen
+            dims = "[]".format(maxlen if maxlen > 0 else '')
+            if field.dimensions > 1:
+                maxlen = field.maxlen
+                arr = '[{}]'.format(maxlen if maxlen > 0 else '')
+                dims = ''.join(arr for _ in range(field.dimensions))
+            typecast = self._translator.translate_to(
+                field.type.sqltype)
+            type = "{}{}".format(typecast, dims)
+        if typecast == 'real' and hasattr(field, 'digits'):
+            digits = field.digits
+            if 16 > digits > 6:
+                type = 'double precision'
+            elif digits > 15:
+                type = 'numeric'
+        return safe(type)
 
     @property
     def field_type(self):
@@ -568,12 +643,13 @@ class Column(BaseCreator):
         if self._parameters:
             opt = self._parameters
         elif sqltype in lentypes and self._field.maxlen and \
-          self._field.maxlen > 0:
+                self._field.maxlen > 0:
             opt = self._field.maxlen
         elif sqltype in {types.NUMERIC, types.DECIMAL} and \
-          self._field.precision and self._field.precision > 0:
+                self._field.precision and self._field.precision > 0:
             opt = self._field.precision
-        return safe(self._translator.translate_to(self._field.sqltype, opt))
+        return self._cast_type(
+            self._translator.translate_to(self._field.sqltype, opt))
 
     @property
     def expression(self):

@@ -3,10 +3,9 @@
 import sys
 import unittest
 
-from vital.docr import Docr
+from docr import Docr
 from bloom.fields import Enum
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Char import *
 
 
@@ -14,6 +13,9 @@ class TestEnum(TestField):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.base = Enum((1, 2, 3, 4))
+
+    def test_init_(self):
         with self.assertRaises(TypeError):
             self.base = Enum()
 

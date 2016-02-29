@@ -13,8 +13,6 @@ import copy
 from dateutil import parser as dateparser
 import arrow
 
-from vital.debug import prepr
-
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields import Field
@@ -177,9 +175,6 @@ class Time(_TimeFields, TimeLogic, DateLogic):
         """
         super().__init__(*args, **kwargs)
 
-    @prepr('name', 'value')
-    def __repr__(self): return
-
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
             if isinstance(value, (Expression, Function, Clause)):
@@ -213,15 +208,12 @@ class Date(_DateFields, DateLogic):
         'table')
     sqltype = DATE
 
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=Field.empty, **kwargs):
         """ `Date`
             :see::meth:Field.__init__
         """
         self._arrow = None
         super().__init__(value=value, **kwargs)
-
-    @prepr('name', 'value')
-    def __repr__(self): return
 
     __call__ = Time.__call__
 
@@ -243,11 +235,8 @@ class Timestamp(Time):
         'table')
     sqltype = TIMESTAMP
 
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=Field.empty, **kwargs):
         """ `Timestamp`
             :see::meth:Field.__init__
         """
         super().__init__(value=value, **kwargs)
-
-    @prepr('name', 'value')
-    def __repr__(self): return

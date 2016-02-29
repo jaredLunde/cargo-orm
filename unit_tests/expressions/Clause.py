@@ -30,13 +30,13 @@ def new_field(type='char'):
 def new_expression(cast=int):
     if cast == bytes:
         cast = lambda x: psycopg2.Binary(str(x).encode())
-    return  Expression(new_field(), '=', cast(12345))
+    return Expression(new_field(), '=', cast(12345))
 
 
 def new_function(cast=int, alias=None):
     if cast == bytes:
         cast = lambda x: psycopg2.Binary(str(x).encode())
-    return  Function('some_func', cast(12345), alias=alias)
+    return Function('some_func', cast(12345), alias=alias)
 
 def new_clause(name='FROM'):
     return Clause(name, 'foobar')
@@ -52,7 +52,7 @@ class TestClause(unittest.TestCase):
         for val in ('FROM', 'from'):
             base = Clause(val, 'some_table')
             self.assertEqual(base.clause, 'FROM')
-        self.assertListEqual(base.args, ['some_table'])
+        self.assertListEqual(list(base.args), ['some_table'])
 
     def test__format_arg(self):
         vals = (
@@ -67,14 +67,14 @@ class TestClause(unittest.TestCase):
         )
         for val in vals:
             base = Clause('FROM', *val, use_field_name=True)
-            self.assertListEqual(base.args, list(val))
+            self.assertListEqual(list(base.args), list(val))
             if hasattr(val, 'params'):
                 self.assertDictEqual(base.params, val.params)
                 for k, v in base.params:
                     self.assertIn('%(' + k + ')s', base.string)
         for val in vals:
             base = Clause('FROM', *val, wrap=True)
-            self.assertListEqual(base.args, list(val))
+            self.assertListEqual(list(base.args), list(val))
             pdicts = (v.params if hasattr(v, 'params') else {} for v in val)
             for k, v in merge_dict(*pdicts).items():
                 self.assertIn(k, base.params)

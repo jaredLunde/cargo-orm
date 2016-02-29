@@ -7,7 +7,6 @@ from kola import config
 
 from bloom.fields import BigSerial
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.BigInt import TestBigInt
 
 
@@ -28,9 +27,12 @@ class TestBigSerial(TestBigInt):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base = BigSerial()
+
+    def test_init_(self):
+        self.base = BigSerial()
         self.base.table = 'test'
         self.base.field_name = 'int'
-        self.assertIsNone(self.base.value)
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertTrue(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)

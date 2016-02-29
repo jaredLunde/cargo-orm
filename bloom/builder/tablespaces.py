@@ -57,7 +57,7 @@ class Tablespace(BaseCreator):
         self.orm.reset()
         options = None
         if self._options:
-            options = Clause('WITH', *self._options, join_with=', ', wrap=True)
+            options = ValuesClause('WITH', *self._options)
         self._add(Clause('CREATE TABLESPACE', self.name),
                   self._owner,
                   self._location,

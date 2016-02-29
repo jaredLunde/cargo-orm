@@ -5,7 +5,6 @@ import unittest
 
 from bloom.fields import Char
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Field import *
 
 

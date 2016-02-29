@@ -10,7 +10,11 @@
 
 """
 from bloom.exceptions import TranslationError
-from bloom.etc import types
+from bloom.etc.types import *
+
+
+__all__ = ('datatype_map', 'sqltype_map', 'udtype_map', 'category_map',
+           'translate_to', 'translate_from')
 
 
 datatype_map = {
@@ -22,13 +26,13 @@ datatype_map = {
     'bytea': 'Binary',
     'character': 'Char',
     'character varying': 'Varchar',
-    'double precision': 'Float',
+    'double precision': 'Double',
     # TODO
     'hstore': 'HStore',
     'inet': 'Inet',
     'integer': 'Int',
-    'json': 'JSON',
-    'jsonb': 'JSONb',
+    'json': 'Json',
+    'jsonb': 'JsonB',
     'money': 'Decimal',
     'numeric': 'Numeric',
     'real': 'Float',
@@ -55,11 +59,12 @@ udtype_map = {
     'serial8': 'BigSerial',
     'serial4': 'Serial',
     'serial2': 'SmallSerial',
-    'float8': 'Float',
+    'float8': 'Double',
     'float4': 'Float',
     'decimal': 'Decimal',
     'timetz': 'Time',
-    'timestamptz': 'Timestamp'
+    'timestamptz': 'Timestamp',
+    'varchar': 'Varchar'
 }
 
 
@@ -75,52 +80,53 @@ category_map = {
 
 
 sqltype_map = {
-    'INT': 'integer',
-    'SLUG': 'text',  # Depends if maxlen defined
-    'IP': 'inet',
-    'DATE': 'date',
-    'TIMESTAMP': 'timestamp',
-    'ENUM': 'USER-DEFINED',
-    'FLOAT': 'real',  # Depends on digits
-    'BINARY': 'bytea',  # TODO
-    'DECIMAL': 'numeric',
-    'BIGINT': 'bigint',
-    'SMALLINT': 'smallint',
-    'TEXT': 'text',
-    'BOOL': 'boolean',
-    'CHAR': 'char',
-    'ARRAY': 'ARRAY',
-    'SERIAL': 'serial',
-    'BIGSERIAL': 'bigserial',
-    'PASSWORD': 'text',  # Depends if maxlen defined
-    'KEY': 'text',
-    'UUIDTYPE': 'uuid',
-    'VARCHAR': 'varchar',
-    'JSONTYPE': 'json',
-    'JSONB': 'jsonb',
-    'UIDTYPE': 'biginteger',
-    'STRUID': 'biginteger',
-    'USERNAME': 'varchar',
-    'EMAIL': 'varchar',
-    'TIME': 'time',
-    'NUMERIC': 'numeric',
-    'SMALLSERIAL': 'smallserial',
+    INT: 'integer',
+    SLUG: 'text',  # Depends if maxlen defined
+    IP: 'inet',
+    DATE: 'date',
+    TIMESTAMP: 'timestamp',
+    ENUM: 'USER-DEFINED',
+    FLOAT: 'real',  # Depends on digits
+    DOUBLE: 'double precision',  # Depends on digits
+    BINARY: 'bytea',  # TODO
+    DECIMAL: 'decimal',
+    BIGINT: 'bigint',
+    SMALLINT: 'smallint',
+    TEXT: 'text',
+    BOOL: 'boolean',
+    CHAR: 'char',
+    ARRAY: 'ARRAY',
+    SERIAL: 'serial',
+    BIGSERIAL: 'bigserial',
+    PASSWORD: 'text',
+    KEY: 'text',
+    UUIDTYPE: 'uuid',
+    VARCHAR: 'varchar',
+    JSON: 'json',
+    JSONB: 'jsonb',
+    UIDTYPE: 'biginteger',
+    STRUID: 'biginteger',
+    USERNAME: 'varchar',
+    EMAIL: 'varchar',
+    TIME: 'time',
+    NUMERIC: 'numeric',
+    SMALLSERIAL: 'smallserial',
     # TODO: Geometry and other fields
-    'HSTORE': 'hstore',
-    'RANGE': 'int4range',  # Depends on type
+    HSTORE: 'hstore',
+    RANGE: 'int4range',  # Depends on type
     # http://www.postgresql.org/docs/8.2/static/functions-geometry.html
-    'CIDR': 'cidr',
-    'BOX': 'box',
-    'CIRCLE': 'circle',
-    'LINE': 'line',
-    'LSEG': 'lseg',
-    'PATH': 'path',
-    'POINT': 'point',
-    'POLYGON': 'polygon',
-    'MACADDR': 'macaddr',
-    'CURRENCY': 'money',
-    'XML': 'xml',
-    'ENCRYPTED': 'bytea'
+    CIDR: 'cidr',
+    BOX: 'box',
+    CIRCLE: 'circle',
+    LINE: 'line',
+    LSEG: 'lseg',
+    PATH: 'path',
+    POINT: 'point',
+    POLYGON: 'polygon',
+    MACADDR: 'macaddr',
+    CURRENCY: 'money',
+    XML: 'xml',
+    ENCRYPTED: 'text'
 }
 
 
@@ -132,13 +138,13 @@ def translate_from(datatype=None, udtype=None, category=None):
     if category and category in category_map:
         return category_map[category]
     raise TranslationError('Could not find a field for datatype={}, ' +
-                           'udtype={}, category={}')
+                           'udtype={}, category={}'.format(datatype,
+                                                           udtype,
+                                                           category))
 
 
 def translate_to(sqltype, opt=None):
-    for name, realtype in sqltype_map.items():
-        if sqltype == getattr(types, name):
-            break
+    realtype = sqltype_map[sqltype]
     if opt:
         return '{}({})'.format(realtype, opt)
     else:

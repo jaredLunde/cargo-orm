@@ -66,6 +66,8 @@ class BaseCreator(object):
     def _cast_safe(self, val):
         if isinstance(val, str):
             return safe(val)
+        elif isinstance(val, BaseCreator):
+            return val.query
         else:
             return val
 

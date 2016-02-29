@@ -14,6 +14,7 @@ from vital.debug import prepr
 from vital.cache import cached_property
 
 from bloom import aliased
+from bloom.etc.translator import postgres
 from bloom.builder.utils import *
 
 
@@ -29,11 +30,12 @@ _field_tpl = """
 class FieldMeta(object):
     ip_re = re.compile(r"""(\b|_)ip(\b|address)""")
 
-    def __init__(self, orm, field, table):
+    def __init__(self, orm, field, table, translator=None):
         self.orm = orm
         self.field = field
         self.field_name = field.field_name
         self.table = table
+        self.translator = translator or postgres
         self.cls = _find_sql_field(field.datatype, field.udtype,
                                    field.category)
         if self.cls == 'Inet' and self.ip_re.search(self.field_name):
@@ -71,6 +73,10 @@ class FieldMeta(object):
                 cast = aliased('float')
             elif 'bool' in self.field.udtype:
                 cast = aliased('bool')
+            type = self.translator.translate_from(
+                self.field.udtype.replace('_', '', 1),
+                self.field.udtype.replace('_', '', 1))
+            yield ('type', type)
             yield ('cast', cast)
         elif self.cls == 'Enum':
             yield ('types', self.get_enumtype())
@@ -79,6 +85,8 @@ class FieldMeta(object):
     def args(self):
         kwargs = []
         add_kwarg = kwargs.append
+        for arg, val in self._get_special_args():
+            add_kwarg((arg, val))
         for arg, default in self.positional_args.items():
             for attr in self.field._fields:
                 real_attr = attr[4:]
@@ -95,13 +103,17 @@ class FieldMeta(object):
                     add_kwarg(('unique', True))
                 else:
                     add_kwarg(('index', True))
-        for arg, val in self._get_special_args():
-            add_kwarg((arg, val))
         return kwargs
 
     def _cast_default(self, val):
-        if val is None or '(' in val and ')' in val:
+        if val is None:
             return None
+        elif '(' in val and val.endswith(')'):
+            func, *args = val.split('(')
+            args = '('.join(args).rstrip(')')
+            if len(args):
+                args = ', safe("""{}""")'.format(args)
+            return 'Function("{}"{})'.format(func, args)
         elif self.field.category == 'B':
             if val == 'false' or val == 'f' or val == '0' or val == 'FALSE':
                 return False
@@ -113,6 +125,8 @@ class FieldMeta(object):
                 return float(val)
             else:
                 return int(val)
+        else:
+            return 'safe("""{}""")'.format(val)
 
     def _cast_arg(self, name, val):
         if name == 'default':

@@ -76,46 +76,46 @@ class TestORM(unittest.TestCase):
         cfg['minconn'] = 5
         cfg['maxconn'] = 10
         self.orm.connect(**cfg)
-        self.assertEqual(self.orm.client.pool.minconn, 5)
-        self.assertEqual(self.orm.client.pool.maxconn, 10)
+        self.assertEqual(self.orm.db.pool.minconn, 5)
+        self.assertEqual(self.orm.db.pool.maxconn, 10)
         self.orm.reset()
 
     def test_client(self):
         if local_client.get('db'):
             del local_client['db']
         orm = ORM(client=None)
-        self.assertIsInstance(orm.client, Postgres)
-        self.assertIsNot(orm.client, local_client.get('db'))
-        self.assertIsNot(orm.client, self.client)
+        self.assertIsInstance(orm.db, Postgres)
+        self.assertIsNot(orm.db, local_client.get('db'))
+        self.assertIsNot(orm.db, self.client)
         orm = ORM(client=self.client)
-        self.assertIs(orm.client, self.client)
+        self.assertIs(orm.db, self.client)
         create_kola_pool()
         orm = ORM(client=None)
-        self.assertIs(orm.client,  local_client['db'])
+        self.assertIs(orm.db,  local_client['db'])
 
     def test_close(self):
         # Client
         orm = ORM(client=Postgres(**config.get('db')))
-        self.assertFalse(orm.client.connection.closed)
+        self.assertFalse(orm.db.connection.closed)
         orm.close()
-        self.assertTrue(orm.client._connection.closed)
+        self.assertTrue(orm.db._connection.closed)
 
         # Pool
         orm = ORM(client=PostgresPool(1, 2, **config.get('db')))
-        self.assertFalse(orm.client.pool.closed)
+        self.assertFalse(orm.db.pool.closed)
         orm.close()
-        self.assertTrue(orm.client._pool.closed)
+        self.assertTrue(orm.db._pool.closed)
 
     def test_context_manager(self):
         # Client
         with ORM(client=Postgres(**config.get('db'))) as orm:
-            self.assertFalse(orm.client._connection.closed)
-        self.assertTrue(orm.client._connection.closed)
+            self.assertFalse(orm.db._connection.closed)
+        self.assertTrue(orm.db._connection.closed)
 
         # Pool
         with ORM(client=PostgresPool(1, 2, **config.get('db'))) as orm:
-            self.assertFalse(orm.client._pool.closed)
-        self.assertTrue(orm.client._pool.closed)
+            self.assertFalse(orm.db._pool.closed)
+        self.assertTrue(orm.db._pool.closed)
 
     def test_set_table(self):
         self.orm.set_table('foo')
@@ -156,7 +156,7 @@ class TestORM(unittest.TestCase):
             self.assertTrue(self.orm.state.has('FROM'))
             clause = self.orm.state.clauses.popitem(last=True)[1]
             self.assertIsInstance(clause.args[0], safe)
-            self.assertEqual(clause.args[0].value, 'foo')
+            self.assertEqual(clause.args[0].string, 'foo')
             self.assertEqual(clause.alias, None)
             self.assertIs(s, self.orm)
             self.orm.reset()
@@ -165,7 +165,7 @@ class TestORM(unittest.TestCase):
             self.assertTrue(self.orm.state.has('FROM'))
             clause = self.orm.state.clauses.popitem(last=True)[1]
             self.assertIsInstance(clause.args[0], safe)
-            self.assertEqual(clause.args[0].value, 'foo')
+            self.assertEqual(clause.args[0].string, 'foo')
             self.assertEqual(clause.alias, 'bar')
             self.assertIs(s, self.orm)
             self.orm.reset()
@@ -267,7 +267,7 @@ class TestORM(unittest.TestCase):
         self.assertTrue(self.orm.state.has('INTO'))
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIsInstance(clause.args[0], safe)
-        self.assertEqual(clause.args[0].value, 'foo')
+        self.assertEqual(clause.args[0].string, 'foo')
         self.assertEqual(clause.alias, None)
         self.assertIs(s, self.orm)
         self.orm.reset()
@@ -276,7 +276,7 @@ class TestORM(unittest.TestCase):
         self.assertTrue(self.orm.state.has('INTO'))
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIsInstance(clause.args[0], safe)
-        self.assertEqual(clause.args[0].value, 'foo')
+        self.assertEqual(clause.args[0].string, 'foo')
         self.assertEqual(clause.alias, 'bar')
         self.assertIs(s, self.orm)
         self.orm.reset()
@@ -379,7 +379,7 @@ class TestORM(unittest.TestCase):
             self.orm.reset()
 
     def test_limit(self):
-        for f in (1, '1000', Subquery(Query(self.orm, query='SELECT 1'))):
+        for f in (1, '1000', Subquery(Query(orm=self.orm, query='SELECT 1'))):
             s = self.orm.limit(f)
             self.assertTrue(self.orm.state.has('LIMIT'))
             clause = self.orm.state.clauses.popitem(last=True)[1]
@@ -392,7 +392,7 @@ class TestORM(unittest.TestCase):
         for f in (
             (1, 2),
             ('1000', 1001),
-            (Query(self.orm, 'SELECT 1'), 10)
+            (Query(orm=self.orm, query='SELECT 1'), 10)
         ):
             s = self.orm.limit(*f)
             self.assertTrue(self.orm.state.has('LIMIT'))
@@ -420,7 +420,7 @@ class TestORM(unittest.TestCase):
             self.orm.reset()
 
     def test_offset(self):
-        for f in (1, '1000', Query(self.orm, 'SELECT 1')):
+        for f in (1, '1000', Query(orm=self.orm, query='SELECT 1')):
             s = self.orm.offset(f)
             self.assertTrue(self.orm.state.has('OFFSET'))
             clause = self.orm.state.clauses.popitem(last=True)[1]
@@ -454,7 +454,7 @@ class TestORM(unittest.TestCase):
         field = new_field('int')
         for f in (
             (field.max() < 40),
-            (Subquery(Query(self.orm, "SELECT 1")) > 0),
+            (Subquery(Query(orm=self.orm, query='SELECT 1')) > 0),
         ):
             s = self.orm.having(f)
             self.assertTrue(self.orm.state.has('HAVING'))
@@ -876,7 +876,7 @@ class TestORM(unittest.TestCase):
 
     def test_add_query(self):
         self.assertEqual(len(self.orm.queries), 0)
-        q = Query(self.orm, 'SELECT 1')
+        q = Query(orm=self.orm, query='SELECT 1')
         self.orm.add_query(q, q)
         self.assertEqual(len(self.orm.queries), 2)
 
@@ -923,14 +923,14 @@ class TestORM(unittest.TestCase):
         orm_a.add_query(3)
         self.assertNotEqual(orm_a.queries, orm_b.queries)
         self.assertNotEqual(orm_a.state.clauses, orm_b.state.clauses)
-        self.assertNotEqual(orm_a.state.params, orm_b.state.params)
+        self.assertIsNot(orm_a.state.params, orm_b.state.params)
 
     def test_deepcopy(self):
         orm = copy.deepcopy(self.orm)
         for k, v in self.orm.__dict__.items():
             x = getattr(orm, k)
             if not isinstance(v, (type(False), type(None), type(True),
-                                  self.orm.client.__class__)):
+                                  self.orm.db.__class__)):
                 self.assertIsNot(v, x)
 
     def test_pickle(self):

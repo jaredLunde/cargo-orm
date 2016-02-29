@@ -1,9 +1,9 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-List of reserved usernames (pre-defined list of special banned and reserved keywords in names,
-such as "root", "www", "admin"). Useful when creating public systems, where users can choose
-a login name or a sub-domain name.
+List of reserved usernames (pre-defined list of special banned and reserved
+keywords in names, such as "root", "www", "admin"). Useful when creating
+public systems, where users can choose a login name or a sub-domain name.
 __References:__
 1. http://www.bannedwordlist.com/
 2. http://blog.postbit.com/reserved-username-list.html

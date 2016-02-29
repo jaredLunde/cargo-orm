@@ -3,12 +3,14 @@
 import sys
 import unittest
 
+import psycopg2.extras
+import psycopg2.extensions
+
 from kola import config
 
-from bloom.fields import Array
+from bloom.fields import *
 from vital.debug import RandData
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Field import *
 
 
@@ -29,18 +31,41 @@ class TestArray(TestField):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base = Array()
+
+    def test_init(self):
+        self.base = Array()
         self.assertEqual(self.base.default, [])
         self.assertEqual(self.base.cast, str)
+        self.assertEqual(self.base.type, Text)
         self.assertEqual(self.base.dimensions, 1)
 
     def test_additional_kwargs(self):
         arr = [1, 2, 3, 4]
-        self.base = Array(value=arr)
+        self.base = Array(value=arr, cast=str)
         self.assertListEqual(self.base.value, ['1', '2', '3', '4'])
         self.base = Array(value=arr, cast=int)
         self.assertListEqual(self.base.value, [1, 2, 3, 4])
         self.base = Array(value=arr, cast=float)
         self.assertListEqual(self.base.value, [1.0, 2.0, 3.0, 4.0])
+        self.base = Array(value=arr, type=Float())
+        self.assertListEqual(self.base.value, [1.0, 2.0, 3.0, 4.0])
+        self.assertIsInstance(self.base.type, Float)
+
+    def test_type(self):
+        arr = Array(type=Binary())
+        arr([1, 2, 3, 4])
+        self.assertListEqual(arr.value, [b'1', b'2', b'3', b'4'])
+        self.assertIsInstance(arr.real_value[0], psycopg2.extensions.Binary)
+
+        arr = Array(type=Json())
+        arr([1, 2, 3, 4])
+        self.assertListEqual(arr.value, [1, 2, 3, 4])
+        self.assertIsInstance(arr.real_value[0], psycopg2.extras.Json)
+
+        arr = Array(type=Int())
+        arr(['1', '2', '3', '4'])
+        self.assertListEqual(arr.value, [1, 2, 3, 4])
+        self.assertIsInstance(arr.real_value[0], int)
 
     def test_multidim_array(self):
         arr = [1, 2, 3, 4]
@@ -51,9 +76,10 @@ class TestArray(TestField):
         self.base(None)
         with self.assertRaises(ValueError):
             self.base([[[1, 2, 3], 2, 3], [1, 2, 3]])
-        self.assertEqual(self.base.value, [])
-        self.base = Array(value=[[1, 2, 3], [1, 2, 3]], dimensions=2)
-        self.assertListEqual(self.base.value, [['1', '2', '3'], ['1', '2', '3']])
+        self.assertEqual(self.base.value, None)
+        self.base = Array(value=[[1, 2, 3], [1, 2, 3]], dimensions=2, cast=str)
+        self.assertListEqual(self.base.value,
+                             [['1', '2', '3'], ['1', '2', '3']])
 
     def test_validate(self):
         self.base = Array([1], minlen=2, maxlen=5)
@@ -66,15 +92,15 @@ class TestArray(TestField):
         self.assertFalse(self.base.validate())
 
     def test_extend(self):
-        rd = RandData(str).list()
-        rd2 = RandData(str).list()
+        rd = RandData(str).list(100)
+        rd2 = RandData(str).list(100)
         self.base = Array(rd)
         self.base.extend(rd2)
         rd.extend(rd2)
         self.assertListEqual(self.base.value, rd)
 
     def test_append(self):
-        self.base = Array()
+        self.base = Array(cast=str)
         self.base.append(1)
         self.base.append(2)
         self.assertListEqual(self.base.value, ['1', '2'])
@@ -98,13 +124,13 @@ class TestArray(TestField):
 
     def test___call__(self):
         self.assertEqual(self.base('test'), ['t', 'e', 's', 't'])
-        self.assertEqual(self.base(None), [])
+        self.assertEqual(self.base(None), None)
         self.base(['test'])
         self.assertEqual(self.base(Field.empty), ['test'])
 
     def test_pop(self):
         arr = [1, 2, 3]
-        self.base = Array(arr)
+        self.base = Array(arr, cast=str)
         self.assertEqual(self.base.pop(), '1')
         self.assertEqual(self.base.pop(1), '3')
 

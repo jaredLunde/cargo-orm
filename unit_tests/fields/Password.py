@@ -10,7 +10,6 @@ from bloom.fields import Password
 from bloom import create_pool, ValidationError
 from vital.security import randkey
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Char import *
 
 
@@ -21,12 +20,15 @@ class TestPassword(TestChar):
         self.base = Password()
         self.base.table = 'test'
         self.base.field_name = 'password'
+
+    def test_init_(self):
+        self.base = Password()
         self.assertEqual(self.base.maxlen, -1)
         self.assertEqual(self.base.minlen, 8)
         self.assertEqual(self.base.salt_size, 16)
         self.assertEqual(self.base.strict, True)
         self.assertEqual(self.base.value, None)
-        self.assertEqual(self.base.notNull, True)
+        self.assertEqual(self.base.notNull, None)
         self.assertEqual(self.base.scheme, 'argon2')
         self.assertEqual(self.base.primary, None)
         self.assertEqual(self.base.unique, None)

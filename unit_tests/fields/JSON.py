@@ -5,23 +5,26 @@ import unittest
 
 import psycopg2.extras
 from vital.debug import RandData
-from bloom.fields import JSON
+from bloom.fields import Json
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Char import *
 
 
-class TestJSON(TestField):
+class TestJson(TestField):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.base = JSON()
+        self.base = Json()
+
+    def test_init_(self):
+        self.base = Json()
         rd = RandData(str).dict(4, 2)
         self.base(rd)
         self.assertIsInstance(self.base.real_value, psycopg2.extras.Json)
         self.assertNotEqual(self.base.value, self.base.real_value)
 
     def test_real_value(self):
+        self.base(RandData(str).dict(4, 2))
         self.assertIsInstance(self.base.real_value, psycopg2.extras.Json)
 
 

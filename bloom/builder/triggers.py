@@ -63,7 +63,7 @@ class Trigger(BaseCreator):
 
     def update_of(self, *cols):
         cols = map(self._cast_safe, cols)
-        self._raw_events.append(Clause('UPDATE OF', *cols, join_with=", "))
+        self._raw_events.append(CommaClause('UPDATE OF', *cols))
         self.events(*self._raw_events)
         return self
 

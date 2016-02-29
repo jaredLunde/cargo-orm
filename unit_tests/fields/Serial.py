@@ -7,7 +7,6 @@ from kola import config
 
 from bloom.fields import Serial
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Int import TestInt
 
 
@@ -30,7 +29,10 @@ class TestSerial(TestInt):
         self.base = Serial()
         self.base.table = 'test'
         self.base.field_name = 'int'
-        self.assertIsNone(self.base.value)
+
+    def test_init_(self):
+        self.base = Serial()
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertTrue(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)

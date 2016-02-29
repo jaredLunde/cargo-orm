@@ -7,7 +7,6 @@ from kola import config
 
 from bloom.fields import Numeric
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.BigInt import TestBigInt
 
 
@@ -29,7 +28,10 @@ class TestNumeric(TestBigInt):
         self.base = Numeric()
         self.base.table = 'test'
         self.base.field_name = 'numeric'
-        self.assertIsNone(self.base.value)
+
+    def test_init_(self):
+        self.base = Numeric()
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertIsNone(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)
@@ -37,7 +39,7 @@ class TestNumeric(TestBigInt):
         self.assertIsNone(self.base.notNull)
         self.assertEqual(self.base.minval, -9223372036854775808.0)
         self.assertEqual(self.base.maxval, 9223372036854775807.0)
-        self.assertEqual(self.base.digits, 15)
+        self.assertEqual(self.base.digits, 16383)
 
     def test_additional_kwargs(self):
         self.base = Numeric(digits=7)

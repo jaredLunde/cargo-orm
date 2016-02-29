@@ -5,11 +5,10 @@ import unittest
 
 from kola import config
 
-from vital.docr import Docr
+from docr import Docr
 from bloom.fields import Varchar
 from bloom import create_pool
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Char import *
 
 

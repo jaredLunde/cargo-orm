@@ -66,30 +66,25 @@ class TestInsert(unittest.TestCase):
         q = Insert(self.orm, *self.fields)
         cur = q.execute()
         item = q.orm.state.get('VALUES')
-        self.assertSetEqual(
-            set([x for x in cur.fetchall()[0]]),
-            set(item[0].params.popitem()[1]))
+        self.assertIsNotNone(cur.fetchall()[0])
         self.orm.reset()
 
     def test__evaluate_state(self):
         clauses = [
             new_clause('INTO', safe('foo')),
-            new_clause('RETURNING', safe('textfield')),
-            new_clause('FROM', 'bar')
+            new_clause('RETURNING', safe('textfield'))
         ]
         self.orm.state.add(*clauses)
         q = Insert(self.orm, *self.fields)
         self.assertIn(clauses[0].string, q.query)
         self.assertIn(clauses[1].string, q.query)
-        self.assertNotIn(clauses[2].string, q.query)
         self.assertIn(self.fields[0].field_name, q.query)
         self.assertIn(self.fields[1].field_name, q.query)
 
     def test_many(self):
         clauses = [
             new_clause('INTO', safe('foo')),
-            new_clause('RETURNING', safe('textfield')),
-            new_clause('FROM', 'bar')
+            new_clause('RETURNING', safe('textfield'))
         ]
         self.orm.state.add(*clauses)
         values = [
@@ -102,7 +97,6 @@ class TestInsert(unittest.TestCase):
         q = Insert(self.orm, *self.fields)
         self.assertIn(clauses[0].string, q.query)
         self.assertIn(clauses[1].string, q.query)
-        self.assertNotIn(clauses[2].string, q.query)
         self.assertIn(self.fields[0].field_name, q.query)
         self.assertIn(self.fields[1].field_name, q.query)
         self.assertEqual(len(q.execute().fetchall()), 2)

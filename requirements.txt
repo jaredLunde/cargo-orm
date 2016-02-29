@@ -7,3 +7,4 @@ passlib
 psycopg2
 pycrypto
 slugify
+yapf

@@ -64,10 +64,8 @@ class TestRaw(unittest.TestCase):
             new_clause('where'), new_clause('limit'),
             _empty]
         q = Raw(self.orm)
-        q._set_clauses(clauses)
-        self.assertNotIn(0, q.ordered_clauses)
-        clauses = list(filter(lambda x: x is not _empty, clauses))
-        self.assertListEqual(q.ordered_clauses, clauses)
+        clauses_ = list(filter(lambda x: x is not _empty, clauses))
+        self.assertListEqual(list(q._filter_empty(clauses)), clauses_)
         self.orm.reset()
 
     def test_execute(self):
@@ -81,20 +79,20 @@ class TestRaw(unittest.TestCase):
         self.assertEqual(data.foo, 1)
         self.orm.reset()
 
-    def test__evaluate_state(self):
+    def test_evaluate_state(self):
         clauses = [
             new_clause('select', '*'), new_clause(), new_clause('where', 1),
             new_clause('limit', 1)]
         self.orm.state.add(*clauses)
         q = Raw(self.orm)
-        q._evaluate_state()
+        q.evaluate_state()
         cl = []
         for clause in self.orm.state:
             if isinstance(clause, list):
                 cl.extend((s.string for s in clause))
             else:
                 cl.append(clause.string)
-        self.assertListEqual(q.ordered_clauses, cl)
+        self.assertListEqual(list(q.evaluate_state()), cl)
         self.orm.reset()
 
     def test_compile(self):
@@ -105,7 +103,7 @@ class TestRaw(unittest.TestCase):
             new_clause('limit', 1)]
         self.orm.state.add(*clauses)
         q = Raw(self.orm)
-        q._evaluate_state()
+        q.evaluate_state()
         self.assertEqual(
             q.query % q.params, "SELECT * FROM foo WHERE true LIMIT 1")
         self.orm.reset()

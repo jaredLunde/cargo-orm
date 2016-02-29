@@ -15,34 +15,33 @@ try:
 except ImportError:
     import json
 
-from vital.debug import prepr
-
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
+
 
 # TODO: HStore field 'hstore'
 # NOTE: http://www.postgresql.org/docs/9.4/static/hstore.html
 
 
-__all__ = ('JSONb', 'JSON')
+__all__ = ('Json', 'JsonB')
 
 
-class JSONb(Field):
+class Json(Field, JsonLogic):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |JSONb|
+        Field object for the PostgreSQL field type |Json|
 
-        The value given to this field must be able JSON serializable. It is
+        The value given to this field must be Json serializable. It is
         automatically encoded and decoded on insertion and retrieval.
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
         'default', 'validation', 'validation_error', '_alias', 'table',
         'cast')
-    sqltype = JSONB
+    sqltype = JSON
 
-    def __init__(self, value=None, cast=None, **kwargs):
-        """ `JSONb`
+    def __init__(self, value=Field.empty, cast=None, **kwargs):
+        """ `Json`
             :see::meth:Field.__init__
             @cast: type cast for specifying the type of data should be expected
                 for the value property, e.g. |dict| or |list|
@@ -50,9 +49,6 @@ class JSONb(Field):
         self.cast = cast
         value = value or (self.cast() if self.cast is not None else None)
         super().__init__(value=value, **kwargs)
-
-    @prepr('name', 'primary', 'index', 'value', 'cast')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -68,7 +64,7 @@ class JSONb(Field):
             return psycopg2.extras.Json(self.value, dumps=json.dumps)
 
     def from_json(self, value):
-        """ Loads @value from JSON and inserts it as the value of the field """
+        """ Loads @value from Json and inserts it as the value of the field """
         self.__call__(json.loads(value))
 
     def __contains__(self, name):
@@ -82,8 +78,12 @@ class JSONb(Field):
 
     def __delitem__(self, name):
         del self.value[name]
+
     def __iter__(self):
         return self.value.__iter__()
+
+    def keys(self):
+        return self.value.keys()
 
     def items(self):
         return self.value.items()
@@ -122,21 +122,21 @@ class JSONb(Field):
         self.value.sort(key=key, reverse=reverse)
 
 
-class JSON(JSONb):
+class JsonB(Json, JsonBLogic):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |JSON|
+        Field object for the PostgreSQL field type |JsonB|
 
-        The value given to this field must be JSON serializable. It is
+        The value given to this field must be able Json serializable. It is
         automatically encoded and decoded on insertion and retrieval.
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
         'default', 'validation', 'validation_error', '_alias', 'table',
         'cast')
-    sqltype = JSONTYPE
+    sqltype = JSONB
 
-    def __init__(self, value=None, **kwargs):
-        """ `JSONb`
+    def __init__(self, value=Field.empty, **kwargs):
+        """ `JsonB`
             :see::meth:Field.__init__
         """
         super().__init__(value=value, **kwargs)

@@ -8,8 +8,6 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.debug import prepr
-
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
@@ -28,7 +26,7 @@ class Char(Field, StringLogic):
         'maxlen', 'table')
     sqltype = CHAR
 
-    def __init__(self, value=None, minlen=0, maxlen=255, **kwargs):
+    def __init__(self, value=Field.empty, minlen=0, maxlen=255, **kwargs):
         """ `Char`
             Fixed-length character field
 
@@ -39,10 +37,6 @@ class Char(Field, StringLogic):
         super().__init__(value=value, **kwargs)
         self.maxlen = maxlen
         self.minlen = minlen
-
-    @prepr(
-        'name', ('minlen', 'purple'), ('maxlen', 'purple'), 'value')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -68,7 +62,7 @@ class Varchar(Char):
         'maxlen', 'table')
     sqltype = VARCHAR
 
-    def __init__(self, value=None, minlen=0, maxlen=10485760, **kwargs):
+    def __init__(self, value=Field.empty, minlen=0, maxlen=10485760, **kwargs):
         """ `Varchar`
             Variable-length character field.
 
@@ -89,7 +83,7 @@ class Text(Char):
         'maxlen', 'table')
     sqltype = TEXT
 
-    def __init__(self, value=None, minlen=0, maxlen=-1, **kwargs):
+    def __init__(self, value=Field.empty, minlen=0, maxlen=-1, **kwargs):
         """ `Text`
             Variable-length character field.
 

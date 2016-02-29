@@ -41,18 +41,31 @@ class IndexMeta(object):
 
 class Index(BaseCreator):
 
-    def __init__(self, orm, field, method=None, name=None, collate=None,
-                 order=None, nulls=None, unique=False, concurrent=False,
+    def __init__(self, orm, *fields, method=None, name=None, collate=None,
+                 order=None, nulls=None, unique=None, concurrent=False,
                  fillfactor=None, fastupdate=None, buffering=False,
                  table=None, tablespace=None, partial=None):
         """`Create an Index`
             :see::func:bloom.builder.create_index
         """
         super().__init__(orm, name)
-        self.field = field
+        self.fields = [field if isinstance(field, Field) else field._field
+                       for field in fields]
         self._type = method
-        self._table = table
-        self._unique = unique
+        self._table = table or self.orm.table
+        if unique is not None:
+            self._unique = unique
+        elif isinstance(self.fields[0], Field):
+            unique = False
+            for field in self.fields:
+                if field.unique:
+                    unique = True
+                if unique and not field.unique:
+                    unique = False
+                    break
+            self._unique = unique
+        else:
+            self._unique = None
 
         self._partial = None
         if partial:
@@ -96,17 +109,11 @@ class Index(BaseCreator):
         return self
 
     @property
-    def field_name(self):
-        if isinstance(self.field, Field):
-            return safe(self.field.field_name)
-        return safe(self.field)
-
-    @property
     def name(self):
         if self._name is None:
-            idx_pref = self.field
-            if isinstance(self.field, Field):
-                idx_pref = self.field.field_name
+            idx_pref = self.fields[0]
+            if isinstance(self.fields[0], Field):
+                idx_pref = "_".join(field.field_name for field in self.fields)
             return safe("{}_{}_{}index".format(
                 self.table,
                 idx_pref,
@@ -118,9 +125,9 @@ class Index(BaseCreator):
     def table(self):
         if self._table:
             return self._cast_safe(self._table)
-        if isinstance(self.field, Field):
-            if self.field.table:
-                return safe(self.field.table)
+        if isinstance(self.fields[0], Field):
+            if self.fields[0].table:
+                return safe(self.fields[0].table)
         raise ValueError('No table name was provided.')
 
     gin_types = {types.ARRAY, types.JSONB, types.JSONTYPE}
@@ -131,15 +138,15 @@ class Index(BaseCreator):
             between 'gin' and 'gist', 'gin' is chosen by default.
         """
         default = 'btree'
-        if isinstance(self.field, Field):
-            if self.field.sqltype in self.gin_types:
+        if len(self.fields) == 1 and isinstance(self.fields[0], Field) and\
+           self.fields[0].sqltype in self.gin_types:
                 default = 'gin'
         return self._type or default
 
     @property
     def options(self):
         opt = []
-        opt.append(self.field_name)
+        opt.append(safe(', '.join(field.field_name for field in self.fields)))
         if self._collate:
             opt.append(self._collate)
         if self._op:

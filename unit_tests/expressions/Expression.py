@@ -6,8 +6,10 @@
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
+from types import GeneratorType
 import unittest
 import psycopg2
+
 from kola import config
 from vital.security import randkey
 
@@ -42,14 +44,16 @@ class TestExpression(unittest.TestCase):
     base = Expression(new_field(), '=', new_field('int'))
 
     def test__get_param_key(self):
-        for val in ('test', 1234, ArrayItems([1, 2, 3, 4])):
+        l = [1, 2, 3, 4]
+        for val in ('test', 1234, l):
             pkey = self.base._get_param_key(val)
             self.assertIn(val, list(self.base.params.values()))
             self.assertIsNotNone(pkey)
             self.assertEqual(self.base.params["".join(pkey[2:-2])], val)
 
-        for val in ('test', 1234, ArrayItems([1, 2, 3, 4])):
+        for val in ('test', 1234, l):
             pkey = self.base._get_param_key(val)
+            print(val, list(self.base.params.values()))
             self.assertEqual(1, list(self.base.params.values()).count(val))
             self.assertEqual(self.base.params["".join(pkey[2:-2])], val)
 
@@ -65,7 +69,8 @@ class TestExpression(unittest.TestCase):
                 self.assertIs(base.params[k], v)
         array_items = [1, 2, 3, 4]
         base = Expression(new_field(), '=', array_items)
-        base._inherit_parameters(*types)
+        for type in types:
+            base._inherit_parameters(type)
         for val in types:
             for k, v in val.params.items():
                 self.assertIn(k, base.params)
@@ -77,9 +82,9 @@ class TestExpression(unittest.TestCase):
             new_function(), new_function(str), new_function(float),
             new_function(bytes), new_expression(), new_expression(str),
             new_expression(float), new_expression(bytes))
-        base = Expression(new_field(), '=', ArrayItems([1, 2, 3, 4]))
+        base = Expression(new_field(), '=', [1, 2, 3, 4])
         exps = base._compile_expressions(*types)
-        self.assertIsInstance(exps, list)
+        self.assertIsInstance(exps, GeneratorType)
 
     def test__parameterize(self):
         types = (
@@ -89,10 +94,6 @@ class TestExpression(unittest.TestCase):
             new_field('char'), '1234', 1234, '1234'.encode(),
             psycopg2.Binary(b'1234'))
         for val in types:
-            if isinstance(val, bytes):
-                with self.assertRaises(TypeError):
-                    self.base._parameterize(val)
-                continue
             nval = self.base._parameterize(val)
             self.assertIsInstance(nval, str)
         for val in types:
@@ -147,10 +148,6 @@ class TestExpression(unittest.TestCase):
 
         for _ in fields:
             left, op, right = _
-            if isinstance(right, bytes):
-                with self.assertRaises(TypeError):
-                    expr = Expression(left, op, right, use_field_name=True)
-                continue
             expr = Expression(left, op, right)
             self._validate(expr, left, op, right)
             if isinstance(right, Field):
@@ -160,10 +157,6 @@ class TestExpression(unittest.TestCase):
 
         for _ in fields:
             left, op, right = reversed(_)
-            if isinstance(left, bytes):
-                with self.assertRaises(TypeError):
-                    expr = Expression(left, op, right, use_field_name=True)
-                continue
             expr = Expression(left, op, right)
             self._validate(expr, left, op, right)
             if isinstance(right, Field):
@@ -173,10 +166,6 @@ class TestExpression(unittest.TestCase):
 
         for _ in fields:
             left, op, right = _
-            if isinstance(right, bytes):
-                with self.assertRaises(TypeError):
-                    expr = Expression(left, op, right, use_field_name=True)
-                continue
             expr = Expression(left, op, right, use_field_name=True)
             self._validate(expr, left, op, right)
             if isinstance(right, Field):
@@ -188,10 +177,6 @@ class TestExpression(unittest.TestCase):
 
         for _ in fields:
             left, op, right = reversed(_)
-            if isinstance(left, bytes):
-                with self.assertRaises(TypeError):
-                    expr = Expression(left, op, right, use_field_name=True)
-                continue
             expr = Expression(left, op, right, use_field_name=True)
             self._validate(expr, left, op, right)
             if isinstance(right, Field):

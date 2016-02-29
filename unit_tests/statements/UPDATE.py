@@ -47,6 +47,7 @@ def new_clause(name='FROM', *vals):
 
 
 def populate(self):
+    self.orm.reset()
     self.orm.use('foo').delete()
     clauses = [
         new_clause('INTO', safe('foo')),
@@ -105,10 +106,10 @@ class TestUpdate(unittest.TestCase):
         self.fields.pop(-1)
         self.orm.reset()
 
-    def test__set_sets(self):
+    def test_sets(self):
         q = Update(self.orm)
         self.fields.append(self.fields[0] == 'uid')
-        q._set_set(*self.fields)
+        q.set(*self.fields)
         self.assertTupleEqual(q.fields, tuple(self.fields))
         self.fields.pop(-1)
         self.orm.reset()
@@ -133,7 +134,7 @@ class TestUpdate(unittest.TestCase):
         self.assertTrue(len(result) > 0)
         self.orm.reset()
 
-    def test__evaluate_state(self):
+    def test_evaluate_state(self):
         '''
         if state.clause == "SET":
             query_clauses[0] = state.string
@@ -157,7 +158,7 @@ class TestUpdate(unittest.TestCase):
         q = Update(self.orm)
         self.assertTrue(len(q.execute().fetchall()) > 1)
 
-        clause_str = " ".join(q.ordered_clauses)
+        clause_str = " ".join(q.evaluate_state())
         for clause in clauses:
             self.assertIn(clause.clause, clause_str)
         self.orm.reset()
@@ -174,6 +175,7 @@ class TestUpdate(unittest.TestCase):
         result = q.execute().fetchall()
         self.assertTrue(len(result) > 1)
         self.assertIn('uid', result[0]._fields)
+        self.orm.reset()
 
     def test_pickle(self):
         field_b = new_field('int', 1234, name='uid', table='foo_b')

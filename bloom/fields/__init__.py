@@ -73,7 +73,7 @@ from bloom.fields.xml import *
 
 
 # TODO: IMMINENT
-# TODO: Binary field (30 MIN)
+# DONE: Binary field (30 MIN)
 # TODO: Currency field (40 MIN)
 #   see: http://www.postgresql.org/message-id/
 #           AANLkTikwEScC8bjpmLPT2XkNy_WeWCrxnWeYiw3DQxU7@mail.gmail.com
@@ -81,7 +81,7 @@ from bloom.fields.xml import *
 # TODO: HStore field 'hstore'  (120 MIN)
 # TODO: 'CIDR': 'cidr'  (40 MIN)
 # TODO: 'MACADDR': 'macaddr'  (40 MIN)
-# TODO: AES-256 encrypted (30 MIN)
+# DONE: AES-256 encrypted (30 MIN)
 # NOTE: EST 6.5-8 HOURS
 
 

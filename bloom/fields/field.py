@@ -9,6 +9,7 @@
 
 """
 import copy
+
 from vital.debug import prepr
 
 from bloom.etc.types import *
@@ -39,7 +40,7 @@ class Field(BaseLogic):
     sqltype = None
     empty = _empty
 
-    def __init__(self, value=_empty, not_null=None, primary=None,
+    def __init__(self, value=empty, not_null=None, primary=None,
                  unique=None, index=None, default=None, validation=None):
         """ ``SQL Field``
 
@@ -66,21 +67,21 @@ class Field(BaseLogic):
             """ Ignore error for classes where default is a property not an
                 attribute """
             pass
-        self.value = value
+        self.value = self.empty
         self._alias = None
         self.validation = validation
         self.validation_error = None
         self.__call__(value)
 
-    @prepr('name', 'primary', 'index', 'value')
+    @prepr('name', 'value', _no_keys=True)
     def __repr__(self): return
 
-    def __call__(self, value=_empty):
+    def __call__(self, value=empty):
         """ Sets the value of the field to @value and returns @value
 
             -> @value
         """
-        if value is not _empty:
+        if value is not self.empty:
             self._set_value(value)
         return self.value
 
@@ -119,11 +120,6 @@ class Field(BaseLogic):
         if self.table:
             return "{}.{}".format(self.table, self.field_name)
         return self.field_name
-
-    @property
-    def data(self):
-        """ Alias for |list| and |dict| types """
-        return self.value
 
     def set_alias(self, table=None, name=None):
         """ Used for :class:aliased - when this field is wrapped with
@@ -165,6 +161,31 @@ class Field(BaseLogic):
         self.value = value
         return self.value
 
+    @property
+    def real_value(self):
+        if self.value is not self.empty and self.value is not None:
+            return self.value
+        else:
+            return self.default
+
+    def _should_insert(self):
+        try:
+            assert self.validate() or self.default is not None
+        except AssertionError:
+            raise ValidationError(self.validation_error, self.field_name)
+        return self.value is not self.empty or self.default is not None
+
+    def _should_update(self):
+        try:
+            assert self.validate()
+        except AssertionError:
+            raise ValidationError(self.validation_error, self.field_name)
+        return self.value is not self.empty
+
+    def clear(self):
+        """ Sets the value of the field to :prop:empty """
+        self._set_value(self.empty)
+
     def _validate(self):
         validator = Validate(self)
         if not validator.validate():
@@ -178,31 +199,6 @@ class Field(BaseLogic):
                     self.validation_error = "Failed validation"
                 return False
         return True
-
-    @property
-    def real_value(self):
-        if self.value is not self.empty:
-            return self.value
-        else:
-            return self.default
-
-    def _should_insert(self):
-        try:
-            assert self.validate()
-        except AssertionError:
-            raise ValidationError(self.validation_error, self.field_name)
-        return self.value is not self.empty
-
-    def _should_update(self):
-        try:
-            assert self.validate()
-        except AssertionError:
-            raise ValidationError(self.validation_error, self.field_name)
-        return self.value is not self.empty
-
-    def clear(self):
-        """ Sets the value of the field to :prop:empty """
-        self._set_value(self.empty)
 
     def validate(self):
         return self._validate()

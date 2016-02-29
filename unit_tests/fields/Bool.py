@@ -5,15 +5,19 @@ import unittest
 
 from kola import config
 
-from vital.docr import Docr
+from docr import Docr
 from bloom.fields import Bool
 from bloom import create_pool
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Field import TestField
 
 
 class TestBool(TestField):
+    base = Bool()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.base = Bool()
 
     def test_validate(self):
         a = Bool()

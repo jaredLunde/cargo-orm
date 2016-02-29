@@ -23,3 +23,4 @@ __all__ = []
 # TODO: 'PATH': 'path'
 # TODO: 'POINT': 'point'
 # TODO: 'POLYGON': 'polygon'
+# NOTE: http://www.postgresql.org/docs/9.3/static/functions-geometry.html

@@ -10,3 +10,4 @@
 """
 
 # TODO: 'XML': 'xml'
+# NOTE: http://www.postgresql.org/docs/9.3/static/functions-xml.html

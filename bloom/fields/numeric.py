@@ -8,14 +8,12 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.debug import prepr
-
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
 
 
-__all__ = ('Decimal', 'Numeric', 'Float')
+__all__ = ('Decimal', 'Numeric', 'Float', 'Double')
 
 
 class Decimal(Field, NumericLogic):
@@ -28,7 +26,7 @@ class Decimal(Field, NumericLogic):
         'maxval', 'digits', 'table')
     sqltype = DECIMAL
 
-    def __init__(self, value=None, digits=15, minval=-9223372036854775808.0,
+    def __init__(self, value=Field.empty, digits=16383, minval=-9223372036854775808.0,
                  maxval=9223372036854775807.0, **kwargs):
         """ `Decimal`
             :see::meth:SmallInt.__init__
@@ -38,15 +36,6 @@ class Decimal(Field, NumericLogic):
         super().__init__(value=value, **kwargs)
         self.minval = minval
         self.maxval = maxval
-
-    @prepr('name', 'value', 'digits')
-    def __repr__(self): return
-
-    def __str__(self):
-        if self.value and self.digits and self.digits != -1:
-            return str(round(self.value, self.digits))
-        else:
-            return str(self.value)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -76,9 +65,9 @@ class Numeric(Decimal):
         'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'digits', 'table')
-    sqltype = DECIMAL
+    sqltype = NUMERIC
 
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=Field.empty, **kwargs):
         """ `Numeric`
             :see::meth:Decimal.__init__
             @digit: (#int) maximum digit precision
@@ -94,9 +83,25 @@ class Float(Decimal):
         'maxval', 'digits', 'table')
     sqltype = FLOAT
 
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=Field.empty, digits=6, **kwargs):
         """ `Float`
             :see::meth:Decimal.__init__
             @digit: (#int) maximum digit precision
         """
-        super().__init__(value=value, **kwargs)
+        super().__init__(value=value, digits=digits, **kwargs)
+
+
+class Double(Float):
+    """ Field object for the PostgreSQL field type |FLOAT| """
+    __slots__ = (
+        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'validation', 'validation_error', '_alias', 'default', 'minval',
+        'maxval', 'digits', 'table')
+    sqltype = DOUBLE
+
+    def __init__(self, value=Field.empty, digits=15, **kwargs):
+        """ `Float`
+            :see::meth:Decimal.__init__
+            @digit: (#int) maximum digit precision
+        """
+        super().__init__(value=value, digits=digits, **kwargs)

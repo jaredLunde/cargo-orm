@@ -3,7 +3,7 @@
 """
 
   `Bloom ORM`
-  ``A lightweight, easy to use PostgreSQL ORM inspired by Peewee and others``
+  ``A lightweight, easy to use PostgreSQL ORM``
 
   ===================
   ``Getting Started``

@@ -10,14 +10,13 @@
 """
 import psycopg2.extras
 
-from vital.debug import prepr
-
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
 
 # TODO: 'CIDR': 'cidr'
 # TODO: 'MACADDR': 'macaddr'
+# NOTE : http://www.postgresql.org/docs/9.3/static/functions-net.html
 
 __slots__ = ('IP', 'Inet')
 
@@ -33,7 +32,7 @@ class IP(Field, StringLogic):
     sqltype = IP
     current = -1
 
-    def __init__(self, value=None, request=None, default=None, **kwargs):
+    def __init__(self, value=Field.empty, request=None, default=None, **kwargs):
         """ `IP Address`
             :see::meth:Field.__init__
             @request: Django, Flask or Bottle-like request object
@@ -42,9 +41,6 @@ class IP(Field, StringLogic):
         self._request = request
         super().__init__(**kwargs)
         self.__call__(value)
-
-    @prepr('name', 'value')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:

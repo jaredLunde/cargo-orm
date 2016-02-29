@@ -103,14 +103,13 @@ class TestSelect(unittest.TestCase):
         func = Functions.func('id_generator', alias="id")
         q = Select(self.orm, func)
         self.assertIs(q.orm, self.orm)
-        self.assertListEqual(q.fields, [func])
+        self.assertListEqual(list(q._fields), [func])
 
     def test__set_fields(self):
         func = Functions.func('id_generator', alias="id")
         fields = [func, 'fish', 1234]
         fields.extend(self.fields)
-        q = Select(self.orm)
-        q._set_fields(*fields)
+        q = Select(self.orm, *fields)
         q.compile()
         compiled = q.query % q.params
         make_str = lambda x: x.name if hasattr(x, 'name') else str(x)
@@ -123,14 +122,13 @@ class TestSelect(unittest.TestCase):
         func = Functions.func('id_generator', alias="id")
         fields = [
             func,
-            Parameterize('fish', alias='fish'),
-            Parameterize(1234, alias='fosh')]
+            parameterize('fish', alias='fish'),
+            parameterize(1234, alias='fosh')]
         fields.extend(self.fields)
         self.orm.from_('foo')
         self.orm.where(fields[-1] == fields[-1]())
         self.orm.limit(1, 2)
-        q = Select(self.orm)
-        q._set_fields(*fields)
+        q = Select(self.orm, *fields)
         q.compile()
         compiled = q.query % q.params
         for v in fields:

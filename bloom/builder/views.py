@@ -60,8 +60,7 @@ class View(BaseCreator):
                                       wrap=True)
         create_clause = Clause('CREATE {}VIEW'.format(tmp),
                                safe(self.name),
-                               Clause("", *self._columns, join_with=", ",
-                                      wrap=True),
+                               ValuesClause("", *self._columns),
                                security_barrier,
                                use_field_name=True)
         self.orm.state.add(create_clause)

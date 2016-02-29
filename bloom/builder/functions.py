@@ -8,7 +8,7 @@
 
 """
 from bloom.fields.field import Field
-from bloom.expressions import Clause, safe
+from bloom.expressions import *
 from bloom.statements import *
 from bloom.builder.utils import BaseCreator
 
@@ -53,11 +53,11 @@ class Function(BaseCreator):
             elif k.lower() == 'as':
                 if not isinstance(v, (tuple, list)):
                     v = [v]
-                cls = Clause(k, *v, join_with=', ')
+                cls = CommaClause(k, *v)
             else:
                 cls = Clause(k, self._cast_safe(v))
             opt_.append(cls)
-        self._options = Clause("", *opt_, join_with=" ")
+        self._options = Clause("", *opt_)
         return self
 
     def lang(self, lang):
@@ -75,8 +75,7 @@ class Function(BaseCreator):
     def returns_table(self, *cols):
         """ @*cols: (#tuple) |(col_name data_type)| """
         cols = (safe(" ".join(map(str, col))) for col in cols)
-        self._returns = Clause('RETURNS TABLE', *cols, join_with=", ",
-                               wrap=True)
+        self._returns = ValuesClause('RETURNS TABLE', *cols)
 
     @property
     def query(self):

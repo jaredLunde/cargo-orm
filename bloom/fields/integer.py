@@ -8,14 +8,14 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.debug import prepr
-
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
 
 
 __all__ = ('SmallInt', 'Int', 'BigInt')
+
+
 class SmallInt(Field, NumericLogic):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         Field object for the PostgreSQL field type |INT2|
@@ -26,7 +26,8 @@ class SmallInt(Field, NumericLogic):
         'maxval', 'table')
     sqltype = INT
 
-    def __init__(self, value=None, minval=-32768, maxval=32767, **kwargs):
+    def __init__(self, value=Field.empty, minval=-32768, maxval=32767,
+                 **kwargs):
         """ `SmallInt`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -60,8 +61,8 @@ class Int(Field, NumericLogic):
         'maxval', 'table')
     sqltype = INT
 
-    def __init__(self, value=None, minval=-2147483648, maxval=2147483647,
-                 **kwargs):
+    def __init__(self, value=Field.empty, minval=-2147483648,
+                 maxval=2147483647,  **kwargs):
         """ `Int`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -70,9 +71,6 @@ class Int(Field, NumericLogic):
         super().__init__(value=value, **kwargs)
         self.minval = minval
         self.maxval = maxval
-
-    @prepr('name', 'minval', 'maxval', 'value')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -90,7 +88,7 @@ class BigInt(Field, NumericLogic):
         'maxval', 'table')
     sqltype = INT
 
-    def __init__(self, value=None, minval=-9223372036854775808,
+    def __init__(self, value=Field.empty, minval=-9223372036854775808,
                  maxval=9223372036854775807, **kwargs):
         """ `BigInt`
             :see::meth:Field.__init__
@@ -100,9 +98,6 @@ class BigInt(Field, NumericLogic):
         super().__init__(value=value, **kwargs)
         self.minval = minval
         self.maxval = maxval
-
-    @prepr('name', 'minval', 'maxval', 'value')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:

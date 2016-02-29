@@ -13,11 +13,14 @@ from unit_tests.fields.Array import *
 from unit_tests.fields.AuthKey import *
 from unit_tests.fields.BigInt import *
 from unit_tests.fields.BigSerial import *
+from unit_tests.fields.BigInt import *
+from unit_tests.fields.Binary import *
 from unit_tests.fields.Bool import *
 from unit_tests.fields.Char import *
 from unit_tests.fields.Date import *
 from unit_tests.fields.Decimal import *
 from unit_tests.fields.Email import *
+from unit_tests.fields.Encrypted import *
 from unit_tests.fields.Enum import *
 from unit_tests.fields.Field import *
 from unit_tests.fields.Float import *

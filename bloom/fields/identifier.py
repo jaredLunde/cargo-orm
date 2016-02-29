@@ -10,7 +10,6 @@
 """
 import string
 
-from vital.debug import prepr
 from vital.security import strkey
 
 from bloom.etc.types import *
@@ -32,14 +31,11 @@ class UUID(Field, StringLogic):
         'default', 'validation', 'validation_error', '_alias', 'table')
     sqltype = UUIDTYPE
 
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=Field.empty, **kwargs):
         """ `UUID`
             :see::meth:Field.__init__
         """
         super().__init__(value=value, **kwargs)
-
-    @prepr('name', 'value')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -67,7 +63,7 @@ class SmallSerial(SmallInt):
         'maxval', 'table')
     sqltype = SMALLSERIAL
 
-    def __init__(self, value=None, minval=1, maxval=32767,
+    def __init__(self, value=Field.empty, minval=1, maxval=32767,
                  primary=True, **kwargs):
         """ `SmallSerial`
             :see::meth:Field.__init__
@@ -76,19 +72,6 @@ class SmallSerial(SmallInt):
         super().__init__(
             value=value, minval=minval, maxval=maxval,
             primary=primary, **kwargs)
-
-    def __init__(self, value=None, minval=1, maxval=2147483647, primary=True,
-                 **kwargs):
-        """ `Serial`
-            :see::meth:Field.__init__
-            @maxval: (#int) maximum integer value
-        """
-        super().__init__(
-            value=value, minval=minval, maxval=maxval, primary=primary,
-            **kwargs)
-
-    @prepr('name', 'value', 'primary')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -117,8 +100,8 @@ class Serial(SmallSerial):
         'maxval', 'table')
     sqltype = SERIAL
 
-    def __init__(self, value=None, minval=1, maxval=2147483647, primary=True,
-                 **kwargs):
+    def __init__(self, value=Field.empty, minval=1, maxval=2147483647,
+                 primary=True, **kwargs):
         """ `Serial`
             :see::meth:Field.__init__
             @maxval: (#int) maximum integer value
@@ -126,9 +109,6 @@ class Serial(SmallSerial):
         super().__init__(
             value=value, minval=minval, maxval=maxval, primary=primary,
             **kwargs)
-
-    @prepr('name', 'value', 'primary')
-    def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -156,7 +136,7 @@ class BigSerial(Serial):
         'maxval', 'table')
     sqltype = BIGSERIAL
 
-    def __init__(self, value=None, minval=1, maxval=9223372036854775807,
+    def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
                  primary=True, **kwargs):
         """ `BigSerial`
             :see::meth:Field.__init__
@@ -214,7 +194,7 @@ class UID(BigSerial):
         'maxval', 'table')
     sqltype = UIDTYPE
 
-    def __init__(self, value=None, minval=1, maxval=9223372036854775807,
+    def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
                  primary=True, **kwargs):
         """ `UID`
             :see::meth:Field.__init__
@@ -302,7 +282,7 @@ class StrUID(UID):
         'maxval', 'chaffify', 'table')
     sqltype = STRUID
 
-    def __init__(self, value=None, minval=1, maxval=9223372036854775807,
+    def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
                  chaffify=1024, primary=True, **kwargs):
         """ `StrUID`
             :see::meth:Field.__init__
@@ -315,7 +295,6 @@ class StrUID(UID):
                 !!
         """
         self.chaffify = chaffify
-        self._str_value = None
         super().__init__(
             value=value, minval=minval, maxval=maxval, primary=primary,
             **kwargs)
@@ -339,7 +318,7 @@ class StrUID(UID):
         return 0
 
     def _strkey(self, value):
-        if value is None:
+        if value is None or value is Field.empty:
             return None
         return strkey(
             value, chaffify=self.chaffify, keyspace=string.ascii_letters)

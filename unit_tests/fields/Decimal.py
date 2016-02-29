@@ -5,11 +5,10 @@ import unittest
 
 from kola import config
 
-from vital.docr import Docr
+from docr import Docr
 from bloom.fields import Decimal
 from bloom import create_pool
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Numeric import TestNumeric
 
 
@@ -31,7 +30,10 @@ class TestDecimal(TestNumeric):
         self.base = Decimal()
         self.base.table = 'test'
         self.base.field_name = 'decimal'
-        self.assertIsNone(self.base.value)
+
+    def test_init_(self):
+        self.base = Decimal()
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertIsNone(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)
@@ -39,7 +41,7 @@ class TestDecimal(TestNumeric):
         self.assertIsNone(self.base.notNull)
         self.assertEqual(self.base.minval, -9223372036854775808.0)
         self.assertEqual(self.base.maxval, 9223372036854775807.0)
-        self.assertEqual(self.base.digits, 15)
+        self.assertEqual(self.base.digits, 16383)
 
 
 if __name__ == '__main__':

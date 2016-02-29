@@ -14,12 +14,10 @@ import string
 from hashlib import sha1
 
 from vital.debug import prepr
-from vital.security import randhex
 from bloom.etc import passwords, usernames, operators
 
 
 __all__ = (
-    "ArrayItems",
     "BaseExpression",
     "BaseLogic",
     "StringLogic",
@@ -28,9 +26,15 @@ __all__ = (
     "TimeLogic",
     "DateLogic",
     "DateTimeLogic",
+    "BinaryLogic",
+    "JsonLogic",
+    "JsonBLogic",
     "Case",
     "Clause",
-    "Parameterize",
+    'CommaClause',
+    'WrappedClause',
+    'ValuesClause',
+    "parameterize",
     "Expression",
     "Function",
     "WindowFunctions",
@@ -40,10 +44,6 @@ __all__ = (
     "safe",
     "_empty"
 )
-
-
-def _make_param(key):
-    return "%(" + key + ")s"
 
 
 class BaseLogic(object):
@@ -336,7 +336,7 @@ class BaseLogic(object):
         return Functions.func(args[0], self, *args[1:], **kwargs)
 
 
-class BaseNumericLogic(object):
+class BaseNumericLogic(BaseLogic):
 
     def lt(self, other):
         """ Creates a |<| (less than) SQL expression
@@ -597,6 +597,8 @@ class NumericLogic(BaseNumericLogic):
         """ :see::meth:Functions.mod """
         return Functions.mod(self, dmod, alias=alias, **kwargs)
 
+    __mod__ = mod
+
     def pow(self, power=0, alias=None, **kwargs):
         """ :see::meth:Functions.pow """
         return Functions.pow(self, power, alias=alias, **kwargs)
@@ -626,7 +628,7 @@ class NumericLogic(BaseNumericLogic):
         return Functions.tan(self, alias=alias, **kwargs)
 
 
-class StringLogic(object):
+class StringLogic(BaseLogic):
 
     def like(self, other):
         """ Creates a |LIKE| SQL expression
@@ -896,7 +898,213 @@ class DateTimeLogic(DateLogic, TimeLogic):
     pass
 
 
-class Subquery(BaseLogic, NumericLogic,  DateTimeLogic, StringLogic):
+class BinaryLogic(BaseLogic):
+
+    def _cast_bytes(self, string):
+        if isinstance(string, bytes):
+            return psycopg2.extensions.Binary(string)
+        return string
+
+    def concat(self, string, **kwargs):
+        """ String concatenation
+            -> (:class:Expression)
+        """
+        string = self._cast_bytes(string)
+        return Expression(self, '||', string, **kwargs)
+
+    def octet_length(self, **kwargs):
+        """ Number of bytes in binary string
+            -> (:class:Function)
+        """
+        return Function('octet_length', self)
+
+    def overlay(self, substring, from_, for_=None, **kwargs):
+        """ Replace @substring
+            -> (:class:Function)
+        """
+        substring = self._cast_bytes(substring)
+        exps = [self,
+                Expression(self.empty,
+                           'placing',
+                           Expression(substring, 'from', from_))]
+        if for_:
+            exps.append(Expression(self.empty, 'for', for_))
+        return Function('overlay', Clause("", *exps), **kwargs)
+
+    def position(self, substring):
+        """ Location of specified @substring
+            -> (:class:Function)
+        """
+        substring = self._cast_bytes(substring)
+        return Function('position', Expression(substring, 'in', self))
+
+    def substring(self, from_=None, for_=None, **kwargs):
+        """ Extracts substring from @from_ to @for_
+            -> (:class:Function)
+        """
+        exps = []
+        if from_ is not None:
+            exps.append(Expression(self.empty, 'from', from_))
+        if for_ is not None:
+            exps.append(Expression(self.empty, 'for', for_))
+        return Function('substring', Clause("", self, *exps), **kwargs)
+
+    def trim(self, bytes_, both=False, **kwargs):
+        """ Remove the longest string containing only the bytes in @bytes_
+            from the start and end of the string
+            -> (:class:Expression)
+        """
+        bytes_ = self._cast_bytes(bytes_)
+        exp = Expression(bytes_, 'from', self)
+        if both:
+            exp = Clause('both', exp)
+        return Function('trim', exp, **kwargs)
+
+
+class JsonLogic(BaseLogic):
+
+    _field_op = '->'
+    _field_text_op = '->>'
+    _field_path_op = '#>'
+    _field_path_text_op = '#>>'
+
+    def get_element(self, index, as_text=False, **kwargs):
+        """ Gets a Json array element
+
+            @index: (#int) index of the element within a Json array
+            @as_text: (#bool) True to select the value as text rather than
+                its data type
+            -> (:class:Expression)
+        """
+        op = self._field_op
+        if as_text:
+            op = self._field_text_op
+        return Expression(self, op, index, **kwargs)
+
+    get_index = get_element
+
+    def get_field(self, field, as_text=False, **kwargs):
+        """ Gets a Json object field
+
+            @field: (#list|#tuple) |[key1, key2]|
+            @as_text: (#bool) True to select the value as text rather than
+                its data type
+            -> (:class:Expression)
+        """
+        op = self._field_op
+        if as_text:
+            op = self._field_text_op
+        return Expression(self, op, field, **kwargs)
+
+    get_key = get_field
+
+    def get_path(self, path, as_text=False, **kwargs):
+        """ Gets a Json object at specified path
+
+            @path: (#list|#tuple) |[key1, key2]|
+            @as_text: (#bool) True to select the value as text rather than
+                its data type
+            -> (:class:Expression)
+        """
+        op = self._field_path_op
+        if as_text:
+            op = self._field_path_text_op
+        return Expression(self, op, path, **kwargs)
+
+    def each(self):
+        return Functions.json_each(self)
+
+    def each_text(self):
+        return Functions.json_each_text(self)
+
+    def array_length(self):
+        return Functions.json_array_length(self)
+
+    def get_fields(self):
+        return Functions.json_object_keys(self)
+
+    get_keys = get_fields
+
+    def get_elements(self):
+        return Functions.json_array_elements(self)
+
+
+class JsonBLogic(JsonLogic):
+
+    _contains_op = '@>'
+    _contained_op = '<@'
+    _key_op = '?'
+    _keys_op = '?|'
+    _concatenate_op = '||'
+    _delete_key_op = '-'
+    _delete_path_op = '#-'
+
+    def contains(self, other):
+        pass
+
+    def contained_by(self, other):
+        pass
+
+    def field_exists(self, key):
+        pass
+
+    key_exists = field_exists
+
+    def fields_exist(self, *keys, all=True):
+        pass
+
+    keys_exist = fields_exist
+
+    def concat(self, other):
+        pass
+
+    def del_field(self, key):
+        pass
+
+    del_key = del_field
+
+    def del_element(self, index):
+        pass
+
+    del_index = del_element
+
+    def del_path(self, path):
+        pass
+
+    def each(self):
+        return Functions.jsonb_each(self)
+
+    def each_text(self):
+        return Functions.jsonb_each_text(self)
+
+    def array_length(self):
+        return Functions.jsonb_array_length(self)
+
+    def get_fields(self):
+        return Functions.jsonb_object_keys(self)
+
+    get_keys = get_fields
+
+    def get_elements(self):
+        return Functions.jsonb_array_elements(self)
+
+    def set_path(self, path):
+        return Functions.jsonb_set_path(self, path)
+
+    '''
+    @>	jsonb	Does the left JSON value contain the right JSON path/value entries at the top level?	'{"a":1, "b":2}'::jsonb @> '{"b":2}'::jsonb
+    <@	jsonb	Are the left JSON path/value entries contained at the top level within the right JSON value?	'{"b":2}'::jsonb <@ '{"a":1, "b":2}'::jsonb
+    ?	text	Does the string exist as a top-level key within the JSON value?	'{"a":1, "b":2}'::jsonb ? 'b'
+    ?|	text[]	Do any of these array strings exist as top-level keys?	'{"a":1, "b":2, "c":3}'::jsonb ?| array['b', 'c']
+    ?&	text[]	Do all of these array strings exist as top-level keys?	'["a", "b"]'::jsonb ?& array['a', 'b']
+    ||	jsonb	Concatenate two jsonb values into a new jsonb value	'["a", "b"]'::jsonb || '["c", "d"]'::jsonb
+    -	text	Delete key/value pair or string element from left operand. Key/value pairs are matched based on their key value.	'{"a": "b"}'::jsonb - 'a'
+    -	integer	Delete the array element with specified index (Negative integers count from the end). Throws an error if top level container is not an array.	'["a", "b"]'::jsonb - 1
+    #-	text[]	Delete the field or element with specified path (for JSON arrays, negative integers count from the end)	'["a", {"b":1}]'::jsonb #- '{1,b}'
+    '''
+
+
+class Subquery(DateTimeLogic, StringLogic):
     """ You must use this wrapper if you want to use subqueries within the
         models, as plain text is parameterized for safety.
 
@@ -918,7 +1126,7 @@ class Subquery(BaseLogic, NumericLogic,  DateTimeLogic, StringLogic):
             model.select()
         ..
     """
-    __slots__ = ('subquery', 'alias', 'query', 'string', 'params')
+    __slots__ = ('subquery', 'alias', 'query', 'params')
 
     def __init__(self, query, alias=None):
         """ `Subquery`
@@ -931,13 +1139,16 @@ class Subquery(BaseLogic, NumericLogic,  DateTimeLogic, StringLogic):
         self.alias = str(alias) if alias else query.alias
         self.query = "({}) {}".format(
             query.query, self.alias if self.alias else "").strip()
-        self.string = query.string
         self.params = query.params
 
-    @prepr('query')
+    @prepr('query', 'params', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
+        return self.query
+
+    @property
+    def string(self):
         return self.query
 
     def exists(self, alias=None):
@@ -947,59 +1158,43 @@ class Subquery(BaseLogic, NumericLogic,  DateTimeLogic, StringLogic):
         return Functions.not_exists(self, alias=alias)
 
 
-class BaseExpression(object):
+class BaseExpression(BaseLogic):
+
+    def __str__(self):
+        return self.string or ""
 
     def _get_param_key(self, item):
         """ Sets the parameter key for @item """
-        for key, item2 in self.params.items():
-            if item == item2:
-                return _make_param(key)
-        key = randhex(12, random)
+        key = hex(id(item))
         self.params[key] = item
-        return _make_param(key)
+        return "%(" + key + ")s"
 
-    def _inherit_parameters(self, *items):
+    def _inherit_parameters(self, item):
         """ Inherits the parameters of other :mod:bloom objects into this
             one.
 
             @items: :mod:bloom objects
         """
-        self.params.update({
-            k: v
-            for item in items
-            for k, v in (
-                item.params if hasattr(item, 'params') and
-                isinstance(item.params, dict) else {}
-            ).items()
-        })
+        if hasattr(item, 'params') and hasattr(item.params, 'items'):
+            self.params.update(item.params)
 
     def _parameterize(self, item, use_field_name=False):
-        str_item = (BaseExpression, BaseLogic, NumericLogic, DateLogic,
-                    TimeLogic, safe)
-        if isinstance(item, str_item):
-            #: These should already be parameterized
+        if isinstance(item, BaseLogic):
+            #: These are already parameterized
             if hasattr(item, 'sqltype'):
                 #: Fields
-                string = str(
-                    item.name if not use_field_name else item.field_name)
-            elif use_field_name is not None and \
-                    hasattr(item, 'use_field_name'):
+                exp = str(item.name if not use_field_name else item.field_name)
+            elif hasattr(item, 'use_field_name'):
                 #: Expressions and functions
-                string = item.compile(use_field_name=use_field_name)
+                exp = item.compile(use_field_name=use_field_name)
             else:
                 #: Queries and other
-                string = str(item)
-            exp = string
+                exp = item.string
         elif item is _empty:
             #: Empty item
-            exp = ""
+            return ""
         else:
             #: Anything else gets parameterized
-            if isinstance(item, bytes):
-                raise TypeError("Cannot cast type `bytes`. Bytes objects " +
-                                "must be wrapped with `psycopg2.Binary`")
-            item = item if not hasattr(item, 'real_value') else \
-                item.real_value
             exp = self._get_param_key(item)
         return exp
 
@@ -1008,13 +1203,24 @@ class BaseExpression(object):
             the type of object it is receiving and formats accordingly,
             inheriting parameters when necessary.
 
-            -> #str expression
+            -> yields #str expression
         """
-        return [self._parameterize(item, use_field_name)
-                for item in items]
+        for item in items:
+            self._inherit_parameters(item)
+            yield self._parameterize(item, use_field_name)
+
+    def _join_expressions(self, string, *items, use_field_name=False):
+        """ Joins @items with @string after @items have been parameterized
+            and transformed to #str(s)
+
+            -> #str joined expression string
+        """
+        return string.join(filter(None, self._compile_expressions(
+                    *items, use_field_name=use_field_name)))
 
 
 class __empty(object):
+
     @property
     def string(self):
         return self
@@ -1026,7 +1232,7 @@ class __empty(object):
 _empty = __empty()
 
 
-class Expression(BaseExpression, BaseLogic, NumericLogic):
+class Expression(BaseExpression, DateTimeLogic, StringLogic):
     """ You must use this wrapper if you want to make expressions within the
         models, as plain text is parameterized for safety.
 
@@ -1063,16 +1269,13 @@ class Expression(BaseExpression, BaseLogic, NumericLogic):
         self.right = right
         self.operator = operator
         self.group_op = None
-        self.params = params or dict()
+        self.params = params or {}
         self.alias = alias
         self.use_field_name = use_field_name
         self.compile()
 
-    @prepr('operator', 'string', _break=False)
+    @prepr('operator', 'string', 'params', _no_keys=True)
     def __repr__(self): return
-
-    def __str__(self):
-        return self.string or ""
 
     def group_and(self):
         self.group_op = "AND"
@@ -1093,50 +1296,13 @@ class Expression(BaseExpression, BaseLogic, NumericLogic):
         """ Turns the expression into a string """
         if use_field_name is not None:
             self.use_field_name = use_field_name
-        self._inherit_parameters(self.left, self.operator, self.right)
         left, right = self._compile_expressions(
             self.left, self.right, use_field_name=self.use_field_name)
-        self.string = "{} {} {}".format(left, self.operator, right).strip()
-        if self.alias:
-            self.string = "{} {}".format(self.string, self.alias)
+        self.string = ("%s %s %s" % (left, self.operator, right)).strip()
+        if self.alias is not None:
+            self.string = "%s %s" % (self.string, self.alias)
         if self.group_op is not None:
-            self.string = "({}) {}".format(
-                self.string, self.group_op or "").strip()
-        return self.string
-
-
-class Parameterize(Expression):
-    """ ``Usage Example``
-        ..
-            ORM().subquery().where(Parameterize(1)).select()
-        ..
-        |model.id BETWEEN 10 AND 20|
-    """
-    __slots__ = ('string', 'values', 'params', 'alias')
-
-    def __init__(self, *values, alias=None, params=None):
-        """`Parameterize`
-            Parameterizes plain text
-            @value: the value to parameterize
-        """
-        self.string = None
-        self.values = values
-        self.params = params or dict()
-        self.alias = alias
-        self.compile()
-
-    @prepr('value', 'string', _break=False)
-    def __repr__(self): return
-
-    def compile(self):
-        """ Turns the expression into a string """
-        parameter = ""
-        for v in self.values:
-            parameter += self._parameterize(v)
-            if hasattr(v, 'params'):
-                self.params.update(v.params)
-        self.string = "{} {}".format(
-            parameter, self.alias if self.alias else "").strip()
+            self.string = ("(%s) %s" % (self.string, self.group_op)).rstrip()
         return self.string
 
 
@@ -1155,7 +1321,9 @@ class Clause(BaseExpression):
             :class:bloom.Query and bloom.QueryState objects, as they
             are for building the foundation of the SQL query.
 
-            @clause: (#str) name of the clause
+            @clause: (#str) name of the clause - this does NOT get
+                parameterized so it is completely unsafe to put user
+                submitted data here.
             @*args: objects to include in the clause
             @join_with: (#str) delimeter to join @*args with
             @wrap: (#bool) True to wrap @args with parantheses when formatting
@@ -1164,8 +1332,8 @@ class Clause(BaseExpression):
             @alias: (#str) name to alias the clause with
         """
         self.clause = clause.upper().strip()
-        self.params = params or dict()
-        self.args = list(args)
+        self.params = params or {}
+        self.args = args
         self.alias = alias
         self.string = None
         self.use_field_name = use_field_name
@@ -1173,7 +1341,7 @@ class Clause(BaseExpression):
         self.wrap = wrap
         self.compile()
 
-    @prepr('string')
+    @prepr('string', 'params', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
@@ -1187,16 +1355,37 @@ class Clause(BaseExpression):
             self.wrap = wrap
         if use_field_name is not None:
             self.use_field_name = use_field_name
-        clause_params = filter(lambda x: len(x), self._compile_expressions(
-                *self.args, use_field_name=self.use_field_name))
-        self._inherit_parameters(*self.args)
-        clause_params = self.join_with.join(map(str, clause_params)) \
-            if clause_params else ""
+        clause_params = self._join_expressions(
+            self.join_with, *self.args, use_field_name=self.use_field_name)
         if self.wrap:
-            clause_params = "({})".format(clause_params)
-        self.string = "{} {} {}".format(
-            self.clause, clause_params, self.alias or "").strip()
+            clause_params = "(%s)" % clause_params
+        self.string = (
+            "%s %s %s" % (self.clause, clause_params, self.alias or "")
+        ).strip()
         return self.string
+
+
+class CommaClause(Clause):
+
+    def __init__(self, *args, **kwargs):
+        """ A :class:Clause which separates its @args with commas """
+        super().__init__(*args, join_with=', ', **kwargs)
+
+
+class WrappedClause(Clause):
+
+    def __init__(self, *args, **kwargs):
+        """ A :class:Clause which wraps itself in parentheses """
+        super().__init__(*args, wrap=True, **kwargs)
+
+
+class ValuesClause(Clause):
+
+    def __init__(self, *args, **kwargs):
+        """ A :class:Clause which wraps itself in parentheses and
+            separates its @args with commas
+        """
+        super().__init__(*args, wrap=True, join_with=", ", **kwargs)
 
 
 class Case(BaseExpression):
@@ -1226,13 +1415,13 @@ class Case(BaseExpression):
                 field rather than the full |table.field| name
         """
         self.conditions = list(when_then)
-        self._el = Parameterize(el) if el is not None else el
+        self._el = parameterize(el) if el is not None else el
         self.params = {}
         self.alias = alias
         self.use_field_name = use_field_name
         self.compile()
 
-    @prepr('string')
+    @prepr('string', 'params', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
@@ -1253,15 +1442,14 @@ class Case(BaseExpression):
             @val: the default value - creates the |ELSE| statement
                 in the |CASE|
         """
-        self._el = Parameterize(val) if val is not None else val
+        self._el = parameterize(val) if val is not None else val
         self.compile()
 
     def compile(self, use_field_name=None):
         """ Compiles the object to a string """
         if use_field_name is not None:
             self.use_field_name = use_field_name
-        self._inherit_parameters(*self.conditions)
-        expressions = list(filter(lambda x: len(x), self._compile_expressions(
+        expressions = list(filter(None, self._compile_expressions(
             *self.conditions, use_field_name=self.use_field_name)))
         when_thens = " ".join(
             "WHEN {} THEN {}".format(when, then)
@@ -1273,14 +1461,11 @@ class Case(BaseExpression):
             el = "ELSE " + self._el.string
         string = "CASE {} {}".format(when_thens, el)
         self.string = "{} END {}".format(
-            string.strip(),
-            self.alias or ""
-        ).strip()
+            string.strip(), self.alias or "").strip()
         return self.string
 
 
-class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
-               StringLogic):
+class Function(BaseExpression, DateTimeLogic, StringLogic):
     """ You must use this wrapper if you
         want to make function calls within the models, as plain text is
         parameterized for safety.
@@ -1290,24 +1475,6 @@ class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
 
         Corrected::
         |model.where(Function('age', model.timestamp, '1980-03-19'))|
-
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        ``Usage Example``
-        ..
-            f = Function.func('now')
-        ..
-        |now()|
-
-        ..
-            f = Function.func('generate_series', 1, 2, 3, 4)
-        ..
-        |generate_series(1, 2, 3, 4)|
-
-        ..
-            f = Function.func('generate_series', 1, 2, 3, 4,
-                              alias="fun_series")
-        ..
-        |generate_series(1, 2, 3, 4) fun_series|
     """
     __slots__ = ('string', 'func', 'args', 'params', 'alias', 'use_field_name')
 
@@ -1316,7 +1483,8 @@ class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
         """ `Function`
             Formats and aliases SQL functions.
 
-            @func: #str name of func
+            @func: #str name of func - this does NOT get parameterized
+                so it is completely unsafe to put user submitted data here
             @*args: arguments to pass to the function
             @use_field_name: #bool True to use the 'field_name' attribute in
                 :class:Field objects instead of 'name'
@@ -1324,13 +1492,13 @@ class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
         """
         self.string = None
         self.func = func
-        self.args = tuple(arg for arg in args if arg is not _empty)
+        self.args = args
         self.alias = alias
-        self.params = params or dict()
+        self.params = params or {}
         self.use_field_name = use_field_name
         self.compile()
 
-    @prepr('string', 'alias')
+    @prepr('string', 'params', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
@@ -1371,21 +1539,21 @@ class Function(BaseExpression, BaseLogic, NumericLogic, DateTimeLogic,
             expressions = [aliased(expressions[0])]
             wrap = False
         return Expression(self,
-                          Clause('OVER', *expressions, wrap=wrap,
-                                 join_with=" "),
+                          Clause('OVER', *expressions, wrap=wrap),
                           alias=alias)
 
     def compile(self, use_field_name=None):
         """ Turns the function into a string """
         if use_field_name is not None:
             self.use_field_name = use_field_name
-        self._inherit_parameters(*self.args)
-        func_params = filter(lambda x: len(x), self._compile_expressions(
-            *self.args, use_field_name=self.use_field_name))
-        func_params = ", ".join(map(str, func_params)) \
-            if func_params is not None else ""
-        self.string = "{}({}) {}".format(
-          self.func, func_params, self.alias or "").strip()
+        self.string = (
+            "%s(%s) %s" % (
+                self.func,
+                self._join_expressions(", ",
+                                       *self.args,
+                                       use_field_name=self.use_field_name),
+                self.alias or "")
+        ).rstrip()
         return self.string
 
 
@@ -2176,6 +2344,86 @@ class Functions(WindowFunctions):
         """ cast(mytable.myfield AS integer) """
         return Function('cast', Expression(field, 'AS', safe(as_)))
 
+    # TODO: Binary support functions
+    # NOTE: http://www.postgresql.org/docs/9.3/static/functions-binarystring.html
+    @staticmethod
+    def btrim():
+        pass
+
+    @staticmethod
+    def encode():
+        pass
+
+    @staticmethod
+    def decode():
+        pass
+
+    @staticmethod
+    def get_bit():
+        pass
+
+    @staticmethod
+    def get_byte():
+        pass
+
+    @staticmethod
+    def set_bit():
+        pass
+
+    @staticmethod
+    def set_byte():
+        pass
+
+    @staticmethod
+    def length():
+        pass
+
+    @staticmethod
+    def md5():
+        pass
+
+    # TODO: Json support functions
+    # NOTE: http://www.postgresql.org/docs/9.3/static/functions-json.html
+    @staticmethod
+    def array_to_json():
+        pass
+
+    @staticmethod
+    def row_to_json():
+        pass
+
+    @staticmethod
+    def to_json():
+        pass
+
+    @staticmethod
+    def json_array_length():
+        pass
+
+    @staticmethod
+    def json_each():
+        pass
+
+    @staticmethod
+    def json_each_text():
+        pass
+
+    @staticmethod
+    def json_object_keys():
+        pass
+
+    @staticmethod
+    def json_populate_record():
+        pass
+
+    @staticmethod
+    def json_populate_recordset():
+        pass
+
+    @staticmethod
+    def json_array_elements():
+        pass
+
     @staticmethod
     def func(*args, **kwargs):
         """ Use a custom function or one that is not listed
@@ -2193,27 +2441,27 @@ class Functions(WindowFunctions):
         return Function(*args, **kwargs)
 
 
-class aliased(BaseLogic, NumericLogic, DateTimeLogic, StringLogic):
+class aliased(DateTimeLogic, StringLogic):
     """ For field aliases.
 
         This object can be manipulated with expression :class:BaseLogic
     """
-    __slots__ = ('value',)
+    __slots__ = ('string',)
 
     def __init__(self, name_or_field):
         if hasattr(name_or_field, '_alias'):
             if name_or_field._alias:
-                self.value = name_or_field._alias
+                self.string = name_or_field._alias
             else:
-                self.value = name_or_field.name
+                self.string = name_or_field.name
         else:
-            self.value = name_or_field
+            self.string = name_or_field
 
-    @prepr('value', _break=False)
+    @prepr('value', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
-        return str(self.value)
+        return str(self.string)
 
     def alias(self, alias):
         """ ..
@@ -2230,42 +2478,48 @@ class aliased(BaseLogic, NumericLogic, DateTimeLogic, StringLogic):
         return aliased(str(self) + ' AS ' + alias)
 
 
-class safe(BaseLogic, NumericLogic, DateTimeLogic, StringLogic):
+class parameterize(BaseExpression, DateTimeLogic, StringLogic):
+    """ ``Usage Example``
+        ..
+            ORM().subquery().where(parameterize(1)).select()
+        ..
+        |%(8ae08c)s|
+    """
+    __slots__ = ('string', 'params')
+
+    def __init__(self, value, alias=None):
+        """`parameterize`
+            Parameterizes plain text
+            @value: the values to parameterize
+            @alias: (#str) an alias to apply to the value
+        """
+        self.params = value.params if hasattr(value, 'params') else {}
+        self.string = "{} {}".format(
+            self._parameterize(value),
+            alias if alias else "").rstrip()
+
+    @prepr('value', 'string', 'params', _no_keys=True)
+    def __repr__(self): return
+
+    def __str__(self):
+        return self.string
+
+
+class safe(DateTimeLogic, StringLogic):
     """ !! The value of this object will not be parameterized when
            queries are made. !!
 
         This object cannot be manipulated with expression :class:BaseLogic
     """
-    __slots__ = ('value', 'alias')
+    __slots__ = ('string', 'params', 'alias')
 
     def __init__(self, value, alias=None):
-        self.value = value
         self.alias = alias or ""
         self.params = {}
+        self.string = "{} {}".format(value, self.alias).rstrip()
 
-    @prepr('value')
-    def __repr__(self): return
-
-    @property
-    def string(self):
-        return self.value
-
-    def __str__(self):
-        return "{} {}".format(self.value, self.alias).strip()
-
-
-class ArrayItems(object):
-    """ Thin wrapper for lists in :class:Array """
-    __slots__ = ('value',)
-
-    def __init__(self, items):
-        self.value = list(items)
-
-    @prepr('value', _break=False)
+    @prepr('string', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
-        return str(self.value)
-
-    def __call__(self):
-        return self.value
+        return self.string

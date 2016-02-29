@@ -5,7 +5,7 @@ import pickle
 import copy
 
 from kola import config
-from vital.docr import Docr
+from docr import Docr
 
 from bloom import aliased, fields
 from bloom.fields import Field
@@ -17,9 +17,9 @@ class Tc(object):
 
 class TestField(unittest.TestCase):
     fields = Docr(fields)
+    base = Field()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def test_init(self, *args, **kwargs):
         self.base = Field(value="foo")
         self.assertEqual(self.base.value, "foo")
         self.base = Field(primary=True)
@@ -64,7 +64,6 @@ class TestField(unittest.TestCase):
         self.assertEqual(fielda.table, fieldb.table)
 
     def test_pickle(self):
-        self.base.validation = None
         b = pickle.loads(pickle.dumps(self.base))
         for k in list(self.base.__slots__):
             if isinstance(
@@ -76,7 +75,6 @@ class TestField(unittest.TestCase):
 
     def test__set_value(self):
         self.base._set_value("foo")
-        self.assertEqual(self.base.data, "foo")
         self.assertEqual(self.base.value, "foo")
 
     def test_set_alias(self):
@@ -93,7 +91,6 @@ class TestField(unittest.TestCase):
     def test___call__(self):
         self.base('foobar')
         self.assertEqual(self.base.value, 'foobar')
-        self.assertEqual(self.base.data, 'foobar')
         self.assertEqual(self.base(), 'foobar')
         self.assertEqual(self.base(None), None)
 

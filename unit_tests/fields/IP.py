@@ -7,7 +7,6 @@ import psycopg2.extras
 from kola import request
 from bloom.fields import IP
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Field import *
 
 
@@ -25,7 +24,7 @@ class TestIP(TestField):
 
     def test___call__(self):
         self.base = IP(request=request)
-        self.assertEqual(self.base.value, None)
+        self.assertEqual(self.base.value, self.base.empty)
         self.base(request.remote_addr)
         self.assertIsInstance(self.base.value, psycopg2.extras.Inet)
         self.base(IP.current)

@@ -53,7 +53,7 @@ class TestValidationValue(unittest.TestCase):
     def test_array(self):
         field = new_field('array', value=[2.40])
         base = ValidationValue(field)
-        self.assertTrue(base.value is field.value)
+        self.assertListEqual(base.value, field.value)
         self.assertTrue(base.is_array)
         self.assertFalse(base.is_float)
         self.assertFalse(base.is_str)

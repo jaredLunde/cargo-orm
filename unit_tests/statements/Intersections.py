@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.statements.Intersections`
+    `Unit tests for bloom.statements.SetOperations`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -14,7 +14,7 @@ from vital.security import randkey
 
 from bloom import *
 from bloom.orm import QueryState
-from bloom.statements import Intersections
+from bloom.statements import SetOperations
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')
@@ -45,7 +45,7 @@ def new_clause(name='FROM', *vals):
     return Clause(name, *vals)
 
 
-class TestIntersections(unittest.TestCase):
+class TestSetOperations(unittest.TestCase):
     orm = ORM()
     fields = [
         new_field('text', 'bar', name='textfield', table='foo'),
@@ -60,11 +60,11 @@ class TestIntersections(unittest.TestCase):
         self.q4 = SELECT(self.orm, safe('4, 5, 6'))
 
     def test___init__(self):
-        q = Intersections(self.orm, self.q1, self.q2)
+        q = SetOperations(self.orm, self.q1, self.q2)
         self.assertIs(q.orm, self.orm)
-        self.assertEqual(len(q.intersections), 2)
-        self.assertIn(self.q1, q.intersections)
-        self.assertIn(self.q2, q.intersections)
+        self.assertEqual(len(q.operations), 2)
+        self.assertIn(self.q1, q.operations)
+        self.assertIn(self.q2, q.operations)
 
     def test_union(self):
         q = self.q1

@@ -31,7 +31,7 @@ from psycopg2.extensions import cursor as _cursor
 from vital.cache import cached_property
 from vital.tools.dicts import merge_dict
 from vital.tools.strings import camel_to_underscore
-from vital.debug import prepr, line
+from vital.debug import prepr, line, logg
 
 from bloom.clients import *
 from bloom.cursors import CNamedTupleCursor
@@ -46,6 +46,8 @@ from bloom.validators import ValidationValue
 
 __all__ = (
     "Model",
+    "Joins",
+    "QueryState",
     "RestModel",
     "ORM"
 )
@@ -75,8 +77,8 @@ class ORM(object):
         self._client = client
         self.queries = []
         self.schema = schema
-        self._multi = False
         self._state = QueryState(self)
+        self._multi = False
         self._many = False
         self._with = False
         self._dry = False
@@ -87,17 +89,17 @@ class ORM(object):
             self.table = table
         self._debug = debug
 
-    @prepr('client', 'table')
+    @prepr('db')
     def __repr__(self): return
 
     # ``Connection handing``
 
     @cached_property
-    def client(self):
+    def db(self):
         return self._client or local_client.get('db') or Postgres()
 
     def __enter__(self):
-        """ Context manager, connects to :prop:bloom.ORM.client
+        """ Context manager, connects to :prop:bloom.ORM.db
             ..
             with ORM() as sql:
                 sql.where(Expression("table.field", "=", "some_val"))
@@ -111,24 +113,21 @@ class ORM(object):
         return self
 
     def __exit__(self, type=None, value=None, tb=None):
-        """ Context manager, closes the :prop:bloom.ORM.client connection
-        """
+        """ Context manager, closes the :prop:bloom.ORM.db connection """
         self.close()
 
     def connect(self, **options):
-        """ Connects the :prop:bloom.ORM.client.
+        """ Connects the :prop:bloom.ORM.db.
 
             Passes @*args and @**kwargs to the local instance of
             :class:Postgres
         """
-        return self.client.connect(**options)
+        return self.db.connect(**options)
 
     def close(self):
-        """ Closes the :prop:bloom.ORM.client, resets the
-            :prop:state
-        """
+        """ Closes the :prop:bloom.ORM.db, resets the :prop:state """
         self.reset()
-        return self.client.close()
+        return self.db.close()
 
     def set_table(self, table):
         """ Sets the ORM table to @table (#str) """
@@ -144,8 +143,8 @@ class ORM(object):
         """ For pickling """
         d = self.__dict__.copy()
         d['_client'] = None
-        if 'client' in d:
-            del d['client']
+        if 'db' in d:
+            del d['db']
         nt = self.__class__.__name__ + 'Record'
         if nt in d:
             del d[nt]
@@ -184,24 +183,28 @@ class ORM(object):
         self._dry = True
         return self
 
+    def _is_naked(self):
+        return True
+
     def _cast_query(self, q):
         """ Decides how to return the result of a query call.
             @q: (:class:Query)
         """
         if q.is_subquery:
-            sub = Subquery(q)
             self.reset()
-            return sub
+            return Subquery(q)
         elif self._dry:
             self.reset_state()
             self.reset_dry()
             return q
         elif self._many:
             return self
-        elif q._with or self._multi:
+        elif self._multi:
             self.add_query(q)
-            if self._multi:
-                self.reset()
+            self.reset()
+            return self
+        elif q._with:
+            self.add_query(q)
             return self
         else:
             self.add_query(q)
@@ -269,7 +272,6 @@ class ORM(object):
                 is |True|
         """
         self.from_()
-        q = Delete(self, **kwargs)
         return self._cast_query(Delete(self, **kwargs))
 
     delete = _delete
@@ -292,10 +294,9 @@ class ORM(object):
         conflict_action = conflict_action or Clause('DO UPDATE')
         if conflict_field:
             self.on(
-                Clause('CONFLICT', conflict_field, wrap=True), conflict_action,
-                join_with=" ")
+                Clause('CONFLICT', conflict_field, wrap=True), conflict_action)
         else:
-            self.on(Clause('CONFLICT'), conflict_action, join_with=" ")
+            self.on(Clause('CONFLICT'), conflict_action)
         return self._insert(*fields, **kwargs)
 
     upsert = _upsert
@@ -328,8 +329,7 @@ class ORM(object):
         """
         table = table if table else self.table
         if table:
-            self.state.add(Clause("FROM", safe(table), join_with=", ",
-                                  alias=alias))
+            self.state.add(CommaClause("FROM", safe(table), alias=alias))
         return self
 
     use = from_
@@ -365,9 +365,8 @@ class ORM(object):
                 expressions.append(Clause('PARTITION BY', partition_by))
             if order_by is not None:
                 expressions.append(Clause('ORDER BY', order_by))
-        as_ = Clause('AS', *expressions, wrap=True, join_with=" ")
-        return self.state.add(
-            Clause('WINDOW', aliased(alias), as_, join_with=" "))
+        as_ = WrappedClause('AS', *expressions)
+        return self.state.add(Clause('WINDOW', aliased(alias), as_))
 
     def join(self, a=None, b=None, on=None, using=None, type="", alias=None):
         """ Sets a |JOIN| clause in the :prop:state of type @type
@@ -381,7 +380,6 @@ class ORM(object):
 
             -> @self
             - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
             ``Usage Example``
             ..
                 m1 = Model()
@@ -525,8 +523,7 @@ class ORM(object):
             |INSERT INTO foo_table|
         """
         if table is not None:
-            self.state.add(Clause("INTO", safe(table), join_with=", ",
-                                  alias=alias))
+            self.state.add(CommaClause("INTO", safe(table), alias=alias))
         else:
             raise ValueError("INTO clause cannot be 'None'")
         return self
@@ -565,7 +562,7 @@ class ORM(object):
                 return safe('DEFAULT')
 
         vals = tuple(map(_do_insert, vals))
-        self.state.add(Clause("VALUES ", vals))
+        self.state.add(ValuesClause("VALUES ", *vals))
         return self
 
     def set(self, *exps, **kwargs):
@@ -603,8 +600,8 @@ class ORM(object):
                 return field
 
         exps = filter(lambda x: x is not None,  map(_do_update, exps))
-        self.state.add(Clause("SET", *exps, use_field_name=True,
-                              join_with=", ", **kwargs))
+        self.state.add(CommaClause("SET", *exps, use_field_name=True,
+                                   **kwargs))
         return self
 
     def group_by(self, *exps, **kwargs):
@@ -626,7 +623,7 @@ class ORM(object):
                 m.select()
             ..
         """
-        self.state.add(Clause("GROUP BY", *exps, join_with=", ", **kwargs))
+        self.state.add(CommaClause("GROUP BY", *exps, **kwargs))
         return self
 
     def order_by(self, *exps, **kwargs):
@@ -648,7 +645,7 @@ class ORM(object):
                 m.select()
             ..
         """
-        self.state.add(Clause("ORDER BY", *exps, join_with=", ", **kwargs))
+        self.state.add(CommaClause("ORDER BY", *exps, **kwargs))
         return self
 
     def asc(self, exp):
@@ -700,8 +697,7 @@ class ORM(object):
                 m.select()
             ..
         """
-        clause = Clause("LIMIT", limit_offset if limit is None else limit,
-                        join_with=", ")
+        clause = CommaClause("LIMIT", limit_offset if limit is None else limit)
         self.state.add(clause)
         if limit:
             self.offset(limit_offset)
@@ -729,8 +725,8 @@ class ORM(object):
             args.append(count)
         if direction:
             args.append(safe(direction))
-        c = Clause(type, *args, join_with=' ')
-        self.state.add(Clause("FETCH", c, join_with=' '))
+        c = Clause(type, *args)
+        self.state.add(Clause("FETCH", c))
         return self
 
     def offset(self, offset):
@@ -741,7 +737,7 @@ class ORM(object):
 
             -> @self
         """
-        self.state.add(Clause("OFFSET", offset, join_with=", "))
+        self.state.add(CommaClause("OFFSET", offset))
         return self
 
     def one(self):
@@ -788,7 +784,7 @@ class ORM(object):
 
             -> @self
         """
-        self.state.add(Clause("HAVING", *exps, join_with=", ", **kwargs))
+        self.state.add(CommaClause("HAVING", *exps, **kwargs))
         return self
 
     def for_update(self, *exps, **kwargs):
@@ -828,7 +824,7 @@ class ORM(object):
         except TypeError:
             pass
         exps = exps or (safe("*"),)
-        self.state.add(Clause("RETURNING", *exps, join_with=", ", **kwargs))
+        self.state.add(CommaClause("RETURNING", *exps, **kwargs))
         return self
 
     def on(self, *exps, join_with='AND', **kwargs):
@@ -866,10 +862,8 @@ class ORM(object):
             if self._many:
                 self.queries[-1].compile()
             self._multi = False
-
         #: Gets the client connection from a pool or client object
-        conn = self.client.get()
-
+        conn = self.db.get()
         for q in queries or self.queries:
             #: Executes the query with its parameters
             result = self.execute(q.query, q.params, commit=commit, conn=conn)
@@ -888,9 +882,9 @@ class ORM(object):
                     pass
             yield result
 
-        self._decide_reset_method(multi, queries, conn)
+        self._get_reset_method(multi, queries, conn)
 
-    def _decide_reset_method(self, multi, queries, conn):
+    def _get_reset_method(self, multi, queries, conn):
         if queries:
             #: Explicit 'run', the user is in control of everything except
             #  for the query state and client connection
@@ -898,13 +892,13 @@ class ORM(object):
         else:
             #: Implicit 'run', the ORM is in control
             self.reset(multi=True)
-            if multi and not self.client.autocommit:
+            if multi and not self.db.autocommit:
                 try:
                     conn.commit()
                 except psycopg2.ProgrammingError as e:
                     conn.rollback()
                     raise QueryError(e.args[0].strip())
-        self.client.put(conn)
+        self.db.put(conn)
 
     def run(self, *queries):
         """ Runs all of the queries in @*qs or in :prop:queries,
@@ -942,12 +936,12 @@ class ORM(object):
         _conn = conn
         #: Gets a client connection if one wasn't passed as an argument
         if _conn is None:
-            conn = self.client.get()
-        self.debug(conn, query, params)
-        cursor = conn.cursor(cursor_factory=self._cursor_factory)
+            conn = self.db.get()
+        cursor = conn.cursor(schema=self.schema,
+                             model=self,
+                             cursor_factory=self._cursor_factory)
+        self.debug(cursor, query, params)
         #: Sets the cursor search path to the current schema
-        if self.schema and self.schema != conn.schema:
-            cursor.execute('SET search_path TO {}'.format(schema))
         try:
             #: Executes the cursor
             cursor.execute(query, params)
@@ -963,7 +957,7 @@ class ORM(object):
         #  was passed in arguments. If a connection object is passed,
         #  it's the user's responsibility to put it away.
         if _conn is None:
-            self.client.put(conn)
+            self.db.put(conn)
         return cursor
 
     def subquery(self, alias=None):
@@ -1117,7 +1111,7 @@ class ORM(object):
 
     def reset(self, multi=False):
         """ Resets the query :prop:state, many mode and optionally
-            multi-mode
+            multi-mode if @multi is set to |True|
         """
         self._with = False
         self.reset_many()
@@ -1131,22 +1125,20 @@ class ORM(object):
         self.reset_state()
         return self
 
-    def debug(self, conn, query, params):
+    def debug(self, cursor, query, params):
         """ Prints query information including :prop:state,
             :prop:params, and :prop:queries
         """
         if self._debug:
-            line('~')
-            logg().warning("ORM Query")
-            line('~')
-            qre = re.compile(r"""^|\s([A-Z]+\s)""")
-            l = logg(qre.sub(r"""\n\1""", query), params)
+            line('—')
+            logg().warning("Bloom Query")
+            line('—')
+            l = logg(query, params)
             l.log("Parameterized", force=True)
-            print()
-            mog = conn.cursor.mogrify(query, params).decode()
-            l = logg(qre.sub(r"""\n\1""", mog))
+            mog = cursor.mogrify(query, params).decode()
+            l = logg(mog)
             l.log("Mogrified", force=True)
-            line('~')
+            line('—')
 
     def copy(self, *args, **kwargs):
         cls = copy.copy(self)
@@ -1158,20 +1150,23 @@ class ORM(object):
 
 class QueryState(object):
     """`Query State`
-        Manages the active ORM clauses, joins, parameters and subqueries.
+        Manages the ORM clauses, joins, parameters and subqueries.
     """
+    __slots__ = ('orm', 'clauses', 'params', 'alias', 'one', 'is_subquery',
+                 '_join')
     _multi_clauses = {'VALUES', 'JOIN'}
 
     def __init__(self, orm):
         self.orm = orm
+        self._join = Joins(orm)
         self.clauses = OrderedDict()
         self.params = {}
+        self.one = False
         #: Subqueries
         self.alias = None
-        self.one = False
         self.is_subquery = False
 
-    @prepr('clauses', 'params', 'joins', 'alias', 'is_subquery')
+    @prepr('clauses', 'params', _no_keys=True)
     def __repr__(self): return
 
     def __iter__(self):
@@ -1187,6 +1182,7 @@ class QueryState(object):
         self.alias = None
         self.one = False
         self.is_subquery = False
+        return self
 
     def has(self, name):
         """ Determines if the state has a clause with @name
@@ -1232,7 +1228,7 @@ class QueryState(object):
             return self.clauses.pop(name, default)
 
     def add(self, *clauses):
-        """ Adds :class:Clause(s) to the active :class:ORM query state
+        """ Adds :class:Clause(s) to the :class:ORM query state
             @*clauses: (:class:Clause)
         """
         for clause in clauses:
@@ -1249,52 +1245,33 @@ class QueryState(object):
             elif clause_name == 'WHERE' and clause_name in self.clauses:
                 #: WHERE clauses get extended
                 _clause = self.clauses[clause_name]
+                _clause.args = list(_clause.args)
                 _clause.args.extend(clause.args)
-                _clause.params.update(clause.params)
                 _clause.compile()
             else:
                 #: Overwrite
                 self.clauses[clause_name] = clause
 
-    def join(self, a=None, b=None, on=None, using=None, type="",
-             alias=None):
-        """ :see::ORM.join """
-        clause = "{} JOIN".format(type).strip()
-        using = [using] if isinstance(using, Field) else using
-        if using:
-            #: Join 'using' the given fields of the same name
-            table = using[0].table
-            on = Clause('USING', *using, join_with=", ", wrap=True)
-            clause = Clause(clause, safe(table, alias=alias), on,
-                            use_field_name=True, join_with=" ")
-        else:
-            if on:
-                table, on = self._join_with_on(a, on, alias)
-            else:
-                if b is not None:
-                    #: 'a' and 'b' are given, they are assumed to be related
-                    # fields
-                    table, on = self._join_with_fields(a, b, alias)
-                else:
-                    #: Only 'a' is given, check for foreign keys and
-                    # to help determine what to join. Otherwise it will attempt
-                    # to join the first occurence of the same field type
-                    if isinstance(a, Field):
-                        table, on = self._join_with_field(a, alias)
-                    elif isinstance(a, (Model, Relationship)):
-                        #: Only a :class:Model was provided
-                        table, on = self._join_with_model(a, alias)
-                    elif isinstance(a, Expression):
-                        #: 'a' was a :class:Expression object, so we use that
-                        # as the ON clause and the left or right field's table
-                        # as the join table
-                        table, on = self._join_with_expression(a, alias)
-            clause = Clause(clause, safe(table, alias=alias), on,
-                            join_with=" ")
-        #: Add the join to the state
-        self.add(clause)
+    def join(self, *args, **kwargs):
+        """ :see::meth:ORM.join """
+        self.add(self._join(*args, **kwargs))
+        return self
 
-    def _join_expression_on_alias(self, exp, join_table, alias):
+    def copy(self, *args, **kwargs):
+        cls = copy.copy(self)
+        cls.clauses = self.clauses.copy()
+        cls.params = self.params.copy()
+        return cls
+
+
+class Joins(object):
+    __slots__ = ('orm',)
+
+    def __init__(self, orm):
+        """ :see::meth:ORM.join """
+        self.orm = orm
+
+    def expression_on_alias(self, exp, join_table, alias):
         """ Recursively sets table aliases (@alias) on :class:Field objects if
             the table of the field matches @join_table within the @exp
             expression.
@@ -1305,17 +1282,17 @@ class QueryState(object):
                 exp.left.set_alias(table=alias)
                 exp.left = aliased(exp.left)
         elif isinstance(exp.left, Expression):
-            self._join_expression_on_alias(exp.left, join_table, alias)
+            self.expression_on_alias(exp.left, join_table, alias)
         if isinstance(exp.right, Field):
             if exp.right.table == join_table:
                 exp.right = exp.right.copy()
                 exp.right.set_alias(table=alias)
                 exp.right = aliased(exp.right)
         elif isinstance(exp.right, Expression):
-            self._join_expression_on_alias(exp.right, join_table, alias)
+            self.expression_on_alias(exp.right, join_table, alias)
         return exp
 
-    def _join_with_on(self, a, on, alias):
+    def with_on(self, a, on, alias):
         """ An 'on' expression was given, so we can use that expression
             to join the 'a' table.
         """
@@ -1323,16 +1300,16 @@ class QueryState(object):
         if not isinstance(on, Expression):
             if alias:
                 on = [
-                    self._join_expression_on_alias(o, table, alias)
+                    self.expression_on_alias(o, table, alias)
                     for o in on]
             on = Clause('ON', *on)
         else:
             if alias:
-                self._join_expression_on_alias(on, table, alias)
+                self.expression_on_alias(on, table, alias)
             on = Clause('ON', on)
         return table, on
 
-    def _join_with_field(self, a, alias):
+    def with_field(self, a, alias):
         """ Only a :class:Field object was given as the |JOIN| context,
             so we search the field for matching field names and matching
             field types. The best guess is returned. If no guess is found,
@@ -1358,45 +1335,45 @@ class QueryState(object):
                 'Could not find join field in `{}` for ' +
                 'field `{}`'.format(table, a.name))
         if alias:
-            on = self._join_expression_on_alias(on, table, alias)
+            on = self.expression_on_alias(on, table, alias)
         return table, Clause('ON', on)
 
-    def _join_with_fields(self, a, b, alias):
+    def with_fields(self, a, b, alias):
         """ 'a' and 'b' are given, they are assumed to be related fields """
         table = b.table if a.table == self.orm.table else a.table
         if alias:
-            on = self._join_expression_on_alias(a.eq(b), table, alias)
+            on = self.expression_on_alias(a.eq(b), table, alias)
         else:
             on = a.eq(b)
         return table, Clause('ON', on)
 
-    def _join_with_model(self, a, alias):
+    def with_model(self, a, alias):
         """ The only context given was a :class:Model. The model is searched
             for the local model in a :class:Relationship or :class:ForeignKey.
             If none are found, the best field guess is used based on
-            :meth:_join_with_field.
+            :meth:with_field.
         """
         for fkey in a.foreign_keys:
             #: Search foreign keys
             if fkey.ref.model.table == self.orm.table:
-                return self._join_with_field(fkey, alias)
+                return self.with_field(fkey, alias)
 
         for relationship in a.relationships:
             #: Search relationships
             if relationship.table == self.orm.table:
-                return self._join_with_fields(
+                return self.with_fields(
                     relationship.join_field, relationship.foreign_key, alias)
 
         for field in a.fields:
             #: Search fields
             try:
-                return self._join_with_field(field, alias)
+                return self.with_field(field, alias)
             except ValueError:
                 pass
         raise ValueError('Could not find join field for ' +
                          'model `{}`'.format(a.__class__.__name__))
 
-    def _join_with_expression(self, a, alias):
+    def with_expression(self, a, alias):
         """ 'a' was a :class:Expression object, so we use that
             as the ON clause and the left or right field's table
             as the join table
@@ -1417,16 +1394,46 @@ class QueryState(object):
                 raise RuntimeError(
                     'Maximum expression search depth exceeded in JOIN.')
         if alias:
-            a = self._join_expression_on_alias(a, table, alias)
+            a = self.expression_on_alias(a, table, alias)
         on = Clause('ON', a)
         return table, on
 
-    def copy(self, *args, **kwargs):
-        cls = copy.copy(self)
-        cls.clauses = self.clauses.copy()
-        cls.params = self.params.copy()
-        return cls
+    def join(self, a=None, b=None, on=None, using=None, type="", alias=None):
+        """ :see::meth:ORM.join """
+        clause = "{} JOIN".format(type).strip()
+        using = [using] if isinstance(using, Field) else using
+        if using:
+            #: Join 'using' the given fields of the same name
+            table = using[0].table
+            on = CommaClause('USING', *using, wrap=True)
+            clause = Clause(clause, safe(table, alias=alias), on,
+                            use_field_name=True)
+        else:
+            if on:
+                table, on = self.with_on(a, on, alias)
+            else:
+                if b is not None:
+                    #: 'a' and 'b' are given, they are assumed to be related
+                    # fields
+                    table, on = self.with_fields(a, b, alias)
+                else:
+                    #: Only 'a' is given, check for foreign keys and
+                    # to help determine what to join. Otherwise it will attempt
+                    # to join the first occurence of the same field type
+                    if isinstance(a, Field):
+                        table, on = self.with_field(a, alias)
+                    elif isinstance(a, (Model, Relationship)):
+                        #: Only a :class:Model was provided
+                        table, on = self.with_model(a, alias)
+                    elif isinstance(a, Expression):
+                        #: 'a' was a :class:Expression object, so we use that
+                        # as the ON clause and the left or right field's table
+                        # as the join table
+                        table, on = self.with_expression(a, alias)
+            clause = Clause(clause, safe(table, alias=alias), on)
+        return clause
 
+    __call__ = join
 
 #
 #  ``Models``
@@ -1515,7 +1522,7 @@ class Model(ORM):
         self._compile()
         self.fill(**kwargs)
 
-    @prepr('table', 'field_names')
+    @prepr('field_names', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
@@ -1527,12 +1534,9 @@ class Model(ORM):
         memo[id(self)] = result
         for k, v in self.__dict__.items():
             try:
-                setattr(result, k, copy.deepcopy(v, memo))
-            except TypeError:
-                try:
-                    setattr(result, k, v.copy())
-                except AttributeError:
-                    setattr(result, k, copy.copy(v))
+                setattr(result, k, v.copy())
+            except AttributeError:
+                setattr(result, k, copy.copy(v))
         result.fill(**self.to_dict())
         return result
 
@@ -1595,6 +1599,10 @@ class Model(ORM):
         self.add_relationship(**relationships)
 
     def _make_nt(self):
+        """ Makes a :class:namedtuple object with :prop:field names
+            as its field names, and stores it in self.ModelNameRecord
+            i.e., if your model is named Users, self.UsersRecord
+        """
         cname = self.__class__.__name__
         if not hasattr(self, cname):
             setattr(self,
@@ -1609,8 +1617,8 @@ class Model(ORM):
         return self
 
     def new(self):
-        """ Causes the ORM to fill a new model and return it rather than
-            filling the active one.
+        """ Causes the ORM to :class:fill a new model and return it rather than
+            filling the active one when executing a query.
         """
         self._new = True
         return self
@@ -1726,14 +1734,17 @@ class Model(ORM):
             SELECT reltuples::bigint FROM pg_class WHERE oid = 'foo'::regclass;
             ..
         """
-        table = self.table if not self.client.schema else\
-            "{}.{}".format(self.client.schema, self.table)
-        expr = Expression(
-            safe('oid'), '=', Parameterize(table, safe('::regclass')))
+        table = self.table if not self.db.schema else\
+            "{}.{}".format(self.db.schema, self.table)
+        expr = Expression(safe('oid'),
+                          '=',
+                          parameterize(table, safe('::regclass')))
         self.from_('pg_class')
         self.where(expr)
-        q = Select(self, safe('reltuples::bigint {}'.format(alias or "count")))
+        self.naked()
+        q = Select(self, safe('reltuples::bigint %s' % (alias or "count")))
         result = q.execute().fetchone()
+        self.reset_naked()
         if alias is None:
             if hasattr(result, '_asdict'):
                 result = result.count
@@ -1803,13 +1814,24 @@ class Model(ORM):
 
     @cached_property
     def indexes(self):
-        """ -> #tuple of all plain indexes within the model
-                (not unique, foreign or primary keys)
-        """
+        """ -> #tuple of all indexes within the model """
         return tuple(field for field in self.fields if field.index)
 
     @cached_property
+    def plain_indexes(self):
+        """ -> #tuple of all plain indexes within the model
+                (not unique, foreign or primary keys)
+        """
+        return tuple(field for field in self.fields
+                     if field.index and not field.unique)
+
+    @cached_property
     def unique_indexes(self):
+        """ -> #tuple of all unique indexes within the model """
+        return tuple(field for field in self.indexes if field.unique)
+
+    @cached_property
+    def unique_fields(self):
         """ -> #tuple of all unique indexes within the model """
         return tuple(field for field in self.fields if field.unique)
 
@@ -1842,7 +1864,7 @@ class Model(ORM):
         add_better, add_worse = better.append, worse.append
         betters = ValidationValue.FLOATS.copy()
         betters.union({TIME, TIMESTAMP, DATE, EMAIL, USERNAME, KEY, BOOL})
-        for index in list(self.unique_indexes) + self.foreign_keys:
+        for index in self.unique_indexes:
             if index.sqltype in ValidationValue.INTS:
                 add_index(index)
             elif index.sqltype in betters:
@@ -1852,7 +1874,7 @@ class Model(ORM):
         indexes.extend(index for index in better + worse)
         better.clear()
         worse.clear()
-        for index in self.indexes:
+        for index in self.plain_indexes:
             if index.sqltype in ValidationValue.INTS:
                 add_index(index)
             elif index.sqltype in betters:
@@ -1969,33 +1991,8 @@ class Model(ORM):
         self.reset_relationships()
         return self
 
-    def _fill_from_cursor_factory(self, model, result):
-        if hasattr(result, '_asdict'):
-            return model.from_namedtuple(result)
-        else:
-            return model.fill(**result)
-
-    def _is_naked(self, naked):
-        return naked if naked is not None else self._always_naked
-
-    def _cast_return(self, results):
-        """ Casts the return value for model queries
-            @results: set of query results
-        """
-        naked = self._is_naked(self._naked)
-        if not results or \
-           self._multi or \
-           naked or \
-           self._dry or \
-           isinstance(results, (_cursor, ORM)):
-            return results
-        if isinstance(results, list) and not \
-           isinstance(results, psycopg2.extras.DictRow):
-            return [self._fill_from_cursor_factory(
-                        self.copy().clear(), result)
-                    for result in results]
-        m = self if not self._new else self.copy()
-        return self._fill_from_cursor_factory(m, results)
+    def _is_naked(self):
+        return self._naked if self._naked is not None else self._always_naked
 
     def run_iter(self, *queries, **kwargs):
         """ :see::meth:ORM.run_iter
@@ -2006,7 +2003,7 @@ class Model(ORM):
         if multi:
             self.new()
         for x in ORM.run_iter(self, *queries, **kwargs):
-            yield self._cast_return(x)
+            yield x
 
     def run(self, *queries):
         """ :see::meth:ORM.run
@@ -2143,7 +2140,7 @@ class Model(ORM):
 
             -> :meth:clear(ed) self
         """
-        naked = self._is_naked(self._naked)
+        naked = self._is_naked()
         result = self.one().delete(*args, **kwargs)
         if not naked:
             return self.clear()
@@ -2227,14 +2224,7 @@ class Model(ORM):
             if not results:
                 break
             for result in results:
-                if self._naked:
-                    yield result
-                else:
-                    m = self.copy().clear()
-                    if hasattr(result, '_asdict'):
-                        result = result._asdict()
-                    m.fill(**result)
-                    yield m
+                yield result
         self.reset()
 
     def copy(self):
@@ -2243,7 +2233,7 @@ class Model(ORM):
         cls._fields = []
         add_field = cls._fields.append
         setattr_ = cls.__setattr__
-        setattr_('client', self.client)
+        setattr_('db', self.db)
         setattr_('queries', self.queries.copy())
         if self._state:
             setattr_('_state', self._state.copy())

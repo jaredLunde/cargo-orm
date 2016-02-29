@@ -243,8 +243,10 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             __doc__ = _class.__doc__
 
             def __init__(self):
-                primary = False if 'primary' not in _kwargs \
-                    else _kwargs['primary']
+                primary = False
+                if 'primary' in _kwargs:
+                    primary = _kwargs['primary']
+                    del _kwargs['primary']
                 super().__init__(*_args, primary=primary, **_kwargs)
                 self.table = _owner.table
                 self.field_name = _owner_attr

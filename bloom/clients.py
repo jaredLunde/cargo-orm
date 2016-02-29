@@ -23,7 +23,7 @@ from multiprocessing import cpu_count
 
 from vital.cache import DictProperty, local_property
 from vital.tools.dicts import merge_dict
-from bloom.cursors import CNamedTupleCursor
+from bloom.cursors import CNamedTupleCursor, ModelCursor
 from vital.debug import prepr
 
 
@@ -53,6 +53,10 @@ class BaseClient(object):
     def schema(self):
         opt = self._connection_options
         return opt.get('schema', opt.get('search_path', self._schema))
+
+    @staticmethod
+    def set_schema(cursor, schema):
+        return cursor.execute('SET search_path TO %s' % schema)
 
     @staticmethod
     def to_dsn(opt):
@@ -122,7 +126,7 @@ class Postgres(BaseClient):
         # Cursor options
         self._cursor_factory = cursor_factory
 
-    @prepr('_connection', 'autocommit', _break=False)
+    @prepr('_connection', 'autocommit')
     def __repr__(self): return
 
     def __enter__(self):
@@ -148,12 +152,14 @@ class Postgres(BaseClient):
             self.connect()
         return self._connection
 
-    def cursor(self, name=None, cursor_factory=None, scrollable=None,
-               withhold=False):
+    def cursor(self, *args, model=None, cursor_factory=None, schema=None,
+               **kwargs):
         """ Creates a new cursor object with given options, defaulting to
             configured options.
 
             @name: (#str) name of the cursor
+            @model: (:class:Model|:class:ORM) to bind the cursor to if
+                this is a :class:ModelCursor
             @cursor_factory: :mod:psycopg2 cursor factory passed to
                 :prop:cursor
             @scrollable: (#bool) specifies if a named cursor is declared
@@ -162,6 +168,7 @@ class Postgres(BaseClient):
                 never scrollable. If None (default) the cursor scroll option is
                 not specified, usually but not always meaning no backward
                 scroll.
+            @schema: (#str) search path to set
             @withhold: (#bool) specifies if a named cursor lifetime should
                 extend outside of the current transaction, i.e., it is possible
                 to fetch from the cursor even after a connection.commit()
@@ -169,13 +176,20 @@ class Postgres(BaseClient):
 
             -> :mod:psycopg2 cursor object
         """
-        cursor_factory = cursor_factory if cursor_factory is not None else \
-            self.cursor_factory
-        cursor = self.connection.cursor(
-            name=name, cursor_factory=cursor_factory, scrollable=scrollable,
-            withhold=withhold)
-        if self.schema:
-            cursor.execute('SET search_path TO {}'.format(self.schema))
+        if model is not None and not model._is_naked():
+            cursor_factory = ModelCursor
+        elif cursor_factory is not None and \
+                cursor_factory != self.cursor_factory:
+            pass
+        elif self.cursor_factory != self.connection.cursor_factory:
+            cursor_factory = self.cursor_factory
+        cursor = self.connection.cursor(*args,
+                                        cursor_factory=cursor_factory,
+                                        **kwargs)
+        cursor._bloom_model = model
+        schema = schema or self.schema
+        if schema:
+            self.set_schema(cursor, schema)
         return cursor
 
     def connect(self, dsn=None, **options):
@@ -188,7 +202,8 @@ class Postgres(BaseClient):
             dsn = dsn or self._dsn
             if not dsn:
                 dsn = self.to_dsn(self._connection_options)
-            self._connection = psycopg2.connect(dsn)
+            self._connection = psycopg2.connect(
+                dsn, cursor_factory=self.cursor_factory)
             self._set_conn_options()
         return self._connection
 
@@ -259,11 +274,11 @@ class PostgresPoolConnection(Postgres):
 class PostgresPool(BaseClient):
     __slots__ = ('_dsn', 'autocommit',  '_connection_options', '_schema',
                  'encoding', '_cursor_factory', 'minconn', 'maxconn', '_pool',
-                 '_seen', '_cache')
+                 '_cache')
 
     def __init__(self, minconn=1, maxconn=1, dsn=None,
-                 cursor_factory=CNamedTupleCursor,
-                 pool=None, autocommit=False, encoding=None, schema=None,
+                 cursor_factory=CNamedTupleCursor, pool=None,
+                 autocommit=False, encoding=None, schema=None,
                  **connection_options):
         """ :see::class:Postgres
             @minconn: (#int) minimum number of connections to establish
@@ -286,9 +301,8 @@ class PostgresPool(BaseClient):
 
         # Cursor options
         self._cursor_factory = cursor_factory
-        self._seen = set()
 
-    @prepr('_pool', 'autocommit', _break=False)
+    @prepr('_pool', 'autocommit')
     def __repr__(self): return
 
     def __enter__(self):
@@ -346,8 +360,7 @@ class PostgresPool(BaseClient):
         self.pool.closeall()
 
 
-#: Thread-local storage for connection clients
-local_client = local_property()
+#: Storage for connection clients/pools
 local_client = {}
 
 
@@ -373,7 +386,7 @@ class _db(object):
         try:
             return self.engine.__repr__()
         except RuntimeError:
-            return "<_db id={}>".format(id(self))
+            return "<_db:{}>".format(hex(id(self)))
 
     def __get__(self):
         if self.engine:

@@ -8,7 +8,6 @@ from kola import config
 
 from bloom.fields import Int
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.SmallInt import TestSmallInt
 
 
@@ -31,7 +30,10 @@ class TestInt(TestSmallInt):
         self.base = Int()
         self.base.table = 'test'
         self.base.field_name = 'int'
-        self.assertIsNone(self.base.value)
+
+    def test_init_(self):
+        self.base = Int()
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertIsNone(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)

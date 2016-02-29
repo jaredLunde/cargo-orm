@@ -104,7 +104,7 @@ class TestDelete(unittest.TestCase):
         self.assertIs(q.orm, self.orm)
         self.orm.reset()
 
-    def test__evaluate_state(self):
+    def test_evaluate_state(self):
         clauses = [
             new_clause('FROM', safe("foo")),
             new_clause('USING', safe('foo_b b')),
@@ -115,7 +115,7 @@ class TestDelete(unittest.TestCase):
         random.shuffle(shuffled_clauses)
         self.orm.state.add(*shuffled_clauses)
         q = Delete(self.orm)
-        clause_str = " ".join(q.ordered_clauses)
+        clause_str = " ".join(q.evaluate_state())
         for clause in clauses:
             self.assertIn(clause.clause, clause_str)
         self.orm.reset()
@@ -130,7 +130,7 @@ class TestDelete(unittest.TestCase):
         ]
         self.orm.state.add(*clauses)
         q = Delete(self.orm)
-        clause_str = " ".join(q.ordered_clauses)
+        clause_str = " ".join(q.evaluate_state())
         for clause in clauses:
             self.assertIn(clause.clause, clause_str)
         self.assertIsInstance(q.execute().fetchall(), list)
@@ -143,7 +143,7 @@ class TestDelete(unittest.TestCase):
         ]
         self.orm.state.add(*clauses)
         q = Delete(self.orm)
-        clause_str = " ".join(q.ordered_clauses)
+        clause_str = " ".join(q.evaluate_state())
         for clause in clauses:
             self.assertIn(clause.clause, clause_str)
         self.assertTrue(len(q.execute().fetchall()) > 0)
@@ -156,7 +156,7 @@ class TestDelete(unittest.TestCase):
         ]
         self.orm.state.add(*clauses)
         q = Delete(self.orm)
-        clause_str = " ".join(q.ordered_clauses)
+        clause_str = " ".join(q.evaluate_state())
         for clause in clauses:
             self.assertIn(clause.clause, clause_str)
         self.assertTrue(len(q.execute().fetchall()) > 0)

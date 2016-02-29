@@ -6,11 +6,10 @@ import datetime
 from dateutil import tz
 
 import arrow
-from vital.docr import Docr
+from docr import Docr
 from bloom import *
 from bloom.fields import Date
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Field import *
 
 
@@ -63,6 +62,7 @@ class TestDate(TestField):
             pass
 
     def test_real_value(self):
+        self.base('October 31')
         self.assertIsInstance(self.base.real_value, datetime.datetime)
 
 

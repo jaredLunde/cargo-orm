@@ -24,7 +24,7 @@ class TestCreateRole(unittest.TestCase):
     def test_create(self):
         print(db.select(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
         u = create_user(self.orm, 'foo', 'login', 'superuser', 'createrole',
-                        'createuser', 'createdb')
+                        'createuser', 'createdb', dry=True)
         u.password('fishtaco')
         u.in_role('cream', 'based', 'sauce')
         u.connlimit(1000)

@@ -6,11 +6,10 @@ import datetime
 from dateutil import tz
 
 import arrow
-from vital.docr import Docr
+from docr import Docr
 from bloom import *
 from bloom.fields import Time
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Field import *
 
 

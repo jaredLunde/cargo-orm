@@ -54,7 +54,7 @@ __all__ = (
 
 def _cast_return(q, dry=False):
     if not dry:
-        return q
+        return q.execute()
     return q
 
 

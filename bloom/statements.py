@@ -20,10 +20,12 @@ except ImportError:
 import psycopg2
 import psycopg2.extras
 
+from vital.cache import local_property
 from vital.debug import Logg as logg
 from vital.tools.dicts import merge_dict
 from vital.debug import prepr, line
 
+from bloom.clients import db
 from bloom.etc.types import *
 from bloom.exceptions import *
 from bloom.expressions import *
@@ -39,7 +41,7 @@ __all__ = (
     "Insert",
     "INTERSECT",
     "Intersect",
-    "Intersections",
+    "SetOperations",
     "Query",
     "RAW",
     "Raw",
@@ -59,7 +61,7 @@ __all__ = (
 #
 
 
-class BaseQuery(BaseLogic, StringLogic, NumericLogic, DateTimeLogic):
+class BaseQuery(StringLogic, DateTimeLogic):
     """ Base query object, provides several common methods for the
         various query statement types
     """
@@ -67,15 +69,21 @@ class BaseQuery(BaseLogic, StringLogic, NumericLogic, DateTimeLogic):
                  'one', 'string')
     newline_re = re.compile(r"""\n+""")
 
-    def __init__(self, orm, params=None):
-        self.orm = orm
-        self.params = params or orm.state.params
+    def __init__(self, query=None, params=None, orm=None):
+        self.orm = orm or db
+        try:
+            self.params = params or self.orm.state.params
+            self.is_subquery = self.orm.state.is_subquery
+            self.one = self.orm.state.one
+            self._with = self.orm._with
+        except AttributeError:
+            self.params = params
+            self.is_subquery = False
+            self.one = False
+            self._with = False
         self.alias = None
-        self.is_subquery = orm.state.is_subquery
-        self._with = orm._with
         self.recursive = None
-        self.one = orm.state.one
-        self.string = None
+        self.string = query.strip() if query else query
 
     def __str__(self):
         return self.query if self.query else self.__repr__()
@@ -120,27 +128,18 @@ class BaseQuery(BaseLogic, StringLogic, NumericLogic, DateTimeLogic):
         self.result = self.orm.result = self.execute().fetchall()
         self.orm.reset()
 
-    @property
-    def query_string(self):
-        """ Used for :desc:__repr__ display """
-        return "\n" + self.string
+    def _filter_empty(self, els):
+        return filter(lambda x: x is not _empty, els)
 
     @property
     def query(self):
         if self.string:
             return self.newline_re.sub(r" ", self.string).strip()
 
-    def _set_clauses(self, query_clauses):
-        """ Removes empty clause zones
-            -> :class:psycopg2.extensions.cursor
-        """
-        self.ordered_clauses = list(filter(
-            lambda x: x is not _empty, query_clauses))
-
     @property
     def mogrified(self):
         """ -> (#str) the query post-parameterization """
-        cur = self.orm.client.cursor()
+        cur = self.orm.db.cursor()
         return cur.mogrify(self.string, self.params).decode()
 
     def execute(self):
@@ -179,39 +178,47 @@ class Query(BaseQuery):
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
                  'one', 'string')
 
-    def __init__(self, orm, query=None, alias=None, recursive=None,
-                 params=None):
-        """ ``Query Statement``
-            @orm: (:class:ORM) object
+    def __init__(self, query=None, params=None, alias=None, recursive=None,
+                 orm=None,):
+        """`Query Statement`
             @query: (#str) raw query string
-            @alias: (#str) query alias name if it's a :class:WITH or
-                :class:Intersections query
-            @recursive: (#list) or #tuple used for :class:WITH and
-                :class:Intersections queries, creates a |RECURSIVE|
-                clause
             @params: (#dict) for parameterizing the query
                 |"SELECT %(abc)" % {'abc': 123}|
+            @alias: (#str) query alias name if it's a :class:WITH or
+                :class:SetOperations query
+            @recursive: (#list) or #tuple used for :class:WITH and
+                :class:SetOperations queries, creates a |RECURSIVE|
+                clause
+            @orm: (:class:ORM) object
         """
-        super().__init__(orm, params=params)
-        self.string = query.strip() if query else query
-        self.alias = alias or self.orm.state.alias
+        super().__init__(query, params, orm=orm)
+        if orm:
+            self.alias = alias or self.orm.state.alias
+        else:
+            self.alias = alias
         self.alias = str(self.alias) if self.alias else None
         self.recursive = recursive
 
-    @prepr(('query', 'purple'), 'params', _break=True, _pretty=True)
+    @prepr('query', 'params', _no_keys=True)
     def __repr__(self): return
 
+    def exists(self, alias=None):
+        return Functions.exists(self, alias=alias)
 
-class Intersections(Query):
+    def not_exists(self, alias=None):
+        return Functions.not_exists(self, alias=alias)
+
+
+class SetOperations(Query):
     """ Base structure for :class:UNION, :class:EXCEPT and :class:INTERSECTION
         queries.
     """
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'intersections', 'all', 'distinct')
+                 'one', 'string', 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *args, all=None, distinct=None, **kwargs):
-        super().__init__(orm, **kwargs)
-        self.intersections = args or []
+        super().__init__(orm=orm, **kwargs)
+        self.operations = args or []
         self.all = all
         self.distinct = distinct
 
@@ -229,7 +236,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 & q2
             ..
-            |<bloom.statements.UNION(                            |
+            |<bloom.statements.UNION(                                |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true UNION             |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -254,12 +261,11 @@ class Intersections(Query):
 
             Creates the union query
             ..
-                q1 = Query(ORM(), query="SELECT * FROM users WHERE true")
-                q2 = Query(
-                    ORM(), query="SELECT * FROM users_followers WHERE true")
+                q1 = Query("SELECT * FROM users WHERE true")
+                q2 = Query("SELECT * FROM users_followers WHERE true")
                 union = q1 + q2
             ..
-            |<bloom.statements.UNION(                            |
+            |<bloom.statements.UNION(                                |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true  UNION ALL        |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -289,7 +295,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 - q2
             ..
-            |<bloom.statements.UNION(                           |
+            |<bloom.statements.UNION(                                |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true  UNION DISTINCT   |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -319,7 +325,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 < q2
             ..
-            |<bloom.statements.EXCEPT(                          |
+            |<bloom.statements.EXCEPT(                               |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT            |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -349,7 +355,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 <= q2
             ..
-            |<bloom.statements.EXCEPT(                          |
+            |<bloom.statements.EXCEPT(                               |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT ALL        |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -379,7 +385,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 << q2
             ..
-            |<bloom.statements.EXCEPT(                          |
+            |<bloom.statements.EXCEPT(                               |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT DISTINCT   |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -409,7 +415,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 > q2
             ..
-            |<bloom.statements.INTERSECT(                       |
+            |<bloom.statements.INTERSECT(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT         |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -439,7 +445,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 >= q2
             ..
-            |<bloom.statements.INTERSECT(                       |
+            |<bloom.statements.INTERSECT(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT ALL     |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -469,7 +475,7 @@ class Intersections(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 >> q2
             ..
-            |<bloom.statements.INTERSECT(                       |
+            |<bloom.statements.INTERSECT(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT DISTINCT|
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -495,7 +501,7 @@ class Intersections(Query):
 
     def _attach_alias(self):
         """ Attaches alias and |RECURSIVE| statement when specified """
-        for intersection in self.intersections:
+        for intersection in self.operations:
             self.alias = intersection.alias if hasattr(intersection, 'alias') \
                 else None
             self.recursive = intersection.recursive \
@@ -503,30 +509,30 @@ class Intersections(Query):
             if self.alias:
                 break
 
-    def compile(self, intersections=None, all=None, distinct=None):
+    def compile(self, operations=None, all=None, distinct=None):
         """ :see::meth:SELECT.compile """
-        self.intersections = \
-            intersections if intersections is not None else self.intersections
+        self.operations = \
+            operations if operations is not None else self.operations
         self.all = all if all is not None else self.all
         self.distinct = distinct if distinct is not None else self.distinct
         intersection_str = self._set_intersection_str(self.all, self.distinct)
         new_intersection_str = intersection_str.join(
             i.query if i.query else ""
-            for i in self.intersections
+            for i in self.operations
         )
-        self.string = "{} {} {}".format(
+        self.string = "%s %s %s" % (
             self.string if self.string else "",
             intersection_str if self.string else "",
             new_intersection_str
         )
         self.params = merge_dict(
-            self.params, *[q.params for q in self.intersections])
+            self.params, *[q.params for q in self.operations])
         self._attach_alias()
         self.orm.reset()
         return self.string
 
 
-class UNION(Intersections):
+class UNION(SetOperations):
     """ Creates a UNION statement between multiple :class:BaseQuery objects
 
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -546,7 +552,7 @@ class UNION(Intersections):
     """
     __querytype__ = "UNION"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'intersections', 'all', 'distinct')
+                 'one', 'string', 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *unions, all=False, distinct=False, **kwargs):
         """ `UNION`
@@ -556,12 +562,13 @@ class UNION(Intersections):
             @all: #bool True if |UNION ALL|
             @distinct: #bool True if |UNION DISTINCT|
             @alias: #str query alias name if it's a :class:WITH or
-                :class:Intersections query
+                :class:SetOperations query
             @recursive: #list or #tuple used for :class:WITH and
-                :class:Intersections queries, creates a |RECURSIVE|
+                :class:SetOperations queries, creates a |RECURSIVE|
                 clause
         """
-        super().__init__(orm, *unions, all=all, distinct=distinct, **kwargs)
+        super().__init__(orm, *unions, all=all, distinct=distinct,
+                         **kwargs)
         self.compile()
 
 
@@ -569,7 +576,7 @@ class UNION(Intersections):
 Union = UNION
 
 
-class INTERSECT(Intersections):
+class INTERSECT(SetOperations):
     """ Creates an |INTERSECT| statement between multiple :class:BaseQuery
         objects
 
@@ -591,7 +598,7 @@ class INTERSECT(Intersections):
     """
     __querytype__ = "INTERSECT"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'intersections', 'all', 'distinct')
+                 'one', 'string', 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *intersects, all=False, distinct=False, **kwargs):
         """ `INTERSECT`
@@ -601,9 +608,9 @@ class INTERSECT(Intersections):
             @all: #bool True if |INTERSECT ALL|
             @distinct: #bool True if |INTERSECT DISTINCT|
             @alias: #str query alias name if it's a :class:WITH or
-                :class:Intersections query
+                :class:SetOperations query
             @recursive: #list or #tuple used for :class:WITH and
-                :class:Intersections queries, creates a |RECURSIVE|
+                :class:SetOperations queries, creates a |RECURSIVE|
                 clause
         """
         super().__init__(orm, *intersects, all=all, distinct=distinct,
@@ -615,7 +622,7 @@ class INTERSECT(Intersections):
 Intersect = INTERSECT
 
 
-class EXCEPT(Intersections):
+class EXCEPT(SetOperations):
     """ Creates an |EXCEPT| statement between multiple :class:BaseQuery objects
 
         - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -636,7 +643,7 @@ class EXCEPT(Intersections):
     """
     __querytype__ = "EXCEPT"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'intersections', 'all', 'distinct')
+                 'one', 'string', 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *excepts, all=False, distinct=False, **kwargs):
         """ `INTERSECT`
@@ -646,12 +653,13 @@ class EXCEPT(Intersections):
             @all: #bool True if |EXCEPT ALL|
             @distinct: #bool True if |EXCEPT DISTINCT|
             @alias: #str query alias name if it's a :class:WITH or
-                :class:Intersections query
+                :class:SetOperations query
             @recursive: #list or #tuple used for :class:WITH and
-                :class:Intersections queries, creates a |RECURSIVE|
+                :class:SetOperations queries, creates a |RECURSIVE|
                 clause
         """
-        super().__init__(orm, *excepts, all=all, distinct=distinct, **kwargs)
+        super().__init__(orm, *excepts, all=all, distinct=distinct,
+                         **kwargs)
         self.compile()
 
 
@@ -659,7 +667,7 @@ class EXCEPT(Intersections):
 Except = EXCEPT
 
 
-class RAW(Intersections):
+class RAW(SetOperations):
     """ Evaluates :class:QueryState clauses within the :mod:orm
         in the order in which they are declared, does not attempt to
         self-order at all.
@@ -674,31 +682,28 @@ class RAW(Intersections):
     """
     __querytype__ = "RAW"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'intersections', 'all', 'distinct')
+                 'one', 'string', 'operations', 'all', 'distinct')
 
-    def __init__(self, orm, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `RAW`
             :see::meth:Query.__init__
         """
-        super().__init__(orm, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.compile()
 
-    def _evaluate_state(self):
-        """ :see::meth:SELECT._evaluate_state """
+    def evaluate_state(self):
+        """ :see::meth:SELECT.evaluate_state """
         self.params.update(self.orm.state.params)
-        query_clauses = []
-        add_clause = query_clauses.append
         for state in self.orm.state:
             if isinstance(state, list):
-                query_clauses.extend((s.string for s in state))
+                for s in state:
+                    yield s.string
             else:
-                add_clause(state.string)
-        self._set_clauses(query_clauses)
+                yield state.string
 
     def compile(self):
         """ :see::meth:SELECT.compile """
-        self._evaluate_state()
-        self.string = " ".join(self.ordered_clauses)
+        self.string = " ".join(self.evaluate_state())
         return self.string
 
 
@@ -753,14 +758,13 @@ class INSERT(Query):
             @fields: :class:Field fields to include in the |INSERT|
                 with |VALUES|. If none are given, all of @orm.fields are used.
         """
-        super().__init__(orm, **kwargs)
+        super().__init__(orm=orm, **kwargs)
         self.fields = list(fields)
-        if not orm.state.has('VALUES') or (self.orm._many and fields)\
-           or self.orm._many:
-            self._set_values()
+        if not orm.state.has('VALUES') or self.orm._many:
+            self.set_values()
         self.compile()
 
-    def _set_values(self):
+    def set_values(self):
         """ Prepares the model :class:Field values for insertion into the DB
         """
         if not self.fields and hasattr(self.orm, 'fields'):
@@ -770,39 +774,39 @@ class INSERT(Query):
             self.orm.add_query(self)
             self.orm._many = True
 
-    clauses = ('INTO', '_FIELDS', 'VALUES', 'RETURNING', 'ON')
-
-    def _evaluate_state(self):
-        """ :see::meth:SELECT._evaluate_state """
+    def _add_into(self):
+        """ Adds an |INTO| clause if one doesn exist in the :prop:orm """
         if not self.orm.state.has('INTO'):
             if self.orm.table:
                 table = self.orm.table
             elif self.fields:
                 table = self.fields[0].table
             self.orm.into(table)
+
+    clauses = ('INTO', '_FIELDS', 'VALUES', 'RETURNING', 'ON')
+
+    def evaluate_state(self):
+        """ :see::meth:SELECT.evaluate_state """
         vals = []
         query_clauses = [_empty] * len(self.clauses)
-        for x, clause in enumerate(self.clauses):
-            state = self.orm.state.get(clause, _empty)
+        for state in self.orm.state:
             if isinstance(state, list):
                 vals = state
             else:
-                query_clauses[x] = state.string
+                query_clauses[self.clauses.index(state.clause)] = state.string
         # Insert fields
         insert_fields = ", ".join(f.field_name for f in self.fields)
         query_clauses[1] = "({})".format(insert_fields)
         # Insert VALUES
         vals = (val.string.replace("VALUES ", "", 1) for val in vals)
         query_clauses[2] = "VALUES {}".format(", ".join(vals))
-        self._set_clauses(query_clauses)
         self.params.update(self.orm.state.params)
+        return self._filter_empty(query_clauses)
 
     def compile(self):
         """ :see::meth:SELECT.compile """
-        self._evaluate_state()
-        self.string = "INSERT {}".format(
-          " ".join(self.ordered_clauses)
-        )
+        self._add_into()
+        self.string = "INSERT %s" % " ".join(self.evaluate_state())
         return self.string
 
 
@@ -810,7 +814,7 @@ class INSERT(Query):
 Insert = INSERT
 
 
-class SELECT(Intersections):
+class SELECT(SetOperations):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ``Usage Example``
 
@@ -857,7 +861,7 @@ class SELECT(Intersections):
     """
     __querytype__ = "SELECT"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'intersections', 'all', 'distinct', 'fields')
+                 'one', 'string', 'operations', 'all', 'distinct', '_fields')
 
     def __init__(self, orm, *fields, **kwargs):
         """ `SELECT`
@@ -865,60 +869,53 @@ class SELECT(Intersections):
             @orm: :class:ORM object
             @fields: :class:Field fields to SELECT from the table
         """
-        super().__init__(orm, **kwargs)
-        self.fields = []
-        self._set_fields(*fields)
+        super().__init__(orm=orm, **kwargs)
+        self._fields = fields
         self.compile()
 
-    def _set_fields(self, *fields):
+    @property
+    def fields(self):
         """ Formats the @fields received, merges their :prop:params with
             |self.params|
         """
-        self.fields = []
-        add_field = self.fields.append
-        for field in fields:
+        update_params = self.params.update
+        for field in self._fields:
             if isinstance(field, Field):
-                add_field(field.name)
-            elif isinstance(field, (Subquery, Query)):
-                add_field(field.query)
-            elif isinstance(field, (BaseExpression, aliased, safe)):
-                add_field(str(field))
+                yield field.name
+            elif isinstance(field, BaseLogic):
+                yield str(field)
+                if hasattr(field, 'params'):
+                    update_params(field.params)
             else:
-                field = Parameterize(field)
-                add_field(field.string)
-            if hasattr(field, 'params'):
-                self.params.update(field.params)
+                field = parameterize(field)
+                update_params(field.params)
+                yield field.string
 
     clauses = ('FROM', 'JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'WINDOW',
                'ORDER BY', 'LIMIT', 'OFFSET', 'FETCH', 'FOR')
 
-    def _evaluate_state(self):
+    def evaluate_state(self):
         """ Evaluates the :class:Clause objects in :class:QueryState """
         query_clauses = [_empty] * len(self.clauses)
         joins = []
-        for x, clause in enumerate(self.clauses):
-            state = self.orm.state.get(clause, _empty)
+        for state in self.orm.state:
             if isinstance(state, list):
                 joins = (c.string for c in state)
-            else:
-                query_clauses[x] = state.string
+            elif hasattr(state, 'string'):
+                query_clauses[self.clauses.index(state.clause)] = state.string
         self.params.update(self.orm.state.params)
-        joins = " ".join(joins)
-        if len(joins):
-            query_clauses[1] = joins
-        self._set_clauses(query_clauses)
+        if joins:
+            query_clauses[1] = " ".join(joins)
+        return self._filter_empty(query_clauses)
 
     def compile(self):
         """ Compiles a query string from the :class:QueryState """
-        self._evaluate_state()
-        if self.fields:
-            fields = ", ".join(map(str, self.fields))
+        if self._fields:
+            fields = ", ".join(self.fields)
         else:
             fields = "*"
-        self.string = "SELECT {} {}".format(
-            fields,
-            " ".join(self.ordered_clauses) if self.ordered_clauses else ""
-        )
+        self.string = (
+            "SELECT %s %s" % (fields, " ".join(self.evaluate_state()))).strip()
         return self.string
 
 
@@ -964,44 +961,48 @@ class UPDATE(Query):
             ``Query Statement``
             @orm: :class:ORM object
         """
-        super().__init__(orm, **kwargs)
+        super().__init__(orm=orm, **kwargs)
         self.fields = []
         if not self.orm.state.has('SET'):
-            self._set_set(*fields)
+            self.set(*fields)
         self.compile()
 
-    def _set_set(self, *fields):
+    def set(self, *fields):
         """ Formats the @fields received, merges their :prop:params with
             |self.params|
         """
-        if hasattr(self.orm, 'fields') and not fields:
-            fields = self.orm.fields
         if len(fields):
             self.fields = fields
-            self.orm.set(*self.fields)
+        elif hasattr(self.orm, 'fields'):
+            self.fields = self.orm.fields
+        self.orm.set(*self.fields)
+
+    def _get_table(self):
+        if self.orm.table:
+            return self.orm.table
+        table = None
+        #: Sets the UPDATE table
+        for field in self.fields:
+            if hasattr(field, 'table'):
+                return field.table
 
     clauses = ('SET', 'FROM', 'WHERE', 'RETURNING')
 
-    def _evaluate_state(self):
-        """ :see::meth:SELECT._evaluate_state """
+    def evaluate_state(self):
+        """ :see::meth:SELECT evaluate_state """
         self.params.update(self.orm.state.params)
-        self._set_clauses((self.orm.state.get(clause, _empty).string
-                           for clause in self.clauses))
+        get_state = self.orm.state.get
+        for clause in self.clauses:
+            v = get_state(clause, _empty).string
+            if v is not _empty:
+                yield v
 
     def compile(self):
         """ :see::meth:SELECT.compile """
-        self._evaluate_state()
-        table = None
-        if not self.orm.table:
-            #: Sets the UPDATE table
-            for field in self.fields:
-                if hasattr(field, 'table'):
-                    table = field.table
-                    break
-        self.string = "UPDATE {} {}".format(
-          table or self.orm.table,
-          " ".join(self.ordered_clauses) if self.ordered_clauses else ""
-        )
+        self.string = (
+            "UPDATE %s %s" % (self._get_table(),
+                              " ".join(self.evaluate_state()))
+        ).strip()
         return self.string
 
 
@@ -1043,25 +1044,28 @@ class DELETE(Query):
             ``Query Statement``
             @orm: :class:ORM object
         """
-        super().__init__(orm, **kwargs)
+        super().__init__(orm=orm, **kwargs)
         self.compile()
+
+    def set_from(self):
+        if not self.orm.state.has('FROM'):
+            self.orm.from_()
 
     clauses = ('FROM', 'USING', 'WHERE', 'RETURNING')
 
-    def _evaluate_state(self):
-        """ :see::meth:SELECT._evaluate_state """
-        if not self.orm.state.has('FROM'):
-            self.orm.from_()
+    def evaluate_state(self):
+        """ :see::meth:SELECT.evaluate_state """
         self.params.update(self.orm.state.params)
-        self._set_clauses((self.orm.state.get(clause, _empty).string
-                           for clause in self.clauses))
+        get_state = self.orm.state.get
+        for clause in self.clauses:
+            v = get_state(clause, _empty).string
+            if v is not _empty:
+                yield v
 
     def compile(self):
         """ :see::meth:SELECT.compile """
-        self._evaluate_state()
-        self.string = "DELETE {}".format(
-          " ".join(self.ordered_clauses) if self.ordered_clauses else ""
-        )
+        self.set_from()
+        self.string = "DELETE %s" % (" ".join(self.evaluate_state()).strip())
         return self.string
 
 
@@ -1112,7 +1116,7 @@ class WITH(Query):
         for r in queries:
             if hasattr(r, 'recursive') and r.recursive:
                 recursive = r.recursive
-        super().__init__(orm, recursive=recursive, **kwargs)
+        super().__init__(orm=orm, recursive=recursive, **kwargs)
         self.queries = queries
         self.orm._with = True
         self.orm.alias = kwargs.get('alias') or self.alias

@@ -19,7 +19,7 @@ class Testaliased(unittest.TestCase):
     def test___init__(self):
         for v in RandData(str).list(10):
             self.base = aliased(v)
-            self.assertEqual(self.base.value, v)
+            self.assertEqual(self.base.string, v)
             self.assertEqual(str(self.base), v)
             self.assertEqual(
                 self.base.alias('foo_alias'),

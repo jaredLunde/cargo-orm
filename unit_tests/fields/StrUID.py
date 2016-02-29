@@ -7,7 +7,6 @@ from kola import config
 
 from bloom.fields import StrUID
 
-sys.path.insert(0, '/home/jared/apps/xfaps/tests/vital')
 from unit_tests.fields.Int import TestInt
 
 
@@ -19,7 +18,10 @@ class TestStrUID(TestInt):
         self.base = StrUID()
         self.base.table = 'test'
         self.base.field_name = 'uid'
-        self.assertIsNone(self.base.value)
+
+    def test_init(self):
+        self.base = StrUID()
+        self.assertEqual(self.base.value, self.base.empty)
         self.assertTrue(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)
