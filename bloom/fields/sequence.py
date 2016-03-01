@@ -86,7 +86,7 @@ class Enum(Field, NumericLogic, StringLogic):
     __copy__ = copy
 
 
-class Array(Field):
+class Array(Field, ArrayLogic):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         Field object for the PostgreSQL field type |ARRAY|.
         The values passed to this object must be iterable.
@@ -99,7 +99,7 @@ class Array(Field):
         'maxlen', 'cast', 'type', 'dimensions', 'table')
     sqltype = ARRAY
 
-    def __init__(self, value=Field.empty, type=None, cast=None, dimensions=1,
+    def __init__(self, type=None, value=Field.empty, cast=None, dimensions=1,
                  minlen=0, maxlen=-1,  default=None, **kwargs):
         """ `Array`
             :see::meth:Field.__init__
@@ -126,7 +126,7 @@ class Array(Field):
         self.cast = cast or self._nocast
         self.dimensions = dimensions
         super().__init__(value=value, **kwargs)
-        self.default = default or []
+        self.default = default
 
     @prepr('type', 'name', 'value', _no_keys=True)
     def __repr__(self): return
@@ -178,15 +178,15 @@ class Array(Field):
                 self._cast(x, next_dimension)
                 for x in value]
 
-    def _select_cast(self, value):
+    def _select_cast(self, value, dimension=1):
         return self.cast(value)\
                if not isinstance(value, (tuple, list)) else\
-               self._cast(value)
+               self._cast(value, dimension=dimension)
 
     def append(self, value):
         """ Appends @value to the array """
         self._make_list()
-        self.value.append(self._select_cast(value))
+        self.value.append(self._select_cast(value, dimension=2))
 
     def pop(self, index=0):
         """ Pops @index from the array """
@@ -195,7 +195,7 @@ class Array(Field):
     def insert(self, index, value):
         """ Inserts @value to the array at @index """
         self._make_list()
-        self.value.insert(index, self._select_cast(value))
+        self.value.insert(index, self._select_cast(value, dimension=2))
 
     def remove(self, value):
         """ Removes @value from the array """
@@ -218,102 +218,6 @@ class Array(Field):
         """ Sorts the array in place """
         self.value.sort(key=key, reverse=reverse)
 
-    def contains(self, array):
-        """ Creates a |@>| SQL expression
-            @array: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.contains([1, 2])
-                model.where(condition)
-            ..
-            |array_field @> [1,2]|
-        """
-        return Expression(self, "@>", array)
-
-    def is_contained_by(self, array):
-        """ Creates a |<@| SQL expression
-            @array: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.is_contained_by([1, 2])
-                model.where(condition)
-            ..
-            |array_field <@ [1,2]|
-        """
-        return Expression(self, "<@", array)
-
-    def overlaps(self, array):
-        """ Creates a |&&| (overlaps) SQL expression
-            @array: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.overlaps([1, 2])
-                model.where(condition)
-            ..
-            |array_field && [1,2]|
-        """
-        return Expression(self, "&&", array)
-
-    def all(self, target):
-        """ Creates an |ALL| SQL expression
-            @target: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.all([1, 2])
-                model.where(condition)
-            ..
-            |[1,2] = ALL(array_field)|
-        """
-        return Expression(target, "=", Function("ALL", self))
-
-    def any(self, target):
-        """ Creates an |ANY| SQL expression
-            @target: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.any([1, 2])
-                model.where(condition)
-            ..
-            |[1,2] = ANY(array_field)|
-        """
-        return Expression(target, "=", Function("ANY", self))
-
-    def some(self, target):
-        """ Creates a |SOME| SQL expression
-            @target: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.some([1, 2])
-                model.where(condition)
-            ..
-            |[1,2] = SOME(array_field)|
-        """
-        return Expression(target, "=", Function("SOME", self))
-
     def _cast_real(self, value):
         call = self.type.__call__
         return [self.type.real_value
@@ -331,7 +235,7 @@ class Array(Field):
             return self.default
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, type=self.type, **kwargs)
+        cls = self._copy(*args, type=self.type.copy(), **kwargs)
         cls.minlen = self.minlen
         cls.maxlen = self.maxlen
         cls.cast = self.cast

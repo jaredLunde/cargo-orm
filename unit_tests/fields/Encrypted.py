@@ -32,6 +32,7 @@ class TestEncrypted(TestField):
         self.base = Encrypted(Encrypted.generate_secret())
 
     def test_init(self, *args, **kwargs):
+        self.base = Encrypted(Encrypted.generate_secret())
         self.base.table = 'test'
         self.base.field_name = 'smallint'
         self.assertEqual(self.base.value, self.base.empty)
@@ -48,6 +49,8 @@ class TestEncrypted(TestField):
         self.assertIsInstance(self.base.type, Text)
 
     def test___call__(self):
+        key = Encrypted.generate_secret()
+        self.base = Encrypted(key)
         for val in ['abc', '4', 'test']:
             self.base(val)
             self.assertIsInstance(self.base.value, str)
@@ -55,6 +58,7 @@ class TestEncrypted(TestField):
             self.assertEqual(
                 self.base.type(self.base.decrypt(self.base.encrypted)),
                 self.base(val))
+            self.assertEqual(self.base(self.base.encrypted), self.base(val))
 
         key = Encrypted.generate_secret()
         self.base = Encrypted(key, type=Binary(), factory=AESBytesFactory)
@@ -134,8 +138,8 @@ class TestEncrypted(TestField):
         self.base = Encrypted(Encrypted.generate_secret(), factory=Factory)
         self.assertEqual(self.base.factory, Factory)
         self.base('test')
-        self.assertEqual(self.base.real_value, self.base._prefix + 'test')
-        self.assertEqual(self.base(self.base._prefix + 'test'), 'test')
+        self.assertEqual(self.base.real_value, self.base.prefix + 'test')
+        self.assertEqual(self.base(self.base.prefix + 'test'), 'test')
 
     def test_validate(self):
         self.base = Encrypted(Encrypted.generate_secret())
@@ -155,6 +159,8 @@ class TestEncrypted(TestField):
         self.base('test5')
         self.assertTrue(self.base.validate())
 
+    def test__set_value(self):
+        return
 
 
 if __name__ == '__main__':

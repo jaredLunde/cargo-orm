@@ -24,7 +24,7 @@ create_kola_client()
 
 class FooUsers(Model):
     uid = UID()
-    username = Username(maxlen=100, unique=True, not_null=True)
+    username = Username(maxlen=25, unique=True, not_null=True)
     password = Password(minlen=8, not_null=True)
 
 

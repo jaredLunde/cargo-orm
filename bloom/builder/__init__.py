@@ -64,7 +64,7 @@ __all__ = (
     'create_tablespace',
     'create_trigger',
     'create_user',
-    'create_view'
+    'create_view',
     'drop_cast',
     'drop_domain',
     'drop_database',

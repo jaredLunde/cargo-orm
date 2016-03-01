@@ -111,6 +111,7 @@ sqltype_map = {
     TIME: 'time',
     NUMERIC: 'numeric',
     SMALLSERIAL: 'smallserial',
+    ENCRYPTED: 'text',
     # TODO: Geometry and other fields
     HSTORE: 'hstore',
     RANGE: 'int4range',  # Depends on type
@@ -125,8 +126,7 @@ sqltype_map = {
     POLYGON: 'polygon',
     MACADDR: 'macaddr',
     CURRENCY: 'money',
-    XML: 'xml',
-    ENCRYPTED: 'text'
+    XML: 'xml'
 }
 
 

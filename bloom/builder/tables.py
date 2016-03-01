@@ -8,6 +8,8 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
+import sys
+
 from vital.cache import cached_property
 from vital.debug import prepr
 
@@ -508,6 +510,8 @@ class Column(BaseCreator):
         if timing:
             self.timing(timing)
 
+        self._add_constraints()
+
     def set_type(self, data_type):
         """ Sets the column data type to @data_type """
         self._data_type = safe(data_type)
@@ -611,8 +615,47 @@ class Column(BaseCreator):
         self._clauses = []
         self._clauses.extend(filter(lambda x: x is not None, clauses))
 
-    def _cast_type(self, type):
-        field = self._field
+    def _add_constraints(self):
+        _constraints = ('minlen', 'maxlen', 'minval', 'maxval')
+
+        def is_constrained(field):
+            for constraint in _constraints:
+                if field.sqltype in {types.PASSWORD, types.SLUG}:
+                    return False
+                if hasattr(field, constraint) and getattr(field, constraint):
+                    return True
+
+        if self._check is None and is_constrained(self._field):
+            if not self._field.sqltype == types.ARRAY:
+                ftype = Function('char_length', self._field)
+            else:
+                ftype = Function('array_length', self._field, 1)
+            _ops = lambda x: ftype.ge(x),\
+                   lambda x: ftype.le(x),\
+                   lambda x: self._field.ge(x),\
+                   lambda x: self._field.le(x)
+            _validate = lambda x: x > 0,\
+                        lambda x: x > 0 and\
+                                  self._field.sqltype != types.VARCHAR,\
+                        lambda x: abs(x) != sys.maxsize and\
+                                  abs(x) != float(sys.maxsize),\
+                        lambda x: abs(x) != sys.maxsize and\
+                                  abs(x) != float(sys.maxsize)
+            ops = None
+            for constraint, op, validate in zip(_constraints, _ops, _validate):
+                if not hasattr(self._field, constraint):
+                    continue
+                constraint = getattr(self._field, constraint)
+                if constraint is not None and constraint is not _empty and\
+                   validate(constraint):
+                    if ops is None:
+                        ops = op(constraint)
+                    else:
+                        ops = ops.also(op(constraint))
+            if ops is not None:
+                self._check = WrappedClause('CHECK', ops, use_field_name=True)
+
+    def _cast_type(self, field, type):
         typecast = type
         if type == 'ARRAY':
             maxlen = field.maxlen
@@ -621,8 +664,11 @@ class Column(BaseCreator):
                 maxlen = field.maxlen
                 arr = '[{}]'.format(maxlen if maxlen > 0 else '')
                 dims = ''.join(arr for _ in range(field.dimensions))
-            typecast = self._translator.translate_to(
-                field.type.sqltype)
+            sqltype = field.type.sqltype
+            if self._field.sqltype == types.ENCRYPTED and \
+               sqltype != types.BINARY:
+                sqltype = types.TEXT
+            typecast = self._translator.translate_to(sqltype)
             type = "{}{}".format(typecast, dims)
         if typecast == 'real' and hasattr(field, 'digits'):
             digits = field.digits
@@ -639,17 +685,24 @@ class Column(BaseCreator):
             return self._data_type
         opt = None
         sqltype = self._field.sqltype
+        field = self._field
         lentypes = {types.CHAR, types.VARCHAR, types.USERNAME, types.EMAIL}
+        if sqltype == types.ENCRYPTED:
+            field = self._field._in_type
+            sqltype = field.sqltype
+            if sqltype not in {types.BINARY, types.ARRAY, types.JSON,
+                               types.JSONB}:
+                sqltype = types.TEXT
         if self._parameters:
             opt = self._parameters
-        elif sqltype in lentypes and self._field.maxlen and \
-                self._field.maxlen > 0:
-            opt = self._field.maxlen
+        elif sqltype in lentypes and field.maxlen and \
+                field.maxlen > 0:
+            opt = field.maxlen
         elif sqltype in {types.NUMERIC, types.DECIMAL} and \
-                self._field.precision and self._field.precision > 0:
-            opt = self._field.precision
+                field.precision and field.precision > 0:
+            opt = field.precision
         return self._cast_type(
-            self._translator.translate_to(self._field.sqltype, opt))
+            field, self._translator.translate_to(sqltype, opt))
 
     @property
     def expression(self):

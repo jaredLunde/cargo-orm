@@ -34,9 +34,9 @@ class TestArray(TestField):
 
     def test_init(self):
         self.base = Array()
-        self.assertEqual(self.base.default, [])
+        self.assertIsNone(self.base.default)
         self.assertEqual(self.base.cast, str)
-        self.assertEqual(self.base.type, Text)
+        self.assertIsInstance(self.base.type, Text)
         self.assertEqual(self.base.dimensions, 1)
 
     def test_additional_kwargs(self):
@@ -82,7 +82,7 @@ class TestArray(TestField):
                              [['1', '2', '3'], ['1', '2', '3']])
 
     def test_validate(self):
-        self.base = Array([1], minlen=2, maxlen=5)
+        self.base = Array(value=[1], minlen=2, maxlen=5)
         self.assertFalse(self.base.validate())
         self.base.append(2)
         self.assertTrue(self.base.validate())
@@ -94,7 +94,7 @@ class TestArray(TestField):
     def test_extend(self):
         rd = RandData(str).list(100)
         rd2 = RandData(str).list(100)
-        self.base = Array(rd)
+        self.base = Array(value=rd)
         self.base.extend(rd2)
         rd.extend(rd2)
         self.assertListEqual(self.base.value, rd)
@@ -106,13 +106,13 @@ class TestArray(TestField):
         self.assertListEqual(self.base.value, ['1', '2'])
 
     def test_insert(self):
-        self.base = Array(RandData(str).list(10))
+        self.base = Array(value=RandData(str).list(10))
         self.base.insert(3, 'foo')
         self.assertEqual(self.base[3], 'foo')
 
     def test_sort(self):
         arr = [4, 1, 3, 2]
-        self.base = Array(arr, cast=int)
+        self.base = Array(value=arr, cast=int)
         self.base.sort()
         arr.sort()
         self.assertListEqual(self.base.value, arr)
@@ -130,31 +130,31 @@ class TestArray(TestField):
 
     def test_pop(self):
         arr = [1, 2, 3]
-        self.base = Array(arr, cast=str)
+        self.base = Array(value=arr, cast=str)
         self.assertEqual(self.base.pop(), '1')
         self.assertEqual(self.base.pop(1), '3')
 
     def test_reverse(self):
         arr = [1, 2, 3]
-        self.base = Array(arr, cast=int)
+        self.base = Array(value=arr, cast=int)
         a = self.base.reverse()
         b = arr.reverse()
         self.assertEqual(a, b)
 
     def test_remove(self):
         arr = [1, 2, 3]
-        self.base = Array(arr, cast=int)
+        self.base = Array(value=arr, cast=int)
         self.assertListEqual(self.base.value, arr)
 
     def test___contains__(self):
-        self.base = Array(RandData(str).list(10))
+        self.base = Array(value=RandData(str).list(10))
         self.base.append('foo')
         self.assertTrue('foo' in self.base)
         self.assertFalse('bar' in self.base)
 
     def test___iter__(self):
         arr = [1, 2, 3]
-        self.base = Array(arr, cast=int)
+        self.base = Array(value=arr, cast=int)
         for x, y in zip(self.base, arr):
             self.assertEqual(x, y)
 

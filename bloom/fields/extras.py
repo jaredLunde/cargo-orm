@@ -608,7 +608,7 @@ class EncryptionFactory(object):
 
 
 class AESFactory(EncryptionFactory):
-    """ An encryption factory which uses the AES-256 algorithm. """
+    """ An encryption factory which uses the AES algorithm. """
     __slots__ = tuple()
 
     @staticmethod
@@ -621,7 +621,7 @@ class AESFactory(EncryptionFactory):
 
 
 class AESBytesFactory(EncryptionFactory):
-    """ An encryption factory which uses the AES-256 algorithm. """
+    """ An encryption factory which uses the AES algorithm. """
     __slots__ = tuple()
 
     @staticmethod
@@ -661,6 +661,7 @@ class Encrypted(Field):
         as one might expect. Special fields generally obey their class's
         type when possible, i.e. with :class:Binary fields.
 
+        =========================
         ``Types and Limitations``
         * :class:Array types: will be stored as |text[]| arrays in Postgres
             regardless of their defined cast. The cast will be obeyed on the
@@ -676,13 +677,13 @@ class Encrypted(Field):
         * :mod:identifier, :mod:datetimes, :mod:geometric, :mod:boolean,
             :mod:xml, and :mod:range types are unsupported
 
+        =========================
+        ``Usage``
         ..
             import os
             from bloom.fields import *
 
-            permissions = Encrypted(os.environ.get(
-                                       'BLOOM_ENCRYPTION_SECRET',
-                                        Encrypted.generate_secret(256)),
+            permissions = Encrypted(os.environ.get('BLOOM_ENCRYPTION_SECRET'),
                                     type=Array(type=Text, dimensions=1),
                                     not_null=True)
         ..
@@ -695,9 +696,9 @@ class Encrypted(Field):
         ..
     """
     sqltype = ENCRYPTED
-    _prefix = '$cipher$'
+    prefix = '$cipher$'
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'notNull',
         'default', '_alias', 'table', 'type', '_secret', 'factory')
 
     def __init__(self, secret, type=Text(), value=Field.empty,
@@ -720,41 +721,47 @@ class Encrypted(Field):
                 |value| and |secret| keyword arguments.
         """
         self._secret = secret
-        if (type.sqltype == BINARY and factory == AESFactory) or \
+        if (type.sqltype == BINARY and factory == AESFactory) or\
            (type.sqltype == ARRAY and type.type.sqltype == BINARY):
             factory = AESBytesFactory
         self.factory = factory
         self.type = type.copy()
         self._in_type = type.copy()
-        if hasattr(self.type, 'cast'):
+        if (type.sqltype == ARRAY and type.type.sqltype != BINARY):
             self._in_type.cast = str
         self.type.validation = validation or self.type.validation
-        self.field_name = None
-        self.primary = kwargs.get('primary')
-        self.unique = kwargs.get('unique')
-        self.index = kwargs.get('index')
-        self.notNull = kwargs.get('not_null')
+        self.primary = kwargs.get('primary', self.type.primary)
+        self.unique = kwargs.get('unique', self.type.unique)
+        self.index = kwargs.get('index', self.type.index)
+        self.notNull = kwargs.get('not_null', self.type.notNull)
         self.table = None
+        self.field_name = None
         try:
-            self.default = kwargs.get('default')
+            self.default = kwargs.get('default', self.type.default)
         except AttributeError:
             """ Ignore error for classes where default is a property not an
                 attribute """
             pass
-        self.value = Field.empty
         self._alias = None
         self.__call__(value)
 
+    @prepr('name', 'type', _no_keys=True)
+    def __repr__(self): return
+
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(self.type.__call__(self.decrypt(value)))
-        return self.value
+            self.type.__call__(self.decrypt(value))
+        return self.type.value
 
     def __getattr__(self, name):
         try:
             return self.__getattribute__(name)
         except AttributeError:
             return self.type.__getattribute__(name)
+
+    @property
+    def value(self):
+        return self.type.value
 
     @staticmethod
     def generate_secret(size=32,
@@ -822,14 +829,14 @@ class Encrypted(Field):
         """ This will inevitably return a new value each time it is called
             when using a :class:EncryptionFactory with an initialization
             vector.
-            -> (#str) the encrypted :prop:value with :prop:_prefix
+            -> (#str) the encrypted :prop:value with :prop:prefix
         """
         return self.encrypt(self.value)
 
     def _label(self, val):
         """ Adds |__bloomcrypt__:| prefix to @val """
         if val is not None and not self._labeled(val):
-            prefix = self._prefix
+            prefix = self.prefix
             if isinstance(val, bytes):
                 prefix = prefix.encode()
             return prefix + val
@@ -839,7 +846,7 @@ class Encrypted(Field):
     def _unlabel(self, val):
         """ Removes |__bloomcrypt__:| prefix from @val """
         if val is not None and self._labeled(val):
-            prefix = self._prefix
+            prefix = self.prefix
             if isinstance(val, bytes):
                 prefix = prefix.encode()
                 return val.replace(prefix, b'', 1)
@@ -848,9 +855,9 @@ class Encrypted(Field):
             return val
 
     def _labeled(self, val):
-        """ -> (#bool) |True| if @val is labeled with :prop:_prefix  """
+        """ -> (#bool) |True| if @val is labeled with :prop:prefix  """
         try:
-            prefix = self._prefix
+            prefix = self.prefix
             if isinstance(val, bytes):
                 prefix = prefix.encode()
             return val.startswith(prefix)
@@ -889,14 +896,13 @@ class Encrypted(Field):
         return validate
 
     def copy(self, *args, **kwargs):
-        cls = self.__class__(self._secret, *args, type=self.type, **kwargs)
+        cls = self.__class__(self._secret, *args, type=self.type.copy(),
+                             **kwargs)
         cls.field_name = self.field_name
         cls.primary = self.primary
         cls.unique = self.unique
         cls.index = self.index
         cls.notNull = self.notNull
-        if self.value is not None and self.value is not self.empty:
-            cls.value = copy.copy(self.value)
         cls.default = self.default
         cls.table = self.table
         cls._alias = self._alias

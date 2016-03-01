@@ -24,7 +24,8 @@ __all__ = ('ValidationValue', 'Validate')
 class ValidationValue(object):
     """ Used for validating :class:Field values """
     __slots__ = ('value', 'is_int', 'is_float', 'is_str', 'is_array', 'len')
-    INTS = {INT, BIGSERIAL, SERIAL, UIDTYPE}
+    CHARS = {TEXT, CHAR, VARCHAR, PASSWORD, USERNAME, EMAIL}
+    INTS = {INT, SMALLINT, BIGINT}
     FLOATS = {FLOAT, DECIMAL, NUMERIC}
     ARRAYS = {ARRAY}
 
@@ -73,7 +74,7 @@ class Validate(object):
     __slots__ = ('field', 'value', 'field_name', 'error')
     CHARS = {TEXT, CHAR, VARCHAR, PASSWORD, USERNAME, EMAIL}
     INTS = {INT, SMALLINT, BIGINT}
-    FLOATS = {FLOAT, DECIMAL}
+    FLOATS = {FLOAT, DECIMAL, NUMERIC}
     ARRAYS = {ARRAY}
     # DATES = {TIME, DATE, TIMESTAMP}
 

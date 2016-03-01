@@ -13,6 +13,8 @@ import random
 import string
 from hashlib import sha1
 
+import psycopg2.extensions
+
 from vital.debug import prepr
 from bloom.etc import passwords, usernames, operators
 
@@ -27,6 +29,7 @@ __all__ = (
     "DateLogic",
     "DateTimeLogic",
     "BinaryLogic",
+    "ArrayLogic",
     "JsonLogic",
     "JsonBLogic",
     "Case",
@@ -69,6 +72,7 @@ class BaseLogic(object):
         return Expression(self, operators.AND, other)
 
     __and__ = and_
+    also = and_
 
     def or_(self, other):
         """ Creates an |OR| SQL expression
@@ -90,6 +94,7 @@ class BaseLogic(object):
         return Expression(self, operators.OR, other)
 
     __or__ = or_
+    or_else = or_
 
     def eq(self, other):
         """ Creates an |=| SQL expression
@@ -860,7 +865,7 @@ class DateLogic(BaseNumericLogic):
 
     def last(self, length):
         interval = Expression(
-            self.Today(), operators.SUB, self.interval(length)).group()
+            self.now(), operators.SUB, self.interval(length)).group()
         return Expression(self, operators.GE, interval)
 
     def age(self, *args, alias=None):
@@ -891,11 +896,139 @@ class DateLogic(BaseNumericLogic):
         return Functions.justify_interval(self, *args, **kwargs)
 
     def timeofday(self, alias=None):
+        """ :see::meth:Functions.timeofday """
         return Functions.timeofday(alias=alias)
 
 
 class DateTimeLogic(DateLogic, TimeLogic):
     pass
+
+
+class ArrayLogic(BaseLogic):
+
+    def contains(self, array, **kwargs):
+        """ Creates a |@>| SQL expression
+            @array: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.contains([1, 2])
+                model.where(condition)
+            ..
+            |array_field @> [1,2]|
+        """
+        return Expression(self, "@>", array, **kwargs)
+
+    def contained_by(self, array, **kwargs):
+        """ Creates a |<@| SQL expression
+            @array: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.is_contained_by([1, 2])
+                model.where(condition)
+            ..
+            |array_field <@ [1,2]|
+        """
+        return Expression(self, "<@", array, **kwargs)
+
+    def overlaps(self, array, **kwargs):
+        """ Creates a |&&| (overlaps) SQL expression
+            @array: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.overlaps([1, 2])
+                model.where(condition)
+            ..
+            |array_field && [1,2]|
+        """
+        return Expression(self, "&&", array, **kwargs)
+
+    def all(self, target, **kwargs):
+        """ Creates an |ALL| SQL expression
+            @target: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.all([1, 2])
+                model.where(condition)
+            ..
+            |[1,2] = ALL(array_field)|
+        """
+        return Expression(target, "=", Function("ALL", self), **kwargs)
+
+    def any(self, target, **kwargs):
+        """ Creates an |ANY| SQL expression
+            @target: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.any([1, 2])
+                model.where(condition)
+            ..
+            |[1,2] = ANY(array_field)|
+        """
+        return Expression(target, "=", Function("ANY", self), **kwargs)
+
+    def some(self, target, **kwargs):
+        """ Creates a |SOME| SQL expression
+            @target: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.some([1, 2])
+                model.where(condition)
+            ..
+            |[1,2] = SOME(array_field)|
+        """
+        return Expression(target, "=", Function("SOME", self), **kwargs)
+
+    def length(self, dimension=1, **kwargs):
+        """ :see::meth:Functions.array_length """
+        return Functions.array_length(self, dimension, **kwargs)
+
+    def append_el(self, element, **kwargs):
+        """ :see::meth:Functions.array_append """
+        return Functions.array_append(self, element, **kwargs)
+
+    def prepend_el(self, element, **kwargs):
+        """ :see::meth:Functions.array_prepend """
+        return Functions.array_prepend(self, element, **kwargs)
+
+    def ndims(self, **kwargs):
+        """ :see::meth:Functions.array_ndims """
+        return Functions.ndims(self, **kwargs)
+
+    def dims(self, **kwargs):
+        """ :see::meth:Functions.array_dims """
+        return Functions.dims(self, **kwargs)
+
+    def concat(self, other, **kwargs):
+        """ :see::meth:Functions.array_concat """
+        return Functions.array_cat(self, other, **kwargs)
+
+    def unnest(self, **kwargs):
+        """ :see::meth:Functions.unnest """
+        return Functions.unnest(self, **kwargs)
 
 
 class BinaryLogic(BaseLogic):
@@ -960,6 +1093,59 @@ class BinaryLogic(BaseLogic):
             exp = Clause('both', exp)
         return Function('trim', exp, **kwargs)
 
+    def encode(self, format, **kwargs):
+        """ Encode binary data into a textual representation. Supported
+            formats are: base64, hex, escape. escape converts zero bytes and
+            high-bit-set bytes to octal sequences (\nnn) and doubles
+            backslashes.
+            -> (:class:Function)
+        """
+        return Functions.encode(self, format, **kwargs)
+
+    def decode(self, format, **kwargs):
+        """ Decode binary data from textual representation in string. Options
+            for format are same as in encode.
+            -> (:class:Function)
+        """
+        return Functions.decode(self, format, **kwargs)
+
+    def get_bit(self, offset, **kwargs):
+        """ Extract bit from @string
+            -> (:class:Function)
+        """
+        return Functions.get_bit(self, offset, **kwargs)
+
+    def get_byte(self, offset, **kwargs):
+        """ Extract byte from @string
+            -> (:class:Function)
+        """
+        return Functions.get_byte(self, offset, **kwargs)
+
+    def set_bit(self, offset, new_value, **kwargs):
+        """ Set bit in @string
+            -> (:class:Function)
+        """
+        return Functions.set_bit(self, offset, new_value, **kwargs)
+
+    def set_byte(self, offset, new_value, **kwargs):
+        """ Set byte in @string
+            -> (:class:Function)
+        """
+        return Functions.set_byte(self, offset, new_value, **kwargs)
+
+    def length(self, **kwargs):
+        """ Length of binary @string
+            -> (:class:Function)
+        """
+        return Functions.length(self, **kwargs)
+
+    def md5(self, **kwargs):
+        """ Calculates the MD5 hash of @string, returning the result in
+            hexadecimal.
+            -> (:class:Function)
+        """
+        return Functions.md5(self, **kwargs)
+
 
 class JsonLogic(BaseLogic):
 
@@ -1011,22 +1197,48 @@ class JsonLogic(BaseLogic):
             op = self._field_path_text_op
         return Expression(self, op, path, **kwargs)
 
-    def each(self):
-        return Functions.json_each(self)
+    def each(self, **kwargs):
+        """ Expands the outermost JSON object into a set of key/value pairs.
+            -> (:class:Function)
+        """
+        return Functions.json_each(self, **kwargs)
 
-    def each_text(self):
-        return Functions.json_each_text(self)
+    def each_text(self, **kwargs):
+        """ Expands the outermost JSON object into a set of key/value pairs.
+            The returned values will be of type text.
+            -> (:class:Function)
+        """
+        return Functions.json_each_text(self, **kwargs)
 
-    def array_length(self):
-        return Functions.json_array_length(self)
+    def array_length(self, **kwargs):
+        """ Finds the number of elements in the outermost JSON array.
+            -> (:class:Function)
+        """
+        return Functions.json_array_length(self, **kwargs)
 
-    def get_fields(self):
-        return Functions.json_object_keys(self)
+    def get_fields(self, **kwargs):
+        """ Returns set of keys in the outermost JSON object.
+            -> (:class:Function)
+        """
+        return Functions.json_object_keys(self, **kwargs)
 
     get_keys = get_fields
 
-    def get_elements(self):
-        return Functions.json_array_elements(self)
+    def get_elements(self, **kwargs):
+        """ Expands a JSON array to a set of JSON values.
+            -> (:class:Function)
+        """
+        return Functions.json_array_elements(self, **kwargs)
+
+    def set_path(self, path, create_missing=True, **kwargs):
+        """ Returns target with the section designated by path replaced by
+            new_value, or with new_value added if create_missing is true
+            (default is true) and the item designated by path does not exist.
+            As with the path orientated operators, negative integers that
+            appear in path count from the end of JSON arrays.
+            -> (:class:Function)
+        """
+        return Functions.json_set_path(self, path, create_missing, **kwargs)
 
 
 class JsonBLogic(JsonLogic):
@@ -1034,74 +1246,118 @@ class JsonBLogic(JsonLogic):
     _contains_op = '@>'
     _contained_op = '<@'
     _key_op = '?'
-    _keys_op = '?|'
-    _concatenate_op = '||'
+    _keys_any_op = '?|'
+    _keys_all_op = '?&'
+    _concat_op = '||'
     _delete_key_op = '-'
     _delete_path_op = '#-'
 
-    def contains(self, other):
-        pass
+    def contains(self, other, **kwargs):
+        """ Does this JSON value contain the @other JSON path/value
+            entries at the top level?
+            -> (:class:Expression)
+        """
+        return Expression(self, self._contains_op, other, **kwargs)
 
-    def contained_by(self, other):
-        pass
+    def contained_by(self, other, **kwargs):
+        """ Are these JSON path/value entries contained at the top level
+            within the @other JSON value?
+            -> (:class:Expression)
+        """
+        return Expression(self, self._contained_op, other, **kwargs)
 
-    def field_exists(self, key):
-        pass
+    def field_exists(self, field):
+        """ Does the @field exist as a top-level field within this JSON value?
+            -> (:class:Expression)
+        """
+        return Expression(self, self._key_op, field, **kwargs)
 
     key_exists = field_exists
 
-    def fields_exist(self, *keys, all=True):
-        pass
+    def fields_exist(self, *fields, all=False, **kwargs):
+        """ Do any/@all of these @fields exist as top-level @fields?
+            -> (:class:Expression)
+        """
+        op = self._keys_any_op
+        if all:
+            op = self._keys_all_op
+        return Expression(self, op, list(fields), **kwargs)
 
     keys_exist = fields_exist
 
-    def concat(self, other):
-        pass
+    def concat(self, other, **kwargs):
+        """ Concatenate @other jsonb values into this one as a new jsonb value
+            -> (:class:Expression)
+        """
+        return Expression(self, self._concat_op, other, **kwargs)
 
-    def del_field(self, key):
-        pass
+    def remove_field(self, field, **kwargs):
+        """ Delete @key/value pair or string element from this field.
+            -> (:class:Expression)
+        """
+        return Expression(self, self._delete_key_op, field, **kwargs)
 
-    del_key = del_field
+    remove_key = remove_field
 
-    def del_element(self, index):
-        pass
+    def remove_element(self, index, **kwargs):
+        """ Delete the array element with specified @index (Negative integers
+            count from the end). Throws an error if top level container is
+            not an array.
+            -> (:class:Expression)
+        """
+        return self.remove_field(index, **kwargs)
 
-    del_index = del_element
+    remove_index = remove_element
 
-    def del_path(self, path):
-        pass
+    def remove_path(self, path, **kwargs):
+        """ Delete the field or element with specified path (for JSON
+            arrays, negative integers count from the end)
+            -> (:class:Expression)
+        """
+        return Expression(self, self._delete_path_op, path, **kwargs)
 
-    def each(self):
-        return Functions.jsonb_each(self)
+    def each(self, **kwargs):
+        """ Expands the outermost JSON object into a set of key/value pairs.
+            -> (:class:Function)
+        """
+        return Functions.jsonb_each(self, **kwargs)
 
-    def each_text(self):
-        return Functions.jsonb_each_text(self)
+    def each_text(self, **kwargs):
+        """ Expands the outermost JSON object into a set of key/value pairs.
+            The returned values will be of type text.
+            -> (:class:Function)
+        """
+        return Functions.jsonb_each_text(self, **kwargs)
 
-    def array_length(self):
-        return Functions.jsonb_array_length(self)
+    def array_length(self, **kwargs):
+        """ Finds the number of elements in the outermost JSON array.
+            -> (:class:Function)
+        """
+        return Functions.jsonb_array_length(self, **kwargs)
 
-    def get_fields(self):
-        return Functions.jsonb_object_keys(self)
+    def get_fields(self, **kwargs):
+        """ Returns set of keys in the outermost JSON object.
+            -> (:class:Function)
+        """
+        return Functions.jsonb_object_keys(self, **kwargs)
 
     get_keys = get_fields
 
-    def get_elements(self):
-        return Functions.jsonb_array_elements(self)
+    def get_elements(self, **kwargs):
+        """ Expands a JSON array to a set of JSON values.
+            -> (:class:Function)
+        """
+        return Functions.jsonb_array_elements(self, **kwargs)
 
-    def set_path(self, path):
-        return Functions.jsonb_set_path(self, path)
-
-    '''
-    @>	jsonb	Does the left JSON value contain the right JSON path/value entries at the top level?	'{"a":1, "b":2}'::jsonb @> '{"b":2}'::jsonb
-    <@	jsonb	Are the left JSON path/value entries contained at the top level within the right JSON value?	'{"b":2}'::jsonb <@ '{"a":1, "b":2}'::jsonb
-    ?	text	Does the string exist as a top-level key within the JSON value?	'{"a":1, "b":2}'::jsonb ? 'b'
-    ?|	text[]	Do any of these array strings exist as top-level keys?	'{"a":1, "b":2, "c":3}'::jsonb ?| array['b', 'c']
-    ?&	text[]	Do all of these array strings exist as top-level keys?	'["a", "b"]'::jsonb ?& array['a', 'b']
-    ||	jsonb	Concatenate two jsonb values into a new jsonb value	'["a", "b"]'::jsonb || '["c", "d"]'::jsonb
-    -	text	Delete key/value pair or string element from left operand. Key/value pairs are matched based on their key value.	'{"a": "b"}'::jsonb - 'a'
-    -	integer	Delete the array element with specified index (Negative integers count from the end). Throws an error if top level container is not an array.	'["a", "b"]'::jsonb - 1
-    #-	text[]	Delete the field or element with specified path (for JSON arrays, negative integers count from the end)	'["a", {"b":1}]'::jsonb #- '{1,b}'
-    '''
+    def set_path(self, path, create_missing=True, **kwargs):
+        """ Returns target with the section designated by path replaced by
+            new_value, or with new_value added if create_missing is true
+            (default is true) and the item designated by path does not exist.
+            As with the path orientated operators, negative integers that
+            appear in path count from the end of JSON arrays.
+            -> (:class:Function)
+        """
+        return Functions.jsonb_set_path(self, path, create_missing, **kwargs)
 
 
 class Subquery(DateTimeLogic, StringLogic):
@@ -2340,89 +2596,279 @@ class Functions(WindowFunctions):
         return Function('NOT EXISTS', val, **kwargs)
 
     @staticmethod
-    def cast(field, as_):
+    def cast(field, as_, **kwargs):
         """ cast(mytable.myfield AS integer) """
-        return Function('cast', Expression(field, 'AS', safe(as_)))
+        return Function('cast', Expression(field, 'AS', safe(as_)), **kwargs)
 
-    # TODO: Binary support functions
-    # NOTE: http://www.postgresql.org/docs/9.3/static/functions-binarystring.html
-    @staticmethod
-    def btrim():
-        pass
+    #: Byte support functions
 
     @staticmethod
-    def encode():
-        pass
+    def btrim(string, bytes, **kwargs):
+        """ Remove the longest string consisting only of bytes in @bytes from
+            the start and end of @string.
+            -> (:class:Function)
+        """
+        return Function('btrim', string, bytes, **kwargs)
 
     @staticmethod
-    def decode():
-        pass
+    def encode(data, format, **kwargs):
+        """ Encode binary data into a textual representation. Supported
+            formats are: base64, hex, escape. escape converts zero bytes and
+            high-bit-set bytes to octal sequences (\nnn) and doubles
+            backslashes.
+            -> (:class:Function)
+        """
+        return Function('encode', data, format, **kwargs)
 
     @staticmethod
-    def get_bit():
-        pass
+    def decode(data, format, **kwargs):
+        """ Decode binary data from textual representation in string. Options
+            for format are same as in encode.
+            -> (:class:Function)
+        """
+        return Function('decode', data, format, **kwargs)
 
     @staticmethod
-    def get_byte():
-        pass
+    def get_bit(string, offset, **kwargs):
+        """ Extract bit from @string
+            -> (:class:Function)
+        """
+        return Function('get_bit', string, offset, **kwargs)
 
     @staticmethod
-    def set_bit():
-        pass
+    def get_byte(string, offset, **kwargs):
+        """ Extract byte from @string
+            -> (:class:Function)
+        """
+        return Function('get_byte', string, offset, **kwargs)
 
     @staticmethod
-    def set_byte():
-        pass
+    def set_bit(string, offset, new_value, **kwargs):
+        """ Set bit in @string
+            -> (:class:Function)
+        """
+        return Function('set_bit', string, offset, new_value, **kwargs)
 
     @staticmethod
-    def length():
-        pass
+    def set_byte(string, offset, new_value, **kwargs):
+        """ Set byte in @string
+            -> (:class:Function)
+        """
+        return Function('set_byte', string, offset, new_value, **kwargs)
 
     @staticmethod
-    def md5():
-        pass
-
-    # TODO: Json support functions
-    # NOTE: http://www.postgresql.org/docs/9.3/static/functions-json.html
-    @staticmethod
-    def array_to_json():
-        pass
+    def length(string, **kwargs):
+        """ Length of binary @string
+            -> (:class:Function)
+        """
+        return Function('length', string, **kwargs)
 
     @staticmethod
-    def row_to_json():
-        pass
+    def md5(string, **kwargs):
+        """ Calculates the MD5 hash of @string, returning the result in
+            hexadecimal.
+            -> (:class:Function)
+        """
+        return Function('md5', string, **kwargs)
+
+    #: JSON support functions
 
     @staticmethod
-    def to_json():
-        pass
+    def array_to_json(array, pretty=False, **kwargs):
+        """ Returns the @array as a JSON array. A PostgreSQL multidimensional
+            array becomes a JSON array of arrays. Line feeds will be added
+            between dimension-1 elements if @pretty is |True|.
+            -> (:class:Function)
+        """
+        exps = [array]
+        if pretty:
+            exps.append(pretty)
+        return Function('array_to_json', *exps, **kwargs)
 
     @staticmethod
-    def json_array_length():
-        pass
+    def row_to_json(record, pretty=False, **kwargs):
+        """ Returns the @record as a JSON object. Line feeds will be added
+            between level-1 elements if @pretty is |True|.
+            -> (:class:Function)
+        """
+        exps = [record]
+        if pretty:
+            exps.append(pretty)
+        return Function('row_to_json', *exps, **kwargs)
 
     @staticmethod
-    def json_each():
-        pass
+    def to_json(element, **kwargs):
+        """ Returns the value as json or jsonb. Arrays and composites are
+            converted (recursively) to arrays and objects; otherwise, if there
+            is a cast from the type to json, the cast function will be used
+            to perform the conversion; otherwise, a scalar value is produced.
+            For any scalar type other than a number, a Boolean, or a null
+            value, the text representation will be used, in such a fashion
+            that it is a valid json or jsonb value.
+            -> (:class:Function)
+        """
+        return Function('to_json', element, **kwargs)
 
     @staticmethod
-    def json_each_text():
-        pass
+    def json_array_length(obj, **kwargs):
+        """ Returns the number of elements in the outermost JSON array.
+            -> (:class:Function)
+        """
+        return Function('json_array_length', obj, **kwargs)
 
     @staticmethod
-    def json_object_keys():
-        pass
+    def json_each(obj, **kwargs):
+        """ Expands the outermost JSON object into a set of key/value pairs.
+            -> (:class:Function)
+        """
+        return Function('json_each', obj, **kwargs)
 
     @staticmethod
-    def json_populate_record():
-        pass
+    def json_each_text(obj, **kwargs):
+        """ Expands the outermost JSON object into a set of key/value pairs.
+            The returned values will be of type text.
+            -> (:class:Function)
+        """
+        return Function('json_each_text', obj, **kwargs)
 
     @staticmethod
-    def json_populate_recordset():
-        pass
+    def json_object_keys(obj, **kwargs):
+        """ Returns set of keys in the outermost JSON object.
+            -> (:class:Function)
+        """
+        return Function('json_object_keys', obj, **kwargs)
 
     @staticmethod
-    def json_array_elements():
-        pass
+    def json_populate_record(record, json, **kwargs):
+        """ Expands the object in @json to a row whose columns match the
+            @record type defined by base.
+            -> (:class:Function)
+        """
+        return Function('json_populate_record', record, json, **kwargs)
+
+    @staticmethod
+    def json_populate_recordset(record, json, **kwargs):
+        """ Expands the outermost array of objects in @json to a set of rows
+            whose columns match the @record type defined by base.
+            -> (:class:Function)
+        """
+        return Function('json_populate_recordset', record, json,  **kwargs)
+
+    @staticmethod
+    def json_array_elements(**kwargs):
+        """ Returns the number of elements in the outermost JSON array.
+            -> (:class:Function)
+        """
+        return Function('json_array_elements', obj, **kwargs)
+
+    #: JSONb support functions
+
+    @staticmethod
+    def _json_to_jsonb(func):
+        func.func = func.func.replace('json', 'jsonb')
+        func.compile()
+        return func
+
+    @staticmethod
+    def array_to_jsonb(*args, **kwargs):
+        """ :see::meth:array_to_json """
+        return Functions._json_to_jsonb(
+            Functions.array_to_json(*args, **kwargs))
+
+    @staticmethod
+    def row_to_jsonb(*args, **kwargs):
+        """ :see::meth:row_to_json """
+        return Functions._json_to_jsonb(Functions.row_to_json(*args, **kwargs))
+
+    @staticmethod
+    def to_jsonb(*args, **kwargs):
+        """ :see::meth:to_json """
+        return Functions._json_to_jsonb(Functions.to_json(*args, **kwargs))
+
+    @staticmethod
+    def jsonb_array_length(*args, **kwargs):
+        """ :see::meth:json_array_length """
+        return Functions._json_to_jsonb(
+            Functions.json_array_length(*args, **kwargs))
+
+    @staticmethod
+    def jsonb_each(*args, **kwargs):
+        """ :see::meth:json_each """
+        return Functions._json_to_jsonb(Functions.json_each(*args, **kwargs))
+
+    @staticmethod
+    def jsonb_each_text(*args, **kwargs):
+        """ :see::meth:json_each_text """
+        return Functions._json_to_jsonb(
+            Functions.json_each_text(*args, **kwargs))
+
+    @staticmethod
+    def jsonb_object_keys(*args, **kwargs):
+        """ :see::meth:json_object_keys """
+        return Functions._json_to_jsonb(
+            Functions.json_object_keys(*args, **kwargs))
+
+    @staticmethod
+    def jsonb_populate_record(*args, **kwargs):
+        """ :see::meth:populate_record """
+        return Functions._json_to_jsonb(
+            Functions.json_populate_record(*args, **kwargs))
+
+    @staticmethod
+    def jsobn_populate_recordset(*args, **kwargs):
+        """ :see::meth:json_populate_recordset """
+        return Functions._json_to_jsonb(
+            Functions.json_populate_recordset(*args, **kwargs))
+
+    @staticmethod
+    def jsonb_array_elements(*args, **kwargs):
+        """ :see::meth:json_array_elements """
+        return Functions._json_to_jsonb(
+            Functions.json_array_elements(*args, **kwargs))
+
+    #: Array support functions
+
+    def array_length(array, dimension=1, **kwargs):
+        """ Returns the length of the requested @array @dimension
+            -> (:class:Function)
+        """
+        return Function('array_length', array, dimension, **kwargs)
+
+    def array_append(array, element, **kwargs):
+        """ Insert an @element at the end of an @array
+            -> (:class:Function)
+        """
+        return Function('array_append', array, element, **kwargs)
+
+    def array_prepend(array, element, **kwargs):
+        """ Insert an @element at the beginning of an @array
+            -> (:class:Function)
+        """
+        return Function('array_prepend', array, element, **kwargs)
+
+    def array_ndims(array, **kwargs):
+        """ Returns the number of dimensions of the @array
+            -> (:class:Function)
+        """
+        return Function('array_ndims', array, **kwargs)
+
+    def array_dims(array, **kwargs):
+        """ Returns a text representation of @array's dimensions
+            -> (:class:Function)
+        """
+        return Function('array_dims', array, **kwargs)
+
+    def array_cat(array, other, **kwargs):
+        """ Concatenate @other to @array
+            -> (:class:Function)
+        """
+        return Function('array_cat', array, other, **kwargs)
+
+    def unnest(array, **kwargs):
+        """ Expand an @array to a set of rows
+            -> (:class:Function)
+        """
+        return Function('unnest', array, **kwargs)
 
     @staticmethod
     def func(*args, **kwargs):
@@ -2483,7 +2929,7 @@ class parameterize(BaseExpression, DateTimeLogic, StringLogic):
         ..
             ORM().subquery().where(parameterize(1)).select()
         ..
-        |%(8ae08c)s|
+        |%(8ae08c)s| and |{'8ae08c': 1}|
     """
     __slots__ = ('string', 'params')
 
