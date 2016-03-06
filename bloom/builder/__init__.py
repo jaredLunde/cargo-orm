@@ -1,16 +1,15 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Builder`
   ``Creates models from tables and tables from models``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
-   The MIT License (MIT) © 2015 Jared Lunde
+   The MIT License (MIT) © 2016 Jared Lunde
    http://github.com/jaredlunde/bloom-orm
 
 """
 import re
 import copy
+import docr
 import yapf
 from collections import OrderedDict
 
@@ -20,16 +19,21 @@ except ImportError:
     from collections import namedtuple
 
 from vital.cache import cached_property
-from vital.debug import prepr, logg
+from vital.debug import prepr, logg, line
 from vital.tools import strings as string_tools
 
-from bloom.exceptions import SchemaError
+from bloom.exceptions import *
 from bloom.cursors import CNamedTupleCursor
 from bloom.orm import ORM, Model, QueryState
 from bloom.expressions import *
+from bloom.fields import *
 from bloom.statements import *
 
+from bloom.builder.comments import Comment
+from bloom.builder.extras import *
+from bloom.builder.extensions import *
 from bloom.builder.fields import *
+from bloom.builder.functions import Function as CreateFunction
 from bloom.builder.tables import *
 from bloom.builder.indexes import *
 from bloom.builder.types import Type, EnumType
@@ -47,6 +51,7 @@ __all__ = (
     'Table',
     'Index',
     'create_cast',
+    'comment_on',
     'create_database',
     'create_domain',
     'create_operator',
@@ -65,21 +70,28 @@ __all__ = (
     'create_trigger',
     'create_user',
     'create_view',
+    'drop',
+    'Drop',
+    'drop_creator',
     'drop_cast',
-    'drop_domain',
     'drop_database',
+    'drop_domain',
     'drop_operator',
     'drop_extension',
+    'drop_event_trigger',
     'drop_schema',
     'drop_index',
+    'drop_language',
+    'drop_materialized_view',
+    'drop_model',
     'drop_sequence',
     'drop_function',
-    'drop_tablespace',
-    'drop_trigger',
+    'drop_table',
     'drop_type',
-    'drop_enum_type',
     'drop_role',
     'drop_rule',
+    'drop_tablespace',
+    'drop_trigger',
     'drop_user',
     'drop_view'
 )
@@ -88,6 +100,7 @@ __all__ = (
 _model_tpl = """
 class {clsname}(Model):{comment}
     table = '{table}'
+    schema = '{schema}'
     ordinal = ({ordinal})
     {fields}
 """
@@ -149,18 +162,6 @@ class Modeller(object):
             new_com.append(part)
         return " ".join(new_com)
 
-    '''def _format_field(self, field):
-        cutoff = 71
-        if len(field) > cutoff:
-            lines = field.split('\n')
-            comment = '\n'.join(lines[:-1])
-            field = lines[-1]
-            sep = ' '.join('' for _ in range(field.lstrip().find('(') + 2))
-            field = self._format_cutoff(field, cutoff, sep)
-            if comment != field:
-                field = '\n'.join((comment, field))
-        return field.lstrip()'''
-
     def _format_ordinal(self, ordinal):
         com = ordinal
         cutoff = 71
@@ -218,6 +219,7 @@ class Modeller(object):
             ordinal=self._format_ordinal(ordinal),
             table=table.name,
             fields="\n    ".join(fields),
+            schema=self.schema,
             comment=comment
         ), style_config="pep8")[0]
 
@@ -235,9 +237,7 @@ class Modeller(object):
         if write_mode and 'a' in write_mode:
             banner = "{}\n{}"
         else:
-            banner = "#!/usr/bin/python3\n" +\
-                     "# -*- coding: utf-8 -*-\n" +\
-                     "{}\nfrom bloom import Model, ForeignKey\n" +\
+            banner = "{}\nfrom bloom import Model, ForeignKey\n" +\
                      "from bloom.fields import *\n\n" +\
                      "{}"
         return banner.format(self.banner or "", models)
@@ -274,10 +274,11 @@ class Modeller(object):
 
 
 class BuilderItems(object):
-    __slots__ = ('_dict', 'builder')
+    __slots__ = ('_dict', '_type', 'builder')
 
-    def __init__(self, items, builder=None):
+    def __init__(self, type, items, builder=None):
         self._dict = OrderedDict()
+        self._type = type
         for name, item in items:
             self._dict[name] = copy.copy(item)
         self.builder = builder
@@ -324,22 +325,83 @@ class BuilderItems(object):
             yield val
 
     def add(self, name, *args, **kwargs):
-        setattr(self, name, Index(self.builder.model, *args, **kwargs))
+        try:
+            setattr(self,
+                    name,
+                    self._type(self.builder.model, *args, **kwargs))
+        except AttributeError:
+            setattr(self,
+                    name,
+                    self._type(*args, **kwargs))
 
     def remove(self, name):
         del self[name]
 
 
 class Builder(Table):
+    """ ========================================================================
+        ``Basic Usage Example``
+        ..
+            from bloom import Model
+            from bloom.fields import *
+            from bloom.builder import Builder
+
+            class Users(Model):
+                schema = 'shard_0'
+                uid = UID()
+                username = Username(maxlen=14, index=True, unique=True,
+                                    not_null=True)
+                email = Email(unique=True, minlen=5, not_null=True)
+                password = Password(minlen=8, not_null=True)
+
+
+            class UsersBuilder(Builder):
+                model = Users()
+                ordinal = ('uid', 'username', 'email', 'password')
+
+                def after(self):
+                    self.comment_on(self.columns.uid,
+                                    'A universally unique identifier '+
+                                    'implementation.')
+
+
+            if __name__ == '__main__':
+                from bloom import create_client
+                #: Creates the ORM client connection
+                create_client()
+                #: Builds the model
+                build = UsersBuilder()
+                build.run()
+        ..
+        |CREATE SCHEMA shard_0;                                               |
+        |SET SEARCH PATH shard_0;                                             |
+        |CREATE SEQUENCE bloom_uid_seq NOMINVAL NOMAXVAL CACHE 1024;          |
+        |CREATE FUNCTION bloom_uid() ...;                                     |
+        |CREATE TABLE users (                                                 |
+        |   uid      bigint PRIMARY DEFAULT bloom_uid(),                      |
+        |   username varchar(14) UNIQUE NOT NULL,                             |
+        |   email    varchar(320) UNIQUE NOT NULL                             |
+        |               CHECK (char_length(email) > 5),                       |
+        |   password text NOT NULL                                            |
+        |);                                                                   |
+        |CREATE UNIQUE INDEX users_username_unique_index                      |
+        |   USING BTREE(username);                                            |
+        |COMMENT ON COLUMN users.uid IS 'A universally unique identifier      |
+        |   implementation.'                                                  |
+    """
     model = None
     ordinal = None
 
     def __init__(self, model=None, schema=None):
         """ `Table Builder`
+             Generates tables, indexes, foreign keys and other constraints,
+             comments, functions and schemas for given :class:Model(s).
 
-             Generates the tables for given models.
+             @model: (:class:Model) initialized model
+             @schema: (#str) schema to use, otherwise the schema defined
+                within the @model will be defaulted to
         """
-        self.model = model or self.model
+        self.model = model.copy() if model is not None else self.model.copy()
         super().__init__(self.model.copy(), self.model.table)
         self.schema = schema or self.model.schema or \
             self.model.db.schema or 'public'
@@ -356,61 +418,264 @@ class Builder(Table):
         """ Executed immediately after the bulder runs """
         pass
 
-    def comment_on(self, obj):
-        # TODO: allow comments on fields/tables/schemas
-        # NOTE: http://www.postgresql.org/docs/9.1/static/sql-comment.html
-        pass
+    def _get_comment_type(self, obj):
+        return obj.__class__.__name__.upper()
+
+    def _get_comment_ident(self, obj):
+        return obj._common_name
+
+    def comment_on(self, obj, comment, dry=False):
+        """ Immediately adds comments to @obj in Postgres unless @dry
+            is |True|.
+
+            @obj: (:class:bloom.builder.utils.BaseCreator)
+            @comment: (#str) the comment content
+            @dry: (#bool) |True| to return the :class:Comment without
+                executing the query.
+        """
+        if isinstance(obj, Field):
+            obj = Column(obj)
+        elif obj == self.model:
+            obj = self
+        type = self._get_comment_type(obj)
+        ident = self._get_comment_ident(obj)
+        return comment_on(self.orm, type, ident, comment, dry=dry)
+
+    _special_fields = {UID: UIDFunction,
+                       UUID: UUIDExtension,
+                       HStore: HStoreExtension}
+
+    @cached_property
+    def comments(self):
+        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
+                comments which are set to be created by the Builder
+                autonomously.
+        """
+        return BuilderItems(lambda *a, **k: self.comment_on(*a, dry=True, **k),
+                            ((field.field_name,
+                             self.comment_on(self.columns[field.field_name],
+                                             f._get_comment(),
+                                             dry=True))
+                             for field in self.model.fields
+                             for t, f in self._special_fields.items()
+                             if isinstance(field, t)))
+
+    @cached_property
+    def functions(self):
+        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
+                functions which are set to be created by the Builder
+                autonomously.
+        """
+        return BuilderItems(CreateFunction,
+                            ((f.extras_name, f(self.model))
+                             for field in self.model.fields
+                             for t, f in self._special_fields.items()
+                             if isinstance(field, t) and
+                                issubclass(f, CreateFunction)))
+
+    @cached_property
+    def extensions(self):
+        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
+                extensions which are set to be created by the Builder
+                autonomously.
+        """
+        return BuilderItems(Extension,
+                            ((f.extras_name, f(self.model))
+                             for field in self.model.fields
+                             for t, f in self._special_fields.items()
+                             if isinstance(field, t) and
+                                issubclass(f, Extension)))
 
     @cached_property
     def columns(self):
+        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
+                columns which are set to be created by the Builder
+                autonomously.
+        """
         fields = self.model.fields
         if self.ordinal:
             fields = [self.model.__getattribute__(name)
                       for name in self.ordinal]
-        return BuilderItems(((field.field_name, Column(field))
-                            for field in fields), builder=self)
+        return BuilderItems(Column,
+                            ((field.field_name, Column(field))
+                             for field in fields), builder=self)
 
     @cached_property
     def indexes(self):
-        return BuilderItems(((field.field_name, Index(self.model, field))
-                            for field in self.model.indexes), builder=self)
+        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
+                indexes which are set to be created by the Builder
+                autonomously.
+        """
+        return BuilderItems(Index,
+                            ((field.field_name, Index(self.model, field))
+                             for field in self.model.indexes), builder=self)
 
     def create_schema(self):
+        """ Creates the schema for the model if it doesn't exist """
         if self.schema != 'public':
-            create_schema(self.model, self.schema)
+            self.model.schema = 'public'
+            try:
+                create_schema(self.model, self.schema)
+            except QueryError as e:
+                logg(e.message).notice()
+            self.model.schema = self.schema
+
+    def create_functions(self):
+        """ Creates all of the functions defined in :prop:functions """
+        for function in self.functions:
+            function.execute()
+
+    def create_extensions(self):
+        """ Creates all of the functions defined in :prop:functions """
+        for extension in self.extensions:
+            try:
+                extension.execute()
+            except QueryError as e:
+                logg(e.message).notice()
+
+    def create_indexes(self):
+        """ Creates all of the indexes defined in :prop:indexes """
+        for index in self.indexes:
+            try:
+                index.execute()
+            except QueryError as e:
+                logg(e.message).notice()
+
+    def create_comments(self):
+        """ Creates all of the comments in :prop:comments """
+        for comment in self.comments:
+            comment.execute()
 
     def debug(self):
-        logg(self.name).log(self.model.__module__ + '.' +
-                            self.model.__class__.__name__)
-        logg(self.columns._dict).log('COLUMNS', color='blue')
-        logg(self.indexes._dict).log('INDEXES', color='blue')
-        logg(self).log()
+        self.from_fields(*self.columns)
+        print()
+        line('=')
+        logg(repr(self.schema) + '.' + repr(self.name.__str__())).log(
+            'MODEL:' +
+            self.model.__module__ + '.' + self.model.__class__.__name__,
+            force=True,
+            color='bold')
+        line('=')
+        logg(self.columns._dict).log('COLUMNS', color='blue', force=True)
+        line('-', 'gray')
+        logg('\n' + self.query.mogrified).log(
+            'CREATE TABLE',
+            color='boldblue',
+            force=True)
+        line('-', 'gray')
+        logg(self.indexes._dict).log('INDEXES', color='blue', force=True)
+        line('-', 'gray')
+        logg(self.extensions._dict).log('EXTENSIONS', color='blue', force=True)
+        line('-', 'gray')
+        logg(self.functions._dict).log('FUNCTIONS', color='blue', force=True)
+        line('-', 'gray')
+        logg(self.comments._dict).log('COMMENTS', color='blue', force=True)
+        line('—', 'gray')
+        return self
 
     def run(self):
-        print()
-        self.debug()
+        cn = self.model.__class__.__name__
+        logg().log('Building `%s` at `%s.%s`...' %
+                   (cn, self.schema, self.name))
         self.before()
         self.from_fields(*self.columns)
         self.create_schema()
+        self.create_extensions()
+        self.create_functions()
+        try:
+            self.execute()
+        except QueryError as e:
+            raise BuildError('Error building `{}`: {}'.format(cn, e.message))
+        self.create_indexes()
+        self.create_comments()
         self.after()
 
 
+# TODO: Build shards
+# NOTE: http://www.craigkerstiens.com/2012/11/30/sharding-your-database/
+#    hash(user_id) % 4096
+
 class Build(object):
+    """ ========================================================================
+        ``Usage Example``
+        ..
+            from bloom.builder import Builder, Build, create_tables
 
-    def __init__(self, *builders, recursive=False):
+
+            class UsersBuilder(Builder):
+                model = Users()
+
+
+            class PostsBuilder(Builder):
+                model = Posts()
+
+
+            if __name__ == '__main__':
+                # Build from imported path
+                Build('__main__').run()
+                # is the same as
+                Build.main()
+                # in this case is the same as
+                app_build_alt = Build(PostsBuilder(),
+                                      UsersBuilder())
+                app_build_alt.run()
+                # is the same as
+                create_tables('__main__')
+        ..
+    """
+    def __init__(self, *builders):
         """ Finds all of the :class:Builder objects in @path or optionally
-            builds all of the models in @*builders
+            builds all of the models in @*builders. It is of necessity that
+            the @builders are ordered properly if there are dependencies.
 
-            @*builders: (:class:Builder|#str) one or several :class:Builder
-                or a #str importable python path to where the model is located,
-                e.g. |cool_app.models.builders.User|
-            @recursive: (#bool) |True| to recursively search @path for
-                :class:Builder(s)
+            @*builders: (:class:Builder or #str) one or several
+                initialized :class:Builder(s) or a #str importable python
+                path to where one or several :class:Builder(s) are located,
+                e.g. |cool_app.models.builders.users|. They will be run
+                alphabetically if imported via a string.
         """
+        self.builders = builders
+
+    def get_builders(self, path):
+        return [obj.obj()
+                for name, obj in docr.Docr(path).classes.items()
+                if issubclass(obj.obj, Builder)]
+
+    def _run_builders(self, builders, debug=False):
+        for builder in builders:
+            if isinstance(builder, str):
+                builder = docr.Docr(builder)
+                if builder.type == builder.MODULE:
+                    self._run_builders(self.get_builders(builder.obj),
+                                       debug=debug)
+            elif debug:
+                builder.debug()
+            else:
+                builder.run()
+
+    def debug(self):
+        self._run_builders(self.builders, debug=True)
+        return self
 
     def run(self):
-        for builder in self.builders:
-            builder.run()
+        self.before()
+        self._run_builders(self.builders)
+        self.after()
+
+    def before(self):
+        """ Executed immediately before the builder runs. This is where
+            you'll want to do things like make edits to your :prop:columns
+            and :prop:indexes, and add :meth:constraints.
+        """
+        pass
+
+    def after(self):
+        """ Executed immediately after the bulder runs """
+        pass
+
+    @staticmethod
+    def main():
+        return Build('__main__').run()
 
 
 def create_models(orm, *tables, banner=None, schema='public',
@@ -419,8 +684,12 @@ def create_models(orm, *tables, banner=None, schema='public',
     return modeller.run(output_to=output_to, **kwargs)
 
 
-def create_tables(model):
-    pass
+def create_tables(*builders, dry=False):
+    """ :see::class:Build """
+    build = Build(*builders)
+    if not dry:
+        return build.run()
+    return build
 
 
 if __name__ == '__main__':

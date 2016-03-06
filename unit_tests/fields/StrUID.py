@@ -1,34 +1,25 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
+from bloom import Function
 from bloom.fields import StrUID
 
-from unit_tests.fields.Int import TestInt
+from unit_tests.fields.UID import TestUID
+from unit_tests import configure
 
 
-class TestStrUID(TestInt):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        super().__init__(*args, **kwargs)
-        self.base = StrUID()
-        self.base.table = 'test'
-        self.base.field_name = 'uid'
+class TestStrUID(TestUID):
+    orm = configure.StrUIDModel()
 
     def test_init(self):
-        self.base = StrUID()
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertTrue(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.minval, 1)
-        self.assertEqual(self.base.maxval, 9223372036854775807)
+        base = StrUID()
+        self.assertEqual(base.value, base.empty)
+        self.assertTrue(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsInstance(base.default, Function)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.minval, 1)
+        self.assertEqual(base.maxval, 9223372036854775807)
 
     def test___call__(self):
         for check in [2223372036854775807, '2223372036854775808']:
@@ -43,4 +34,4 @@ class TestStrUID(TestInt):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestStrUID, verbosity=2, failfast=True)

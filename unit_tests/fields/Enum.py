@@ -10,12 +10,9 @@ from unit_tests.fields.Char import *
 
 
 class TestEnum(TestField):
+    base = Enum([1, 2, 3, 4, 'five', 'six', 'seven'])
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Enum((1, 2, 3, 4))
-
-    def test_init_(self):
+    def test_init(self):
         with self.assertRaises(TypeError):
             self.base = Enum()
 

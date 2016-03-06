@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Extension Builder`
@@ -19,7 +18,7 @@ __all__ = ('Extension',)
 class Extension(BaseCreator):
 
     def __init__(self, orm, name, schema=None, version=None, old_version=None,
-                 not_exists=True):
+                 not_exists=False):
         """ `Create an Extension`
             :see::func:bloom.builders.create_extension
         """
@@ -77,6 +76,8 @@ class Extension(BaseCreator):
                      [ FROM old_version ]
         '''
         self.orm.reset()
-        self._add(Clause('CREATE EXTENSION', self._not_exists, self.name),
+        self._add(Clause('CREATE EXTENSION',
+                         self._not_exists,
+                         self.name),
                   self.parameters)
         return Raw(self.orm)

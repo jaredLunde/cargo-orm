@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Trigger Builder`
@@ -146,6 +145,10 @@ class Trigger(BaseCreator):
 
     def from_reference(self, ref_table):
         self._from = Clause('FROM', self._cast_safe(ref_table))
+
+    @property
+    def _common_name(self):
+        return "{} ON {}".format(self.name, self._table)
 
     @property
     def query(self):

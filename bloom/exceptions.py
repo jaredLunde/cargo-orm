@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Exceptions Raised by Bloom SQL`
@@ -14,6 +12,7 @@ __all__ = (
   'QueryError',
   'SchemaError',
   'ORMIndexError',
+  'BuildError',
   'RelationshipImportError',
   'PullError',
   'TranslationError',
@@ -26,6 +25,12 @@ __all__ = (
 
 class QueryError(Exception):
     """ Raised when there was an error executing a :class:bloom.Query """
+    def __init__(self, message):
+        self.message = message
+
+
+class BuildError(Exception):
+    """ Raised when tables fail to build with :class:bloom.builder.Build """
     def __init__(self, message):
         self.message = message
 

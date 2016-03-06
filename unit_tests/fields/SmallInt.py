@@ -1,16 +1,12 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
 from bloom.fields import SmallInt
 
-from unit_tests.fields.Field import *
+from unit_tests.fields.Field import TestField
+from unit_tests import configure
 
 
-class TestSmallInt(TestField):
+class TestSmallInt(configure.IntTestCase, TestField):
     '''
     value: value to populate the field with
     not_null: bool() True if the field cannot be Null
@@ -24,40 +20,37 @@ class TestSmallInt(TestField):
     minval: int() minimum interger value
     maxval: int() maximum integer value
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = SmallInt()
-        self.base.table = 'test'
-        self.base.field_name = 'smallint'
+    @property
+    def base(self):
+        return self.orm.smallint
 
     def test_init_(self):
-        self.base = SmallInt()
         self.assertEqual(self.base.value, self.base.empty)
         self.assertIsNone(self.base.primary)
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)
         self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
+        self.assertIsNone(self.base.not_null)
         self.assertEqual(self.base.minval, -32768)
         self.assertEqual(self.base.maxval, 32767)
 
     def test_additional_kwargs(self):
-        self.base = SmallInt(minval=3)
-        self.assertEqual(self.base.minval, 3)
-        self.base = SmallInt(maxval=4)
-        self.assertEqual(self.base.maxval, 4)
-        self.base = SmallInt()
+        base = SmallInt(minval=3)
+        self.assertEqual(base.minval, 3)
+        base = SmallInt(maxval=4)
+        self.assertEqual(base.maxval, 4)
+        base = SmallInt()
 
     def test_validate(self):
-        self.base = SmallInt(minval=4, maxval=10)
-        self.base(4)
-        self.assertTrue(self.base.validate())
-        self.base(3)
-        self.assertFalse(self.base.validate())
-        self.base(10)
-        self.assertTrue(self.base.validate())
-        self.base(11)
-        self.assertFalse(self.base.validate())
+        base = SmallInt(minval=4, maxval=10)
+        base(4)
+        self.assertTrue(base.validate())
+        base(3)
+        self.assertFalse(base.validate())
+        base(10)
+        self.assertTrue(base.validate())
+        base(11)
+        self.assertFalse(base.validate())
 
     def test___call__(self):
         for error in ['abc', [], tuple(), set(), dict(), '4.2']:
@@ -67,8 +60,18 @@ class TestSmallInt(TestField):
             self.base(num)
             self.assertEqual(self.base.value, 4)
 
+    def test_insert(self):
+        self.base(10)
+        self.orm.insert()
+
+    def test_select(self):
+        self.base(10)
+        self.orm.insert()
+        self.assertEqual(
+            getattr(self.orm.new().get(), self.base.field_name).value,
+            self.base.value)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestSmallInt, verbosity=2, failfast=True)

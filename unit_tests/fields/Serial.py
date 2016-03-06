@@ -1,16 +1,13 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
+from bloom import safe
 from bloom.fields import Serial
 
 from unit_tests.fields.Int import TestInt
+from unit_tests import configure
 
 
-class TestSerial(TestInt):
+class TestSerial(configure.IdentifierTestCase, TestInt):
     '''
     value: value to populate the field with
     not_null: bool() True if the field cannot be Null
@@ -24,24 +21,44 @@ class TestSerial(TestInt):
     minval: int() minimum interger value
     maxval: int() maximum integer value
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Serial()
-        self.base.table = 'test'
-        self.base.field_name = 'int'
+    orm = configure.SerialModel()
+
+    @property
+    def base(self):
+        return self.orm.serial
 
     def test_init_(self):
-        self.base = Serial()
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertTrue(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.minval, 1)
-        self.assertEqual(self.base.maxval, 2147483647)
+        base = Serial()
+        self.assertEqual(base.value, base.empty)
+        self.assertTrue(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsNone(base.default)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.minval, 1)
+        self.assertEqual(base.maxval, 2147483647)
 
+    def test_value(self):
+        self.base(1234)
+        self.assertIs(self.base.value, self.base.value)
+        self.base.clear()
+        self.assertIs(self.base.value, self.base.empty)
+        self.base(None)
+        self.assertIsNone(self.base.value)
+
+    def test_insert(self):
+        self.base(1234)
+        self.orm.insert(self.base)
+        self.base.clear()
+        self.orm.insert(self.base)
+
+    def test_select(self):
+        self.orm.insert(self.base)
+        self.assertEqual(
+            getattr(self.orm.new().desc(self.base).get(),
+                    self.base.field_name).value,
+            self.base.value)
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestSerial, verbosity=2, failfast=True)

@@ -11,15 +11,13 @@ import psycopg2
 
 from vital.debug import logg
 
-from kola import config
-from bloom import ORM, Model, ForeignKey, create_kola_client
+from bloom import db, Model, ForeignKey, create_db
 from bloom.fields import *
-from bloom.builder import Builder, Build, Column, Index
+from bloom.builder import *
+from bloom.builder.schemas import Schema
 
 
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_client()
+create_db()
 
 
 class FooUsers(Model):
@@ -49,41 +47,53 @@ class FooComments(Model):
 
 class FooUsersBuilder(Builder):
     ordinal = ('uid', 'username', 'password')
-    model = FooUsers(debug=True)
+    model = FooUsers(schema='foo_0', debug=False)
+
+    def before(self):
+        self.not_exists()
 
 
 class FooPostsBuilder(Builder):
-    model = FooPosts(debug=True)
+    model = FooPosts(schema='foo_0', debug=False)
 
     def before(self):
         self.columns.id.set_type('int8')
+        self.not_exists()
 
 
 class FooCommentsBuilder(Builder):
     ordinal = ('uid', 'actor', 'target', 'content', 'posted_on')
-    model = FooComments(debug=True)
+    model = FooComments(schema='foo_0', debug=False)
 
     def before(self):
         self.columns.actor.unique(None)
-        self.columns.actor.references(None)
+        self.model.actor.ref.on_update('CASCADE').on_delete('CASCADE')
+        self.columns.actor.references(self.model.actor.ref)
         self.columns.target = Column(self.model.target, unique=None)
         self.unique((self.model.actor, self.model.target))
-        self.indexes.target = Index(self.model,
-                                    self.model.actor,
-                                    self.model.target,
-                                    partial=(self.model.target > 5),
-                                    unique=True)
-        self.indexes.actor = Index(self.model, self.model.actor)
+        self.indexes.actor_target = Index(self.model,
+                                          self.model.actor,
+                                          self.model.target,
+                                          partial=(self.model.target > 5),
+                                          unique=True)
+        del self.indexes.actor
         del self.indexes.posted_on
         self.indexes.add('posted_on', self.model.posted_on)
         self.indexes.remove('posted_on')
         self.indexes.add('posted_on', self.model.posted_on)
+        self.comments.add('good one', self.columns.posted_on, 'test it')
+        self.not_exists()
+
+    def after(self):
+        self.comment_on(self.columns.actor, 'Actor unique identifier from foo')
+        self.comment_on(Schema(self.orm, self.schema), 'Shard 0 schema')
 
 
 class TestBuilder(unittest.TestCase):
 
     def test_builder_a(self):
         b = FooUsersBuilder()
+        b.debug()
         b.run()
 
     def test_builder_b(self):
@@ -97,4 +107,7 @@ class TestBuilder(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    # unittest.main()
+    ordinal = FooUsersBuilder(), FooPostsBuilder(), FooCommentsBuilder()
+    Build(*ordinal).debug().run()
+    drop_schema(db, 'foo_0', cascade=True, if_exists=True)

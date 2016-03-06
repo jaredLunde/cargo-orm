@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL ORM`
@@ -379,7 +377,7 @@ class ORM(object):
                 |USING| clause for the |JOIN| using the given fields.
 
             -> @self
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
             ..
                 m1 = Model()
@@ -401,7 +399,7 @@ class ORM(object):
                 is given, otherwise @a model table in the |JOIN|
 
             -> @self
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -477,7 +475,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Groups results by the field 'user_id'
@@ -513,7 +511,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
             ..
                 m = ORM()
@@ -536,7 +534,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
             ..
                 m = Model()
@@ -554,15 +552,15 @@ class ORM(object):
             |(f1, f2, f3, f4) VALUES (1, 2, 3, 4), (5, 6, 7, 8)|
         """
         def _do_insert(field):
-            if not isinstance(field, Field):
+            try:
+                if field._should_insert():
+                    return field.value
+                else:
+                    return safe('DEFAULT')
+            except AttributeError:
                 return field
-            elif field._should_insert():
-                return field.real_value
-            else:
-                return safe('DEFAULT')
 
-        vals = tuple(map(_do_insert, vals))
-        self.state.add(ValuesClause("VALUES ", *vals))
+        self.state.add(ValuesClause("VALUES ", *map(_do_insert, vals)))
         return self
 
     def set(self, *exps, **kwargs):
@@ -574,7 +572,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Increments the field 'views' in the model by one
@@ -594,9 +592,10 @@ class ORM(object):
             |SET model_table.views = 14|
         """
         def _do_update(field):
-            if isinstance(field, Field) and field._should_update():
-                return field.eq(field.real_value)
-            else:
+            try:
+                if field._should_update():
+                    return field.eq(field.value)
+            except AttributeError:
                 return field
 
         exps = filter(lambda x: x is not None,  map(_do_update, exps))
@@ -613,7 +612,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Groups results by the field 'user_id'
@@ -635,7 +634,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Orders by the model field 'username' ASC
@@ -679,7 +678,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Sets the LIMIT to 10
@@ -762,7 +761,7 @@ class ORM(object):
 
             -> @self
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Sets an OFFSET of 450 |(10*50)-50| and a LIMIT of 50
@@ -866,17 +865,24 @@ class ORM(object):
         conn = self.db.get()
         for q in queries or self.queries:
             #: Executes the query with its parameters
-            result = self.execute(q.query, q.params, commit=commit, conn=conn)
+            try:
+                result = self.execute(q.query,
+                                      q.params,
+                                      commit=commit,
+                                      conn=conn)
+            except QueryError:
+                if not queries:
+                    self.queries.remove(q)
+                raise
             if fetch:
+                #: Fetches 'all' by default
+                fetch_type = 'fetchall'
+                if q.one:
+                    #: Fetches one result if 'one' specified in the :clas:Query
+                    fetch_type = 'fetchone'
                 try:
-                    if q.one:
-                        #: Fetches one result if 'one' specified in the query
-                        #  state
-                        result = result.fetchone()
-                    else:
-                        #: Defaults to fetching all, so a list is always
-                        #  returned by default as a result
-                        result = result.fetchall()
+                    #: Fetches the result
+                    result = result.__getattribute__(fetch_type)()
                 except psycopg2.ProgrammingError:
                     #: No results to fetch
                     pass
@@ -949,7 +955,8 @@ class ORM(object):
             #  and the 'commit' argument is true
             if commit and not conn.autocommit:
                 conn.commit()
-        except (psycopg2.ProgrammingError, psycopg2.IntegrityError) as e:
+        except (psycopg2.ProgrammingError, psycopg2.IntegrityError,
+                psycopg2.DataError, psycopg2.InternalError) as e:
             #: Rolls back the transaction in the event of a failure
             conn.rollback()
             raise QueryError(e.args[0].strip())
@@ -968,7 +975,7 @@ class ORM(object):
             Also see: :class:Subquery
 
             -> @self
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            =================================================================
             ``Usage Example``
             ..
                 m = Model()
@@ -993,7 +1000,7 @@ class ORM(object):
             @queries: (:class:Query) querys to add to the multi queue
 
             -> @self
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            =================================================================
             ``Usage Example``
             ..
                 my_model.multi()  # Initializes the multi query
@@ -1019,7 +1026,7 @@ class ORM(object):
                 (foobar3,)|
 
             -> @self
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            =================================================================
             ``Usage Example``
             ..
                 my_model.many()  # Initializes the many query
@@ -1276,19 +1283,19 @@ class Joins(object):
             the table of the field matches @join_table within the @exp
             expression.
         """
-        if isinstance(exp.left, (Field, ForeignKey)):
+        try:
             if exp.left.table == join_table:
                 exp.left = exp.left.copy()
                 exp.left.set_alias(table=alias)
                 exp.left = aliased(exp.left)
-        elif isinstance(exp.left, Expression):
+        except AttributeError:
             self.expression_on_alias(exp.left, join_table, alias)
-        if isinstance(exp.right, Field):
+        try:
             if exp.right.table == join_table:
                 exp.right = exp.right.copy()
                 exp.right.set_alias(table=alias)
                 exp.right = aliased(exp.right)
-        elif isinstance(exp.right, Expression):
+        except AttributeError:
             self.expression_on_alias(exp.right, join_table, alias)
         return exp
 
@@ -1425,7 +1432,7 @@ class Joins(object):
                     elif isinstance(a, (Model, Relationship)):
                         #: Only a :class:Model was provided
                         table, on = self.with_model(a, alias)
-                    elif isinstance(a, Expression):
+                    elif isinstance(a, BaseExpression):
                         #: 'a' was a :class:Expression object, so we use that
                         # as the ON clause and the left or right field's table
                         # as the join table
@@ -1441,7 +1448,7 @@ class Joins(object):
 
 
 class Model(ORM):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ ===================================================================
         ``Usage Examples``
 
         Creates a new model with two fields
@@ -1503,7 +1510,7 @@ class Model(ORM):
     ordinal = []
 
     def __init__(self, client=None, cursor_factory=None, naked=None,
-                 debug=False, **kwargs):
+                 schema=None, debug=False, **kwargs):
         """ `Basic Model`
             A basic model for Postgres tables.
 
@@ -1512,7 +1519,10 @@ class Model(ORM):
                 of the :prop:_cursor_factory, rather than the default which
                 is to return query results as copies of the current model.
         """
-        super().__init__(client, cursor_factory=cursor_factory, debug=debug)
+        if schema is None and hasattr(self, 'schema'):
+            schema = self.schema
+        super().__init__(client, cursor_factory=cursor_factory, schema=schema,
+                         debug=debug)
         self.table = self.table or camel_to_underscore(self.__class__.__name__)
         self._fields = []
         self._relationships = []
@@ -1746,9 +1756,9 @@ class Model(ORM):
         result = q.execute().fetchone()
         self.reset_naked()
         if alias is None:
-            if hasattr(result, '_asdict'):
+            try:
                 result = result.count
-            else:
+            except AttributeError:
                 result = result['count']
         return result
 
@@ -1766,9 +1776,9 @@ class Model(ORM):
         """
         result = self.one().naked()._select(self.best_index.count(alias=alias))
         if alias is None:
-            if hasattr(result, '_asdict'):
+            try:
                 result = result.count
-            else:
+            except AttributeError:
                 result = result['count']
         return result
 
@@ -1918,18 +1928,18 @@ class Model(ORM):
         # Primary Keys
         if self.primary_key is not None and indexable(self.primary_key):
             if not isinstance(self.primary_key, tuple):
-                return self.primary_key.eq(self.primary_key.real_value)
+                return self.primary_key.eq(self.primary_key.value)
             else:
-                exp = self.primary_key[0].eq(self.primary_key[0].real_value)
+                exp = self.primary_key[0].eq(self.primary_key[0].value)
                 for key in self.primary_key[1:]:
-                    exp = exp.and_(key.eq(key.real_value))
+                    exp = exp.and_(key.eq(key.value))
                 return exp
 
         # Unique Indexes
         _unique_index = None
         for index in list(self.unique_indexes) + self.foreign_keys:
             if indexable(index):
-                exp = index.eq(index.real_value)
+                exp = index.eq(index.value)
                 if _unique_index:
                     _unique_index = _unique_index.and_(exp)
                 else:
@@ -1942,7 +1952,7 @@ class Model(ORM):
         _index = None
         for index in self.indexes:
             if indexable(index):
-                exp = index.eq(index.real_value)
+                exp = index.eq(index.value)
                 if _index:
                     _index = _index.and_(exp)
                 else:
@@ -1960,11 +1970,13 @@ class Model(ORM):
         best_available = self.best_available_index
         if best_available is not None:
             best_available_ = best_available.left
-            if isinstance(best_available_, Expression):
+            try:
                 while True:
                     best_available_ = best_available_.left
                     if isinstance(best_available_, Field):
                         break
+            except AttributeError:
+                pass
             if best_available_.unique or best_available_.primary:
                 return best_available
         return None

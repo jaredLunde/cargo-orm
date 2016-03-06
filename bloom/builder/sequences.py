@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Sequence Builder`
@@ -21,12 +20,11 @@ class Sequence(BaseCreator):
 
     def __init__(self, orm, name, incr=None, minval=None, maxval=sys.maxsize,
                  start=None, cache=None, cycle=False, owned_by=None,
-                 temporary=False, not_exists=True):
+                 temporary=False):
         """ `Create a Sequence`
             :see::func:bloom.builder.create_sequence
         """
         super().__init__(orm, name)
-        self.orm = orm
         self._incr = None
         if incr:
             self.incr(incr)
@@ -45,9 +43,6 @@ class Sequence(BaseCreator):
         self._temporary = None
         if temporary:
             self.temporary()
-        self._not_exists = None
-        if not_exists:
-            self.not_exists()
 
     def incr(self, by):
         self._incr = Clause('INCREMENT BY', self._incr)
@@ -79,18 +74,14 @@ class Sequence(BaseCreator):
 
     def owned_by(self, owner=None):
         if owner is None:
-            safe('NONE')
+            self._owned_by = None
         else:
             owner = self._cast_safe(owner)
-        self._owned_by = Clause('OWNED BY', owner)
+            self._owned_by = Clause('OWNED BY', owner)
         return self
 
     def temporary(self):
         self._temporary = Clause('TEMP')
-        return self
-
-    def not_exists(self):
-        self._not_exists = Clause('IF NOT EXISTS')
         return self
 
     @property

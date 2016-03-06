@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Field-level Validators`
@@ -24,13 +22,13 @@ __all__ = ('ValidationValue', 'Validate')
 class ValidationValue(object):
     """ Used for validating :class:Field values """
     __slots__ = ('value', 'is_int', 'is_float', 'is_str', 'is_array', 'len')
-    CHARS = {TEXT, CHAR, VARCHAR, PASSWORD, USERNAME, EMAIL}
+    CHARS = {TEXT, CHAR, VARCHAR, PASSWORD, KEY, USERNAME, EMAIL}
     INTS = {INT, SMALLINT, BIGINT}
     FLOATS = {FLOAT, DECIMAL, NUMERIC}
     ARRAYS = {ARRAY}
 
     def __init__(self, field):
-        value = field.real_value if not hasattr(field, 'validation_value') \
+        value = field.value if not hasattr(field, 'validation_value') \
             else field.validation_value
         self.value = value
         self.is_int = isinstance(value, int)
@@ -195,7 +193,8 @@ class Validate(object):
         """ If a field is set to |NOT NULL| and the value is |NULL|,
             the field will not validate.
         """
-        if self.field.notNull and (
+        if self.field.not_null and (
+           self.value.value is self.field.empty or
            self.value.value is None or not len(str(self.value))):
             self.error = "{} cannot be 'Null'".format(self.field_name)
             return False
@@ -204,7 +203,7 @@ class Validate(object):
     def _is_valid_null(self):
         """ If a field can be |NULL| and it is |NULL|, the field will validate
         """
-        if not self.field.notNull and self.value.value is None:
+        if not self.field.not_null and self.value.value is None:
             #: This field can be null and it is
             return True
 

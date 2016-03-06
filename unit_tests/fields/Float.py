@@ -1,19 +1,12 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
-from docr import Docr
 from bloom.fields import Float
-from bloom import create_pool
 
 from unit_tests.fields.Numeric import TestNumeric
+from unit_tests import configure
 
 
 class TestFloat(TestNumeric):
-
     '''
     value: value to populate the field with
     not_null: bool() True if the field cannot be Null
@@ -26,24 +19,23 @@ class TestFloat(TestNumeric):
         field validates, and False if it does not
     digits: int() maximum digit precision
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Float()
-        self.base.table = 'test'
-        self.base.field_name = 'decimal'
+    @property
+    def base(self):
+        return self.orm.float4
 
     def test_init_(self):
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertIsNone(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.minval, -9223372036854775808.0)
-        self.assertEqual(self.base.maxval, 9223372036854775807.0)
-        self.assertEqual(self.base.digits, 6)
+        base = Float()
+        self.assertEqual(base.value, base.empty)
+        self.assertIsNone(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsNone(base.default)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.minval, -9223372036854775808.0)
+        self.assertEqual(base.maxval, 9223372036854775807.0)
+        self.assertEqual(base.digits, 6)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestFloat, failfast=True, verbosity=2)

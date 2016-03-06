@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom ORM Statements`
@@ -92,7 +90,7 @@ class BaseQuery(StringLogic, DateTimeLogic):
         """ Creates a :class:WITH statement
 
             -> |self.orm|
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
             ..
                 tn = aliased('tn')
@@ -134,13 +132,16 @@ class BaseQuery(StringLogic, DateTimeLogic):
     @property
     def query(self):
         if self.string:
-            return self.newline_re.sub(r" ", self.string).strip()
+            return self.string.strip()
 
     @property
     def mogrified(self):
         """ -> (#str) the query post-parameterization """
         cur = self.orm.db.cursor()
         return cur.mogrify(self.string, self.params).decode()
+
+    def compile(self):
+        return self.query
 
     def execute(self):
         """ Executes :prop:query in the :prop:orm """
@@ -162,7 +163,7 @@ class BaseQuery(StringLogic, DateTimeLogic):
 
 
 class Query(BaseQuery):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ ======================================================================
         ``Usage Example``
         ..
             q = Query(ORM(), query="SELECT * FROM users WHERE true")
@@ -226,7 +227,7 @@ class SetOperations(Query):
         """ Creates |UNION| query
 
             -> :class:UNION query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the union query
@@ -256,7 +257,7 @@ class SetOperations(Query):
         """ Creates |UNION ALL| query
 
             -> :class:UNION query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the union query
@@ -285,7 +286,7 @@ class SetOperations(Query):
         """ Creates |UNION DISTINCT| query
 
             -> :class:UNION query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the union query
@@ -315,7 +316,7 @@ class SetOperations(Query):
         """ Creates |EXCEPT| query
 
             -> :class:EXCEPT query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the except query
@@ -345,7 +346,7 @@ class SetOperations(Query):
         """ Creates |EXCEPT ALL| query
 
             -> :class:EXCEPT query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the except query
@@ -375,7 +376,7 @@ class SetOperations(Query):
         """ Creates |EXCEPT DISTINCT| query
 
             -> :class:EXCEPT query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the except query
@@ -405,7 +406,7 @@ class SetOperations(Query):
         """ Creates |INTERSECT| query
 
             -> :class:INTERSECT query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the intersect query
@@ -435,7 +436,7 @@ class SetOperations(Query):
         """ Creates |INTERSECT ALL| query
 
             -> :class:INTERSECT query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the intersect query
@@ -465,7 +466,7 @@ class SetOperations(Query):
         """ Creates |INTERSECT DISTINCT| query
 
             -> :class:INTERSECT query object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
 
             Creates the intersect query
@@ -535,7 +536,7 @@ class SetOperations(Query):
 class UNION(SetOperations):
     """ Creates a UNION statement between multiple :class:BaseQuery objects
 
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        =======================================================================
         ``Usage Example``
         Creates the |UNION|
         ..
@@ -580,7 +581,7 @@ class INTERSECT(SetOperations):
     """ Creates an |INTERSECT| statement between multiple :class:BaseQuery
         objects
 
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        =======================================================================
         ``Usage Example``
 
         Creates the |INTERSECT|
@@ -625,7 +626,7 @@ Intersect = INTERSECT
 class EXCEPT(SetOperations):
     """ Creates an |EXCEPT| statement between multiple :class:BaseQuery objects
 
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        =======================================================================
         ``Usage Example``
 
         Creates the |EXCEPT|
@@ -672,12 +673,12 @@ class RAW(SetOperations):
         in the order in which they are declared, does not attempt to
         self-order at all.
 
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        =======================================================================
         ``Usage Example``
         ..
             RAW(ORM().values(1))
         ..
-        |<bloom.statements.RAW(query_string=`VALUES (%(c5R053jXaKT4)s)`, |
+        |<bloom.statements.RAW(query_string=`VALUES (%(c5R053jXaKT4)s)`,      |
         |   params={'c5R053jXaKT4': 1}):0x7f5f022ddf60>                       |
     """
     __querytype__ = "RAW"
@@ -717,7 +718,7 @@ Raw = RAW
 
 
 class INSERT(Query):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -767,8 +768,11 @@ class INSERT(Query):
     def set_values(self):
         """ Prepares the model :class:Field values for insertion into the DB
         """
-        if not self.fields and hasattr(self.orm, 'fields'):
-            self.fields = self.orm.fields
+        if not self.fields:
+            try:
+                self.fields = self.orm.fields
+            except AttributeError:
+                pass
         vals = self.orm.values(*self.fields)
         if self.orm._many == 'BEGIN':
             self.orm.add_query(self)
@@ -815,7 +819,7 @@ Insert = INSERT
 
 
 class SELECT(SetOperations):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -884,8 +888,10 @@ class SELECT(SetOperations):
                 yield field.name
             elif isinstance(field, BaseLogic):
                 yield str(field)
-                if hasattr(field, 'params'):
+                try:
                     update_params(field.params)
+                except AttributeError:
+                    pass
             else:
                 field = parameterize(field)
                 update_params(field.params)
@@ -899,10 +905,11 @@ class SELECT(SetOperations):
         query_clauses = [_empty] * len(self.clauses)
         joins = []
         for state in self.orm.state:
-            if isinstance(state, list):
-                joins = (c.string for c in state)
-            elif hasattr(state, 'string'):
+            if hasattr(state, 'string'):
                 query_clauses[self.clauses.index(state.clause)] = state.string
+            elif isinstance(state, list):
+                joins = (c.string for c in state)
+
         self.params.update(self.orm.state.params)
         if joins:
             query_clauses[1] = " ".join(joins)
@@ -924,7 +931,7 @@ Select = SELECT
 
 
 class UPDATE(Query):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -936,7 +943,6 @@ class UPDATE(Query):
         ..
 
         =======================================================================
-
         Creates and executes a simple |UPDATE| query
         ..
             # Tells the ORM which fields to update
@@ -973,8 +979,11 @@ class UPDATE(Query):
         """
         if len(fields):
             self.fields = fields
-        elif hasattr(self.orm, 'fields'):
-            self.fields = self.orm.fields
+        else:
+            try:
+                self.fields = self.orm.fields
+            except AttributeError:
+                pass
         self.orm.set(*self.fields)
 
     def _get_table(self):
@@ -983,8 +992,10 @@ class UPDATE(Query):
         table = None
         #: Sets the UPDATE table
         for field in self.fields:
-            if hasattr(field, 'table'):
+            try:
                 return field.table
+            except AttributeError:
+                continue
 
     clauses = ('SET', 'FROM', 'WHERE', 'RETURNING')
 
@@ -1011,7 +1022,7 @@ Update = UPDATE
 
 
 class DELETE(Query):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -1075,7 +1086,7 @@ Delete = DELETE
 
 class WITH(Query):
     """ Creates a |WITH| statement
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        =======================================================================
         ``Usage Examples``
         ..
             t = aliased('t')
@@ -1114,8 +1125,10 @@ class WITH(Query):
         """
         recursive = None
         for r in queries:
-            if hasattr(r, 'recursive') and r.recursive:
+            try:
                 recursive = r.recursive
+            except AttributeError:
+                continue
         super().__init__(orm=orm, recursive=recursive, **kwargs)
         self.queries = queries
         self.orm._with = True
@@ -1132,7 +1145,7 @@ class WITH(Query):
         for query in self.queries:
             alias = query.alias
             recursive = ""
-            if isinstance(self.recursive, (list, set, tuple)):
+            if isinstance(self.recursive, (list, tuple)):
                 recursive = ", ".join(map(str, self.recursive))
             add_as("{}{} AS (\n{}\n)".format(
               alias, "({})".format(recursive), query.query

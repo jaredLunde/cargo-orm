@@ -1,23 +1,16 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
-from docr import Docr
 from bloom.fields import Bool
-from bloom import create_pool
 
 from unit_tests.fields.Field import TestField
+from unit_tests import configure
 
 
-class TestBool(TestField):
-    base = Bool()
+class TestBool(configure.BooleanTestCase, TestField):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Bool()
+    @property
+    def base(self):
+        return self.orm.boolean
 
     def test_validate(self):
         a = Bool()
@@ -33,7 +26,7 @@ class TestBool(TestField):
 
     def test___call__(self):
         a = Bool()
-        self.assertIsNone(a())
+        self.assertIs(a(), a.empty)
         a(True)
         self.assertTrue(a())
         a(False)
@@ -45,8 +38,29 @@ class TestBool(TestField):
         a('0')
         self.assertTrue(a())
 
+    def test_insert(self):
+        self.base(True)
+        self.orm.insert(self.base)
+        self.base(False)
+        self.orm.insert(self.base)
+        self.base(None)
+        self.orm.insert(self.base)
+
+    def test_select(self):
+        self.base(True)
+        self.orm.insert(self.base)
+        self.assertEqual(self.orm.new().desc(self.orm.uid).get().boolean.value,
+                         True)
+        self.base(False)
+        self.orm.naked().insert(self.base)
+        self.assertEqual(self.orm.new().desc(self.orm.uid).get().boolean.value,
+                         False)
+        self.base(None)
+        self.orm.insert(self.base)
+        self.assertEqual(self.orm.new().desc(self.orm.uid).get().boolean.value,
+                         None)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestBool, failfast=True, verbosity=2)

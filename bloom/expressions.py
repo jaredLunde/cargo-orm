@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Expressions`
@@ -25,13 +23,6 @@ __all__ = (
     "StringLogic",
     "BaseNumericLogic",
     "NumericLogic",
-    "TimeLogic",
-    "DateLogic",
-    "DateTimeLogic",
-    "BinaryLogic",
-    "ArrayLogic",
-    "JsonLogic",
-    "JsonBLogic",
     "Case",
     "Clause",
     'CommaClause',
@@ -56,7 +47,7 @@ class BaseLogic(object):
         """ Creates an |AND| SQL expression
 
             -> (SQL) :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
 
@@ -78,7 +69,7 @@ class BaseLogic(object):
         """ Creates an |OR| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
 
@@ -100,7 +91,7 @@ class BaseLogic(object):
         """ Creates an |=| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -117,7 +108,7 @@ class BaseLogic(object):
         """ Creates a |<>| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -142,7 +133,7 @@ class BaseLogic(object):
         """ Creates a |DISTINCT FROM| SQL clause
 
             -> SQL :class:Clause object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -158,7 +149,7 @@ class BaseLogic(object):
         """ Creates a |NOT DISTINCT FROM| SQL clause
 
             -> SQL :class:Clause object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -178,7 +169,7 @@ class BaseLogic(object):
         """ Creates an |IN| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -195,7 +186,7 @@ class BaseLogic(object):
         """ Creates a |NOT IN| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -213,7 +204,7 @@ class BaseLogic(object):
         """ Creates a |IS NULL| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -224,11 +215,11 @@ class BaseLogic(object):
         """
         return Expression(self, "{} {}".format(operators.IS, operators.NULL))
 
-    def not_null(self):
+    def is_not_null(self):
         """ Creates a |IS NOT NULL| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -244,7 +235,7 @@ class BaseLogic(object):
         """ Creates an |ASC| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -259,7 +250,7 @@ class BaseLogic(object):
         """ Creates a |DESC| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -347,7 +338,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |<| (less than) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -364,7 +355,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |<=| (less than or equal) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -381,7 +372,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |>| (greater than) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -398,7 +389,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |>=| (greater than or equal) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -415,7 +406,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |/| (division) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -433,7 +424,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |*| (multiplication) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -450,7 +441,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |+| (addition) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -467,7 +458,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |^| (power) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -484,7 +475,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |-| (subtraction) SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -513,7 +504,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |BETWEEN| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -530,7 +521,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |NOT BETWEEN| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -639,7 +630,7 @@ class StringLogic(BaseLogic):
         """ Creates a |LIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -656,7 +647,7 @@ class StringLogic(BaseLogic):
         """ Creates a |NOT LIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -672,7 +663,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -689,7 +680,7 @@ class StringLogic(BaseLogic):
         """ Creates a |NOT ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -705,7 +696,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -720,7 +711,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -735,7 +726,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -750,7 +741,7 @@ class StringLogic(BaseLogic):
         """ Creates a |SIMILAR TO| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -765,7 +756,7 @@ class StringLogic(BaseLogic):
         """ Creates a |NOT SIMILAR TO| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -781,7 +772,7 @@ class StringLogic(BaseLogic):
         """ Creates a |POSIX| SQL expression
 
             -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -811,556 +802,7 @@ class StringLogic(BaseLogic):
         return Functions.concat(self, *others, **kwargs)
 
 
-class TimeLogic(BaseNumericLogic):
-
-    def interval(self, length, alias=None):
-        return Expression(_empty, 'interval', length, alias=alias)
-
-    def last(self, length):
-        right = Expression(
-            self.now(), operators.SUB, self.interval(length)).group()
-        return Expression(self, operators.GE, right)
-
-    def age(self, *args, alias=None):
-        """ :see::meth:Functions.age """
-        return Functions.age(self, *args, alias=alias)
-
-    @staticmethod
-    def clock_timestamp(alias=None):
-        return Functions.clock_timestamp(alias=alias)
-
-    @staticmethod
-    def current_time(precision=None, alias=None):
-        return Expression(_empty, "current_time", _empty, alias=alias)
-
-    @staticmethod
-    def current_timestamp(alias=None):
-        return Expression(_empty, "current_timestamp", _empty, alias=alias)
-
-    @staticmethod
-    def localtime(alias=None):
-        return Expression(_empty, "localtime", _empty, alias=alias)
-
-    @staticmethod
-    def localtimestamp(alias=None):
-        return Expression(_empty, "localtimestamp", _empty, alias=alias)
-
-    @staticmethod
-    def transaction_timestamp(alias=None):
-        return Functions.transaction_timestamp(alias=alias)
-
-    @staticmethod
-    def now(alias=None):
-        return Function("now", alias=alias)
-
-    def isfinite(self, **kwargs):
-        """ isfinite(timestamp '2001-02-16 21:28:30') """
-        return Functions.isfinite(self, **kwargs)
-
-
-class DateLogic(BaseNumericLogic):
-
-    def interval(self, length, alias=None):
-        return Expression(_empty, 'interval', length)
-
-    def last(self, length):
-        interval = Expression(
-            self.now(), operators.SUB, self.interval(length)).group()
-        return Expression(self, operators.GE, interval)
-
-    def age(self, *args, alias=None):
-        """ :see::meth:Functions.age """
-        return Functions.age(self, *args, alias=alias)
-
-    def current_date(self, alias=None):
-        return Expression(_empty, 'current_date', _empty, alias=alias)
-
-    def date_part(self, text, **kwargs):
-        """ :see::meth:Functions.date_part """
-        return Functions.date_part(text, self, **kwargs)
-
-    def date_trunc(self, text, **kwargs):
-        """ :see::meth:Functions.date_trunc """
-        return Functions.date_trunc(text, self, **kwargs)
-
-    def extract(self, text, **kwargs):
-        """ :see::meth:Functions.extract """
-        return Functions.extract(text, self, **kwargs)
-
-    def justify_days(self, *args, **kwargs):
-        """ :see::meth:Functions.justify_days """
-        return Functions.justify_days(self, *args, **kwargs)
-
-    def justify_interval(self, *args, **kwargs):
-        """ :see::meth:Functions.justify_interval """
-        return Functions.justify_interval(self, *args, **kwargs)
-
-    def timeofday(self, alias=None):
-        """ :see::meth:Functions.timeofday """
-        return Functions.timeofday(alias=alias)
-
-
-class DateTimeLogic(DateLogic, TimeLogic):
-    pass
-
-
-class ArrayLogic(BaseLogic):
-
-    def contains(self, array, **kwargs):
-        """ Creates a |@>| SQL expression
-            @array: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.contains([1, 2])
-                model.where(condition)
-            ..
-            |array_field @> [1,2]|
-        """
-        return Expression(self, "@>", array, **kwargs)
-
-    def contained_by(self, array, **kwargs):
-        """ Creates a |<@| SQL expression
-            @array: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.is_contained_by([1, 2])
-                model.where(condition)
-            ..
-            |array_field <@ [1,2]|
-        """
-        return Expression(self, "<@", array, **kwargs)
-
-    def overlaps(self, array, **kwargs):
-        """ Creates a |&&| (overlaps) SQL expression
-            @array: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.overlaps([1, 2])
-                model.where(condition)
-            ..
-            |array_field && [1,2]|
-        """
-        return Expression(self, "&&", array, **kwargs)
-
-    def all(self, target, **kwargs):
-        """ Creates an |ALL| SQL expression
-            @target: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.all([1, 2])
-                model.where(condition)
-            ..
-            |[1,2] = ALL(array_field)|
-        """
-        return Expression(target, "=", Function("ALL", self), **kwargs)
-
-    def any(self, target, **kwargs):
-        """ Creates an |ANY| SQL expression
-            @target: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.any([1, 2])
-                model.where(condition)
-            ..
-            |[1,2] = ANY(array_field)|
-        """
-        return Expression(target, "=", Function("ANY", self), **kwargs)
-
-    def some(self, target, **kwargs):
-        """ Creates a |SOME| SQL expression
-            @target: (#list) or #tuple object
-
-            -> SQL :class:Expression object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-            ``Usage Example``
-            ..
-                condition = model.array_field.some([1, 2])
-                model.where(condition)
-            ..
-            |[1,2] = SOME(array_field)|
-        """
-        return Expression(target, "=", Function("SOME", self), **kwargs)
-
-    def length(self, dimension=1, **kwargs):
-        """ :see::meth:Functions.array_length """
-        return Functions.array_length(self, dimension, **kwargs)
-
-    def append_el(self, element, **kwargs):
-        """ :see::meth:Functions.array_append """
-        return Functions.array_append(self, element, **kwargs)
-
-    def prepend_el(self, element, **kwargs):
-        """ :see::meth:Functions.array_prepend """
-        return Functions.array_prepend(self, element, **kwargs)
-
-    def ndims(self, **kwargs):
-        """ :see::meth:Functions.array_ndims """
-        return Functions.ndims(self, **kwargs)
-
-    def dims(self, **kwargs):
-        """ :see::meth:Functions.array_dims """
-        return Functions.dims(self, **kwargs)
-
-    def concat(self, other, **kwargs):
-        """ :see::meth:Functions.array_concat """
-        return Functions.array_cat(self, other, **kwargs)
-
-    def unnest(self, **kwargs):
-        """ :see::meth:Functions.unnest """
-        return Functions.unnest(self, **kwargs)
-
-
-class BinaryLogic(BaseLogic):
-
-    def _cast_bytes(self, string):
-        if isinstance(string, bytes):
-            return psycopg2.extensions.Binary(string)
-        return string
-
-    def concat(self, string, **kwargs):
-        """ String concatenation
-            -> (:class:Expression)
-        """
-        string = self._cast_bytes(string)
-        return Expression(self, '||', string, **kwargs)
-
-    def octet_length(self, **kwargs):
-        """ Number of bytes in binary string
-            -> (:class:Function)
-        """
-        return Function('octet_length', self)
-
-    def overlay(self, substring, from_, for_=None, **kwargs):
-        """ Replace @substring
-            -> (:class:Function)
-        """
-        substring = self._cast_bytes(substring)
-        exps = [self,
-                Expression(self.empty,
-                           'placing',
-                           Expression(substring, 'from', from_))]
-        if for_:
-            exps.append(Expression(self.empty, 'for', for_))
-        return Function('overlay', Clause("", *exps), **kwargs)
-
-    def position(self, substring):
-        """ Location of specified @substring
-            -> (:class:Function)
-        """
-        substring = self._cast_bytes(substring)
-        return Function('position', Expression(substring, 'in', self))
-
-    def substring(self, from_=None, for_=None, **kwargs):
-        """ Extracts substring from @from_ to @for_
-            -> (:class:Function)
-        """
-        exps = []
-        if from_ is not None:
-            exps.append(Expression(self.empty, 'from', from_))
-        if for_ is not None:
-            exps.append(Expression(self.empty, 'for', for_))
-        return Function('substring', Clause("", self, *exps), **kwargs)
-
-    def trim(self, bytes_, both=False, **kwargs):
-        """ Remove the longest string containing only the bytes in @bytes_
-            from the start and end of the string
-            -> (:class:Expression)
-        """
-        bytes_ = self._cast_bytes(bytes_)
-        exp = Expression(bytes_, 'from', self)
-        if both:
-            exp = Clause('both', exp)
-        return Function('trim', exp, **kwargs)
-
-    def encode(self, format, **kwargs):
-        """ Encode binary data into a textual representation. Supported
-            formats are: base64, hex, escape. escape converts zero bytes and
-            high-bit-set bytes to octal sequences (\nnn) and doubles
-            backslashes.
-            -> (:class:Function)
-        """
-        return Functions.encode(self, format, **kwargs)
-
-    def decode(self, format, **kwargs):
-        """ Decode binary data from textual representation in string. Options
-            for format are same as in encode.
-            -> (:class:Function)
-        """
-        return Functions.decode(self, format, **kwargs)
-
-    def get_bit(self, offset, **kwargs):
-        """ Extract bit from @string
-            -> (:class:Function)
-        """
-        return Functions.get_bit(self, offset, **kwargs)
-
-    def get_byte(self, offset, **kwargs):
-        """ Extract byte from @string
-            -> (:class:Function)
-        """
-        return Functions.get_byte(self, offset, **kwargs)
-
-    def set_bit(self, offset, new_value, **kwargs):
-        """ Set bit in @string
-            -> (:class:Function)
-        """
-        return Functions.set_bit(self, offset, new_value, **kwargs)
-
-    def set_byte(self, offset, new_value, **kwargs):
-        """ Set byte in @string
-            -> (:class:Function)
-        """
-        return Functions.set_byte(self, offset, new_value, **kwargs)
-
-    def length(self, **kwargs):
-        """ Length of binary @string
-            -> (:class:Function)
-        """
-        return Functions.length(self, **kwargs)
-
-    def md5(self, **kwargs):
-        """ Calculates the MD5 hash of @string, returning the result in
-            hexadecimal.
-            -> (:class:Function)
-        """
-        return Functions.md5(self, **kwargs)
-
-
-class JsonLogic(BaseLogic):
-
-    _field_op = '->'
-    _field_text_op = '->>'
-    _field_path_op = '#>'
-    _field_path_text_op = '#>>'
-
-    def get_element(self, index, as_text=False, **kwargs):
-        """ Gets a Json array element
-
-            @index: (#int) index of the element within a Json array
-            @as_text: (#bool) True to select the value as text rather than
-                its data type
-            -> (:class:Expression)
-        """
-        op = self._field_op
-        if as_text:
-            op = self._field_text_op
-        return Expression(self, op, index, **kwargs)
-
-    get_index = get_element
-
-    def get_field(self, field, as_text=False, **kwargs):
-        """ Gets a Json object field
-
-            @field: (#list|#tuple) |[key1, key2]|
-            @as_text: (#bool) True to select the value as text rather than
-                its data type
-            -> (:class:Expression)
-        """
-        op = self._field_op
-        if as_text:
-            op = self._field_text_op
-        return Expression(self, op, field, **kwargs)
-
-    get_key = get_field
-
-    def get_path(self, path, as_text=False, **kwargs):
-        """ Gets a Json object at specified path
-
-            @path: (#list|#tuple) |[key1, key2]|
-            @as_text: (#bool) True to select the value as text rather than
-                its data type
-            -> (:class:Expression)
-        """
-        op = self._field_path_op
-        if as_text:
-            op = self._field_path_text_op
-        return Expression(self, op, path, **kwargs)
-
-    def each(self, **kwargs):
-        """ Expands the outermost JSON object into a set of key/value pairs.
-            -> (:class:Function)
-        """
-        return Functions.json_each(self, **kwargs)
-
-    def each_text(self, **kwargs):
-        """ Expands the outermost JSON object into a set of key/value pairs.
-            The returned values will be of type text.
-            -> (:class:Function)
-        """
-        return Functions.json_each_text(self, **kwargs)
-
-    def array_length(self, **kwargs):
-        """ Finds the number of elements in the outermost JSON array.
-            -> (:class:Function)
-        """
-        return Functions.json_array_length(self, **kwargs)
-
-    def get_fields(self, **kwargs):
-        """ Returns set of keys in the outermost JSON object.
-            -> (:class:Function)
-        """
-        return Functions.json_object_keys(self, **kwargs)
-
-    get_keys = get_fields
-
-    def get_elements(self, **kwargs):
-        """ Expands a JSON array to a set of JSON values.
-            -> (:class:Function)
-        """
-        return Functions.json_array_elements(self, **kwargs)
-
-    def set_path(self, path, create_missing=True, **kwargs):
-        """ Returns target with the section designated by path replaced by
-            new_value, or with new_value added if create_missing is true
-            (default is true) and the item designated by path does not exist.
-            As with the path orientated operators, negative integers that
-            appear in path count from the end of JSON arrays.
-            -> (:class:Function)
-        """
-        return Functions.json_set_path(self, path, create_missing, **kwargs)
-
-
-class JsonBLogic(JsonLogic):
-
-    _contains_op = '@>'
-    _contained_op = '<@'
-    _key_op = '?'
-    _keys_any_op = '?|'
-    _keys_all_op = '?&'
-    _concat_op = '||'
-    _delete_key_op = '-'
-    _delete_path_op = '#-'
-
-    def contains(self, other, **kwargs):
-        """ Does this JSON value contain the @other JSON path/value
-            entries at the top level?
-            -> (:class:Expression)
-        """
-        return Expression(self, self._contains_op, other, **kwargs)
-
-    def contained_by(self, other, **kwargs):
-        """ Are these JSON path/value entries contained at the top level
-            within the @other JSON value?
-            -> (:class:Expression)
-        """
-        return Expression(self, self._contained_op, other, **kwargs)
-
-    def field_exists(self, field):
-        """ Does the @field exist as a top-level field within this JSON value?
-            -> (:class:Expression)
-        """
-        return Expression(self, self._key_op, field, **kwargs)
-
-    key_exists = field_exists
-
-    def fields_exist(self, *fields, all=False, **kwargs):
-        """ Do any/@all of these @fields exist as top-level @fields?
-            -> (:class:Expression)
-        """
-        op = self._keys_any_op
-        if all:
-            op = self._keys_all_op
-        return Expression(self, op, list(fields), **kwargs)
-
-    keys_exist = fields_exist
-
-    def concat(self, other, **kwargs):
-        """ Concatenate @other jsonb values into this one as a new jsonb value
-            -> (:class:Expression)
-        """
-        return Expression(self, self._concat_op, other, **kwargs)
-
-    def remove_field(self, field, **kwargs):
-        """ Delete @key/value pair or string element from this field.
-            -> (:class:Expression)
-        """
-        return Expression(self, self._delete_key_op, field, **kwargs)
-
-    remove_key = remove_field
-
-    def remove_element(self, index, **kwargs):
-        """ Delete the array element with specified @index (Negative integers
-            count from the end). Throws an error if top level container is
-            not an array.
-            -> (:class:Expression)
-        """
-        return self.remove_field(index, **kwargs)
-
-    remove_index = remove_element
-
-    def remove_path(self, path, **kwargs):
-        """ Delete the field or element with specified path (for JSON
-            arrays, negative integers count from the end)
-            -> (:class:Expression)
-        """
-        return Expression(self, self._delete_path_op, path, **kwargs)
-
-    def each(self, **kwargs):
-        """ Expands the outermost JSON object into a set of key/value pairs.
-            -> (:class:Function)
-        """
-        return Functions.jsonb_each(self, **kwargs)
-
-    def each_text(self, **kwargs):
-        """ Expands the outermost JSON object into a set of key/value pairs.
-            The returned values will be of type text.
-            -> (:class:Function)
-        """
-        return Functions.jsonb_each_text(self, **kwargs)
-
-    def array_length(self, **kwargs):
-        """ Finds the number of elements in the outermost JSON array.
-            -> (:class:Function)
-        """
-        return Functions.jsonb_array_length(self, **kwargs)
-
-    def get_fields(self, **kwargs):
-        """ Returns set of keys in the outermost JSON object.
-            -> (:class:Function)
-        """
-        return Functions.jsonb_object_keys(self, **kwargs)
-
-    get_keys = get_fields
-
-    def get_elements(self, **kwargs):
-        """ Expands a JSON array to a set of JSON values.
-            -> (:class:Function)
-        """
-        return Functions.jsonb_array_elements(self, **kwargs)
-
-    def set_path(self, path, create_missing=True, **kwargs):
-        """ Returns target with the section designated by path replaced by
-            new_value, or with new_value added if create_missing is true
-            (default is true) and the item designated by path does not exist.
-            As with the path orientated operators, negative integers that
-            appear in path count from the end of JSON arrays.
-            -> (:class:Function)
-        """
-        return Functions.jsonb_set_path(self, path, create_missing, **kwargs)
-
-
-class Subquery(DateTimeLogic, StringLogic):
+class Subquery(NumericLogic, StringLogic):
     """ You must use this wrapper if you want to use subqueries within the
         models, as plain text is parameterized for safety.
 
@@ -1413,6 +855,9 @@ class Subquery(DateTimeLogic, StringLogic):
     def not_exists(self, alias=None):
         return Functions.not_exists(self, alias=alias)
 
+    def compile(self):
+        return self
+
 
 class BaseExpression(BaseLogic):
 
@@ -1431,21 +876,23 @@ class BaseExpression(BaseLogic):
 
             @items: :mod:bloom objects
         """
-        if hasattr(item, 'params') and hasattr(item.params, 'items'):
+        try:
             self.params.update(item.params)
+        except (AttributeError, TypeError):
+            pass
 
     def _parameterize(self, item, use_field_name=False):
         if isinstance(item, BaseLogic):
             #: These are already parameterized
-            if hasattr(item, 'sqltype'):
-                #: Fields
-                exp = str(item.name if not use_field_name else item.field_name)
-            elif hasattr(item, 'use_field_name'):
+            try:
                 #: Expressions and functions
                 exp = item.compile(use_field_name=use_field_name)
-            else:
+            except TypeError:
                 #: Queries and other
                 exp = item.string
+            except AttributeError:
+                #: Fields
+                exp = str(item.name if not use_field_name else item.field_name)
         elif item is _empty:
             #: Empty item
             return ""
@@ -1476,6 +923,7 @@ class BaseExpression(BaseLogic):
 
 
 class __empty(object):
+    __slots__ = []
 
     @property
     def string(self):
@@ -1484,11 +932,16 @@ class __empty(object):
     def __len__(self):
         return 0
 
+    @staticmethod
+    def to_db():
+        return adapt(None).getquoted()
+
 
 _empty = __empty()
+psycopg2.extensions.register_adapter(__empty, __empty.to_db)
 
 
-class Expression(BaseExpression, DateTimeLogic, StringLogic):
+class Expression(BaseExpression, NumericLogic, StringLogic):
     """ You must use this wrapper if you want to make expressions within the
         models, as plain text is parameterized for safety.
 
@@ -1500,7 +953,7 @@ class Expression(BaseExpression, DateTimeLogic, StringLogic):
           or
         |model.where(Expression(model.id, ">", 1000))|
 
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        ===================================================================
         ``Usage Example``
         ..
             e = Expression(model.id, "BETWEEN", Expression(10, 'AND', 20))
@@ -1645,7 +1098,7 @@ class ValuesClause(Clause):
 
 
 class Case(BaseExpression):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ ===================================================================
         ``Usage Example`
         `
         ..
@@ -1721,7 +1174,7 @@ class Case(BaseExpression):
         return self.string
 
 
-class Function(BaseExpression, DateTimeLogic, StringLogic):
+class Function(BaseExpression, NumericLogic, StringLogic):
     """ You must use this wrapper if you
         want to make function calls within the models, as plain text is
         parameterized for safety.
@@ -2037,7 +1490,7 @@ class Functions(WindowFunctions):
             that is not null.
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2052,7 +1505,7 @@ class Functions(WindowFunctions):
         """ Creates a |GREATEST| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2067,7 +1520,7 @@ class Functions(WindowFunctions):
         """ Creates a |LEAST| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2082,7 +1535,7 @@ class Functions(WindowFunctions):
         """ Creates a |generate_series| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2097,7 +1550,7 @@ class Functions(WindowFunctions):
         """ Creates a |generate_dates| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2113,7 +1566,7 @@ class Functions(WindowFunctions):
         """ Creates a |MAX| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2130,7 +1583,7 @@ class Functions(WindowFunctions):
         """ Creates a |MIN| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2147,7 +1600,7 @@ class Functions(WindowFunctions):
         """ Creates a |AVG| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2164,7 +1617,7 @@ class Functions(WindowFunctions):
         """ Creates a |SUM| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2181,7 +1634,7 @@ class Functions(WindowFunctions):
         """ Creates a |ABS| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2345,7 +1798,7 @@ class Functions(WindowFunctions):
         """ Creates a |NULLIF| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2359,7 +1812,7 @@ class Functions(WindowFunctions):
         """ Creates a |COUNT| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2375,7 +1828,7 @@ class Functions(WindowFunctions):
         """ Creates a |DISTINCT| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2393,7 +1846,7 @@ class Functions(WindowFunctions):
         """ Creates a |DISTINCT ON| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2411,7 +1864,7 @@ class Functions(WindowFunctions):
         """ Creates a |age| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2454,7 +1907,7 @@ class Functions(WindowFunctions):
         """ Creates an |ANY| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2471,7 +1924,7 @@ class Functions(WindowFunctions):
         """ Creates an |ALL| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2488,7 +1941,7 @@ class Functions(WindowFunctions):
         """ Creates a |SOME| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2505,7 +1958,7 @@ class Functions(WindowFunctions):
         """ Creates a |USING| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2520,7 +1973,7 @@ class Functions(WindowFunctions):
         """ Creates a |substring| SQL expression
 
             -> SQL :class:Function object
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
 
             ``Usage Example``
             ..
@@ -2846,6 +2299,35 @@ class Functions(WindowFunctions):
         """
         return Function('array_prepend', array, element, **kwargs)
 
+    def array_remove(array, element, **kwargs):
+        """ Remove all @element(s) equal to the given value from the @array
+            (array must be one-dimensional)
+            -> (:class:Function)
+        """
+        return Function('array_remove', array, element, **kwargs)
+
+    def array_replace(array, element, new_element, **kwargs):
+        """ Replace each @array @element equal to the given value with
+            a @new_element
+            -> (:class:Function)
+        """
+        return Function('array_replace', array, element, new_element, **kwargs)
+
+    def array_position(array, element, **kwargs):
+        """ Returns the subscript of the first occurrence of the @element
+            in the @array, starting at the element indicated by the third
+            argument or at the first element (array must be one-dimensional)
+            -> (:class:Function)
+        """
+        return Function('array_position', array, element, **kwargs)
+
+    def array_positions(array, element, **kwargs):
+        """ Returns an array of subscripts of all occurrences of @element
+            in the @array (array must be one-dimensional)
+            -> (:class:Function)
+        """
+        return Function('array_positions', array, element, **kwargs)
+
     def array_ndims(array, **kwargs):
         """ Returns the number of dimensions of the @array
             -> (:class:Function)
@@ -2887,7 +2369,7 @@ class Functions(WindowFunctions):
         return Function(*args, **kwargs)
 
 
-class aliased(DateTimeLogic, StringLogic):
+class aliased(NumericLogic, StringLogic):
     """ For field aliases.
 
         This object can be manipulated with expression :class:BaseLogic
@@ -2895,12 +2377,12 @@ class aliased(DateTimeLogic, StringLogic):
     __slots__ = ('string',)
 
     def __init__(self, name_or_field):
-        if hasattr(name_or_field, '_alias'):
+        try:
             if name_or_field._alias:
                 self.string = name_or_field._alias
             else:
                 self.string = name_or_field.name
-        else:
+        except AttributeError:
             self.string = name_or_field
 
     @prepr('value', _no_keys=True)
@@ -2923,8 +2405,11 @@ class aliased(DateTimeLogic, StringLogic):
         """
         return aliased(str(self) + ' AS ' + alias)
 
+    def compile(self):
+        return self.string
 
-class parameterize(BaseExpression, DateTimeLogic, StringLogic):
+
+class parameterize(BaseExpression, NumericLogic, StringLogic):
     """ ``Usage Example``
         ..
             ORM().subquery().where(parameterize(1)).select()
@@ -2939,7 +2424,10 @@ class parameterize(BaseExpression, DateTimeLogic, StringLogic):
             @value: the values to parameterize
             @alias: (#str) an alias to apply to the value
         """
-        self.params = value.params if hasattr(value, 'params') else {}
+        try:
+            self.params = value.params
+        except AttributeError:
+            self.params = {}
         self.string = "{} {}".format(
             self._parameterize(value),
             alias if alias else "").rstrip()
@@ -2950,8 +2438,11 @@ class parameterize(BaseExpression, DateTimeLogic, StringLogic):
     def __str__(self):
         return self.string
 
+    def compile(self):
+        return self.string
 
-class safe(DateTimeLogic, StringLogic):
+
+class safe(NumericLogic, StringLogic):
     """ !! The value of this object will not be parameterized when
            queries are made. !!
 
@@ -2968,4 +2459,7 @@ class safe(DateTimeLogic, StringLogic):
     def __repr__(self): return
 
     def __str__(self):
+        return self.string
+
+    def compile(self):
         return self.string

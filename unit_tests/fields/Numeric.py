@@ -1,16 +1,12 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
 from bloom.fields import Numeric
 
 from unit_tests.fields.BigInt import TestBigInt
+from unit_tests import configure
 
 
-class TestNumeric(TestBigInt):
+class TestNumeric(configure.NumTestCase, TestBigInt):
     '''
     value: value to populate the field with
     not_null: bool() True if the field cannot be Null
@@ -23,27 +19,25 @@ class TestNumeric(TestBigInt):
         field validates, and False if it does not
     digits: int() maximum digit precision
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Numeric()
-        self.base.table = 'test'
-        self.base.field_name = 'numeric'
+    @property
+    def base(self):
+        return self.orm.num
 
     def test_init_(self):
-        self.base = Numeric()
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertIsNone(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.minval, -9223372036854775808.0)
-        self.assertEqual(self.base.maxval, 9223372036854775807.0)
-        self.assertEqual(self.base.digits, 16383)
+        base = Numeric()
+        self.assertEqual(base.value, base.empty)
+        self.assertIsNone(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsNone(base.default)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.minval, -9223372036854775808.0)
+        self.assertEqual(base.maxval, 9223372036854775807.0)
+        self.assertEqual(base.digits, -1)
 
     def test_additional_kwargs(self):
-        self.base = Numeric(digits=7)
-        self.assertEqual(self.base.digits, 7)
+        base = Numeric(digits=7)
+        self.assertEqual(base.digits, 7)
 
     def test___call__(self):
         for val in (4.0, 4, '4', '4.0'):
@@ -52,12 +46,24 @@ class TestNumeric(TestBigInt):
         for val in ([], dict(), set(), {}):
             with self.assertRaises((TypeError, ValueError)):
                 self.base(val)
+        self.base.digits = 5
         for val in (4.82342352352352, '4.82342352352352'):
             self.base(val)
             self.assertEqual(
                 self.base(), round(4.82342352352352, self.base.digits))
 
+    def test_insert(self):
+        self.base(10)
+        self.orm.insert()
+
+    def test_select(self):
+        self.base(10)
+        self.orm.insert()
+        self.assertEqual(
+            getattr(self.orm.new().get(), self.base.field_name).value,
+            self.base.value)
+
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestNumeric, failfast=True, verbosity=2)

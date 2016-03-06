@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Views Builder`
@@ -19,7 +18,7 @@ __all__ = ('View',)
 class View(BaseCreator):
 
     def __init__(self, orm, name, *columns, query=None, security_barrier=False,
-                 materialized=False, temporary=False):
+                 materialized=False, temporary=False, replace=False):
         """ `Create a View`
             :see::bloom.builders.create_view
         """
@@ -29,6 +28,7 @@ class View(BaseCreator):
         self._security_barrier = security_barrier
         self._materialized = materialized
         self._temporary = temporary
+        self._replace = replace
 
     def set_query(self, query):
         self._query = query
@@ -45,12 +45,17 @@ class View(BaseCreator):
     def temporary(self):
         self._temporary = True
 
+    def replace(self):
+        self._replace = True
+
     @property
     def query(self):
         self.orm.reset()
         tmp = ""
+        if self._replace:
+            tmp += "OR REPLACE"
         if self._temporary:
-            tmp = "TEMP "
+            tmp += "TEMP "
         if self._materialized:
             tmp += 'MATERIALIZED '
         security_barrier = _empty

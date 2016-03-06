@@ -15,12 +15,6 @@ from unit_tests.fields.Time import *
 
 class TestTimestamp(TestTime):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Timestamp()
-        self.base.table = 'test'
-        self.base.field_name = 'time'
-
     def test_descriptors(self):
         self.base('October 31, 1984 at 11:17am')
         d = Docr('bloom.Timestamp')
@@ -29,7 +23,7 @@ class TestTimestamp(TestTime):
 
     def test_real_value(self):
         self.base('October 31, 1941 at 11:17am')
-        self.assertIsInstance(self.base.real_value, datetime.datetime)
+        self.assertIsInstance(self.base.value, arrow.Arrow)
 
 
 if __name__ == '__main__':

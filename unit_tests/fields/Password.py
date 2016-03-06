@@ -14,12 +14,7 @@ from unit_tests.fields.Char import *
 
 
 class TestPassword(TestChar):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Password()
-        self.base.table = 'test'
-        self.base.field_name = 'password'
+    base = Password()
 
     def test_init_(self):
         self.base = Password()
@@ -27,12 +22,13 @@ class TestPassword(TestChar):
         self.assertEqual(self.base.minlen, 8)
         self.assertEqual(self.base.salt_size, 16)
         self.assertEqual(self.base.strict, True)
-        self.assertEqual(self.base.value, None)
-        self.assertEqual(self.base.notNull, None)
+        self.assertEqual(self.base.value, self.base.empty)
+        self.assertIsNone(self.base.not_null)
         self.assertEqual(self.base.scheme, 'argon2')
-        self.assertEqual(self.base.primary, None)
-        self.assertEqual(self.base.unique, None)
+        self.assertIsNone(self.base.primary)
+        self.assertIsNone(self.base.unique)
         self.base(None)
+        self.base.clear()
 
     def test__should_insert(self):
         with self.assertRaises(ValidationError):
@@ -43,6 +39,7 @@ class TestPassword(TestChar):
         with self.assertRaises(ValidationError):
             self.base._should_insert()
         self.base(None)
+        self.base.clear()
 
     def test_validate(self):
         self.base.minlen, self.base.maxlen = 1, 2
@@ -61,6 +58,7 @@ class TestPassword(TestChar):
         self.base('password')
         self.assertFalse(self.base.validate())
         self.base(None)
+        self.base.clear()
 
     def test__should_update(self):
         with self.assertRaises(ValidationError):
@@ -71,11 +69,13 @@ class TestPassword(TestChar):
         with self.assertRaises(ValidationError):
             self.base._should_update()
         self.base(None)
+        self.base.clear()
 
     def test_generate(self):
         self.assertTrue(
             len(self.base.generate(128)) > len(self.base.generate(64)))
         self.base(None)
+        self.base.clear()
 
     def test_argon2(self):
         hash = self.base.argon2_encrypt('fish')
@@ -87,6 +87,7 @@ class TestPassword(TestChar):
         self.assertEqual('fish', self.base.validation_value)
         self.base(None)
         self.base.scheme = 'argon2'
+        self.base.clear()
 
     def test_encrypt(self):
         hash = self.base.encrypt('fish')
@@ -100,6 +101,7 @@ class TestPassword(TestChar):
         self.assertTrue(self.base.verify('fish', hash))
         self.assertNotIn('argon2i', hash)
         self.base(None)
+        self.base.clear()
 
     def test___call__(self):
         self.base('test')
@@ -111,12 +113,14 @@ class TestPassword(TestChar):
         self.assertTrue(self.base.is_hash(self.base.value))
         self.assertTrue(self.base.is_hash(self.base()))
         self.base(None)
+        self.base.clear()
 
     def test_verify(self):
         hash = self.base.encrypt('fish')
         self.assertTrue(self.base.verify('fish', hash))
         self.assertFalse(self.base.verify('fiserh', hash))
         self.base(None)
+        self.base.clear()
 
     def test_is_hash(self):
         self.assertTrue(self.base.is_hash(self.base('fish')))
@@ -132,6 +136,7 @@ class TestPassword(TestChar):
         self.base.scheme = 'argon2'
         self.base.rounds = 12
         self.base(None)
+        self.base.clear()
 
     def test_additional_kwargs(self):
         pwd = Password(value='fish')
@@ -151,7 +156,13 @@ class TestPassword(TestChar):
         self.assertEqual(pwd.minlen, 1)
         pwd = Password(maxlen=5)
         self.assertEqual(pwd.maxlen, 5)
+        self.base.clear()
 
+    def test_insert(self):
+        pass
+
+    def test_select(self):
+        pass
 
 
 if __name__ == '__main__':

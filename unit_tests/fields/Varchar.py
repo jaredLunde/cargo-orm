@@ -1,32 +1,24 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
-from docr import Docr
 from bloom.fields import Varchar
-from bloom import create_pool
 
-from unit_tests.fields.Char import *
+from unit_tests.fields.Char import TestChar
+from unit_tests import configure
 
 
 class TestVarchar(TestChar):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Varchar()
-        self.base.table = 'test'
-        self.base.field_name = 'char'
+    @property
+    def base(self):
+        return self.orm.varchar
 
-    def test_additional_kwargs(self):
-        char = Varchar(minlen=1)
-        self.assertEqual(char.minlen, 1)
-        char = Varchar(maxlen=5)
-        self.assertEqual(char.maxlen, 5)
-
+    def test_select(self):
+        self.base('foo')
+        self.orm.insert(self.base)
+        r = getattr(self.orm.new().desc(self.orm.uid).get(self.base),
+                    self.base.field_name)
+        self.assertEqual(r.value, 'foo')
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestVarchar, failfast=True, verbosity=2)

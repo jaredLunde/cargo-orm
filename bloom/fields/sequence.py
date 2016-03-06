@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Sequenced Fields`
@@ -8,8 +6,6 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-import psycopg2.extensions
-
 from vital.tools.encoding import uniorbytes
 from vital.debug import prepr
 
@@ -20,18 +16,160 @@ from bloom.fields.character import Text
 from bloom.validators import ValidationValue
 
 
-__all__ = ('Enum', 'Array')
+__all__ = ('Enum', 'Array', 'ArrayLogic')
 
 
-# TODO: http://www.postgresql.org/docs/9.3/static/functions-enum.html
+class ArrayLogic(BaseLogic):
+
+    def contains(self, array, **kwargs):
+        """ Creates a |@>| SQL expression
+            @array: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.contains([1, 2])
+                model.where(condition)
+            ..
+            |array_field @> [1,2]|
+        """
+        return Expression(self, "@>", array, **kwargs)
+
+    def contained_by(self, array, **kwargs):
+        """ Creates a |<@| SQL expression
+            @array: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.is_contained_by([1, 2])
+                model.where(condition)
+            ..
+            |array_field <@ [1,2]|
+        """
+        return Expression(self, "<@", array, **kwargs)
+
+    def overlaps(self, array, **kwargs):
+        """ Creates a |&&| (overlaps) SQL expression
+            @array: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.overlaps([1, 2])
+                model.where(condition)
+            ..
+            |array_field && [1,2]|
+        """
+        return Expression(self, "&&", array, **kwargs)
+
+    def all(self, target, **kwargs):
+        """ Creates an |ALL| SQL expression
+            @target: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.all([1, 2])
+                model.where(condition)
+            ..
+            |[1,2] = ALL(array_field)|
+        """
+        return Expression(target, "=", Function("ALL", self), **kwargs)
+
+    def any(self, target, **kwargs):
+        """ Creates an |ANY| SQL expression
+            @target: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.any([1, 2])
+                model.where(condition)
+            ..
+            |[1,2] = ANY(array_field)|
+        """
+        return Expression(target, "=", Function("ANY", self), **kwargs)
+
+    def some(self, target, **kwargs):
+        """ Creates a |SOME| SQL expression
+            @target: (#list) or #tuple object
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.array_field.some([1, 2])
+                model.where(condition)
+            ..
+            |[1,2] = SOME(array_field)|
+        """
+        return Expression(target, "=", Function("SOME", self), **kwargs)
+
+    def length(self, dimension=1, **kwargs):
+        """ :see::meth:Functions.array_length """
+        return Functions.array_length(self, dimension, **kwargs)
+
+    def append_el(self, element, **kwargs):
+        """ :see::meth:Functions.array_append """
+        return Functions.array_append(self, element, **kwargs)
+
+    def prepend_el(self, element, **kwargs):
+        """ :see::meth:Functions.array_prepend """
+        return Functions.array_prepend(self, element, **kwargs)
+
+    def remove_el(self, element, **kwargs):
+        """ :see::meth:Functions.array_remove """
+        return Functions.array_remove(self, element, **kwargs)
+
+    def replace_el(self, element, new_element, **kwargs):
+        """ :see::meth:Functions.array_replace """
+        return Functions.array_replace(self, element, new_element, **kwargs)
+
+    def position(self, element, **kwargs):
+        """ :see::meth:Functions.array_position """
+        return Functions.array_pposition(self, element, **kwargs)
+
+    def positions(self, element, **kwargs):
+        """ :see::meth:Functions.array_positions """
+        return Functions.array_positions(self, element, **kwargs)
+
+    def ndims(self, **kwargs):
+        """ :see::meth:Functions.array_ndims """
+        return Functions.ndims(self, **kwargs)
+
+    def dims(self, **kwargs):
+        """ :see::meth:Functions.array_dims """
+        return Functions.dims(self, **kwargs)
+
+    def concat(self, other, **kwargs):
+        """ :see::meth:Functions.array_concat """
+        return Functions.array_cat(self, other, **kwargs)
+
+    def unnest(self, **kwargs):
+        """ :see::meth:Functions.unnest """
+        return Functions.unnest(self, **kwargs)
+
+
 class Enum(Field, NumericLogic, StringLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for PostgreSQL enumerated types.
 
         Validates that a given value is in the specified group of enumerated
         types.
 
-        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        =======================================================================
         ``Usage Example``
         ..
             enum = Enum(['cat', 'dog', 'mouse'])
@@ -40,7 +178,7 @@ class Enum(Field, NumericLogic, StringLogic):
         |ValueError: `goat` not in ('cat', 'dog', 'mouse')|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'types',
         'table')
     sqltype = ENUM
@@ -72,7 +210,7 @@ class Enum(Field, NumericLogic, StringLogic):
         value = self.value
         if value is Field.empty:
             value = None
-        if (value is None and self.notNull) or \
+        if (value is None and self.not_null) or \
            (value is not None and value not in self.types):
             self.validation_error = "`{}` not in {}".format(
                 value, self.types)
@@ -87,14 +225,14 @@ class Enum(Field, NumericLogic, StringLogic):
 
 
 class Array(Field, ArrayLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |ARRAY|.
         The values passed to this object must be iterable.
 
         It can be manipulated similar to a python list.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minlen',
         'maxlen', 'cast', 'type', 'dimensions', 'table')
     sqltype = ARRAY
@@ -122,7 +260,7 @@ class Array(Field, ArrayLogic):
                 cast = float
             elif self.type.sqltype == BINARY:
                 def cast(x):
-                    return uniorbytes(x, bytes)
+                    return self.type(x)
         self.cast = cast or self._nocast
         self.dimensions = dimensions
         super().__init__(value=value, **kwargs)
@@ -217,22 +355,6 @@ class Array(Field, ArrayLogic):
     def sort(self, key=None, reverse=False):
         """ Sorts the array in place """
         self.value.sort(key=key, reverse=reverse)
-
-    def _cast_real(self, value):
-        call = self.type.__call__
-        return [self.type.real_value
-                if not isinstance(v, (list, tuple)) else
-                self._cast_real(v)
-                for v in value
-                if call(v) is not Field.empty]
-
-    @property
-    def real_value(self):
-        if self.value is not self.empty and self.value is not None:
-            value = self._cast_real(self.value)
-            return value
-        else:
-            return self.default
 
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, type=self.type.copy(), **kwargs)

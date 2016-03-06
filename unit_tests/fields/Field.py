@@ -4,36 +4,47 @@ import unittest
 import pickle
 import copy
 
-from kola import config
 from docr import Docr
 
-from bloom import aliased, fields
+from bloom import aliased, Model
 from bloom.fields import Field
+
+from unit_tests import configure
 
 
 class Tc(object):
     pass
 
 
+class FieldModel(Model):
+    field = Field()
+
+
 class TestField(unittest.TestCase):
-    fields = Docr(fields)
-    base = Field()
+    orm = FieldModel()
+
+    def setUp(self):
+        self.orm.clear()
+
+    @property
+    def base(self):
+        return self.orm.field
 
     def test_init(self, *args, **kwargs):
-        self.base = Field(value="foo")
-        self.assertEqual(self.base.value, "foo")
-        self.base = Field(primary=True)
-        self.assertEqual(self.base.primary, True)
-        self.base = Field(unique=True)
-        self.assertEqual(self.base.unique, True)
-        self.base = Field(index=True)
-        self.assertEqual(self.base.index, True)
-        self.base = Field(default='field')
-        self.assertEqual(self.base.default, 'field')
-        self.base = Field(not_null=True)
-        self.assertEqual(self.base.notNull, True)
-        self.base = Field(validation=Tc())
-        self.assertIsInstance(self.base.validation, Tc)
+        base = self.base.__class__()
+        self.assertEqual(base.value, base.empty)
+        base = self.base.__class__(primary=True)
+        self.assertEqual(base.primary, True)
+        base = self.base.__class__(unique=True)
+        self.assertEqual(base.unique, True)
+        base = self.base.__class__(index=True)
+        self.assertEqual(base.index, True)
+        base = self.base.__class__(default='field')
+        self.assertEqual(base.default, 'field')
+        base = self.base.__class__(not_null=True)
+        self.assertEqual(base.not_null, True)
+        base = self.base.__class__(validation=Tc())
+        self.assertIsInstance(base.validation, Tc)
 
     def test_copy(self):
         fielda = self.base
@@ -102,14 +113,9 @@ class TestField(unittest.TestCase):
         self.assertTrue(self.base.validate())
         self.base.validation = lambda x: isinstance(x, self.base.__class__)
         self.assertTrue(self.base.validate())
-
-    def test_real_value(self):
-        self.assertIs(self.base.real_value,
-                      self.base.value
-                      if self.base.value is not self.base.empty else
-                      self.base.default)
+        self.base.validation = None
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestField)

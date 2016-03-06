@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Rule Builder`
@@ -67,6 +66,10 @@ class Rule(BaseCreator):
 
     def replace(self):
         self._replace = Clause('OR REPLACE')
+
+    @property
+    def _common_name(self):
+        return " ON ".join((self.name, self._table))
 
     @property
     def query(self):

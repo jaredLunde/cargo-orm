@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Field`
@@ -9,6 +7,8 @@
 
 """
 import copy
+
+from psycopg2.extensions import *
 
 from vital.debug import prepr
 
@@ -22,7 +22,7 @@ __all__ = ('Field',)
 
 
 class Field(BaseLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         This is the base field object. You can create new custom fields
         like so:
         ..
@@ -35,7 +35,7 @@ class Field(BaseLogic):
         ..
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'default', 'validation', 'validation_error', '_alias', 'table')
     sqltype = None
     empty = _empty
@@ -59,7 +59,7 @@ class Field(BaseLogic):
         self.primary = primary
         self.unique = unique
         self.index = index
-        self.notNull = not_null
+        self.not_null = not_null
         self.table = None
         try:
             self.default = default
@@ -89,8 +89,7 @@ class Field(BaseLogic):
         return dict(
             (slot, getattr(self, slot))
             for slot in self.__slots__
-            if hasattr(self, slot)
-        )
+            if hasattr(self, slot))
 
     def __setstate__(self, state):
         for slot, value in state.items():
@@ -102,7 +101,7 @@ class Field(BaseLogic):
         cls.primary = self.primary
         cls.unique = self.unique
         cls.index = self.index
-        cls.notNull = self.notNull
+        cls.not_null = self.not_null
         if self.value is not None and self.value is not self.empty:
             cls.value = copy.copy(self.value)
         cls.default = self.default
@@ -122,7 +121,7 @@ class Field(BaseLogic):
         return self.field_name
 
     def set_alias(self, table=None, name=None):
-        """ Used for :class:aliased - when this field is wrapped with
+        """ Used for :class:aliased ==when this field is wrapped with
             :class:aliased, @table.@name, @name, or @table will be used
             instead of the field name. If only a table is given, the alias
             will be your_table.field_name, if a table and a name are provided,
@@ -143,7 +142,7 @@ class Field(BaseLogic):
 
             -> :class:aliased object
 
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            ===================================================================
             ``Usage Example``
             ..
                 model.field.alias('better_field')
@@ -161,24 +160,19 @@ class Field(BaseLogic):
         self.value = value
         return self.value
 
-    @property
+    '''@property
     def real_value(self):
+        """ !! DEPR !! """
         if self.value is not self.empty and self.value is not None:
-            return self.value
-        else:
-            return self.default
+            return self.value'''
 
     def _should_insert(self):
-        try:
-            assert self.validate() or self.default is not None
-        except AssertionError:
+        if not (self.validate() or self.default is not None):
             raise ValidationError(self.validation_error, self.field_name)
-        return self.value is not self.empty or self.default is not None
+        return self.value is not self.empty
 
     def _should_update(self):
-        try:
-            assert self.validate()
-        except AssertionError:
+        if not self.validate():
             raise ValidationError(self.validation_error, self.field_name)
         return self.value is not self.empty
 

@@ -26,10 +26,7 @@ class TestEncrypted(TestField):
     validation: callable() custom validation plugin, must return True if the
         field validates, and False if it does not
     '''
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Encrypted(Encrypted.generate_secret())
+    base = Encrypted(Encrypted.generate_secret())
 
     def test_init(self, *args, **kwargs):
         self.base = Encrypted(Encrypted.generate_secret())
@@ -40,7 +37,7 @@ class TestEncrypted(TestField):
         self.assertIsNone(self.base.unique)
         self.assertIsNone(self.base.index)
         self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
+        self.assertIsNone(self.base.not_null)
         with self.assertRaises(TypeError):
             self.base = Encrypted()
         key = Encrypted.generate_secret()
@@ -54,7 +51,7 @@ class TestEncrypted(TestField):
         for val in ['abc', '4', 'test']:
             self.base(val)
             self.assertIsInstance(self.base.value, str)
-            self.assertIsInstance(self.base.real_value, str)
+            self.assertIsInstance(self.base.value, str)
             self.assertEqual(
                 self.base.type(self.base.decrypt(self.base.encrypted)),
                 self.base(val))
@@ -65,8 +62,8 @@ class TestEncrypted(TestField):
         for val in [b'abc', b'4', b'test']:
             self.base(val)
             self.assertIsInstance(self.base.value,  bytes)
-            self.assertIsInstance(self.base.real_value,
-                                  psycopg2.extensions.Binary)
+            self.assertIsInstance(self.base.value,
+                                  bytes)
             self.assertEqual(
                 self.base.type(self.base.decrypt(self.base.encrypted)),
                 self.base(val))
@@ -76,7 +73,6 @@ class TestEncrypted(TestField):
         for val in [4, 3, 2, 1]:
             self.base(val)
             self.assertIsInstance(self.base.value,  int)
-            self.assertIsInstance(self.base.real_value, str)
             self.assertEqual(
                 self.base.type(self.base.decrypt(self.base.encrypted)), val)
             self.assertEqual(
@@ -88,7 +84,6 @@ class TestEncrypted(TestField):
         for val in [4.0, 3.0, 2.0, 1.0]:
             self.base(val)
             self.assertIsInstance(self.base.value,  float)
-            self.assertIsInstance(self.base.real_value, str)
             self.assertEqual(
                 self.base.type(self.base.decrypt(self.base.encrypted)), val)
             self.assertEqual(
@@ -102,21 +97,21 @@ class TestEncrypted(TestField):
         self.base(l)
         self.base.append(6)
         l.append(6)
-        self.assertIsInstance(self.base.real_value, list)
+        self.assertIsInstance(self.base.value, list)
         self.assertEqual(self.base.decrypt(self.base.encrypted), l)
 
         self.base = Encrypted(Encrypted.generate_secret(),
                               type=Array(cast=str, dimensions=2))
         l = [[1, 2, 3, 4], [1, 2, 3, 4]]
         self.base(l)
-        self.assertIsInstance(self.base.real_value, list)
+        self.assertIsInstance(self.base.value, list)
         self.assertEqual(self.base.decrypt(self.base.encrypted), l)
 
         self.base = Encrypted(Encrypted.generate_secret(),
                               type=JsonB())
         d = RandData(str).dict(2, 2)
         self.base(d)
-        self.assertIsInstance(self.base.real_value, psycopg2.extras.Json)
+        self.assertIsInstance(self.base.value, dict)
         self.assertDictEqual(self.base.decrypt(self.base.encrypted), d)
 
     def test_generate_secret(self):
@@ -138,11 +133,12 @@ class TestEncrypted(TestField):
         self.base = Encrypted(Encrypted.generate_secret(), factory=Factory)
         self.assertEqual(self.base.factory, Factory)
         self.base('test')
-        self.assertEqual(self.base.real_value, self.base.prefix + 'test')
+        self.assertEqual(self.base.value.encrypted, self.base.prefix + 'test')
         self.assertEqual(self.base(self.base.prefix + 'test'), 'test')
 
     def test_validate(self):
         self.base = Encrypted(Encrypted.generate_secret())
+        self.base('test')
         self.base.type.validation = lambda x: False
         self.assertFalse(self.base.validate())
         self.assertEqual(self.base.validation_error, "Failed validation")

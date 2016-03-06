@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Postgres Clients`
@@ -10,10 +8,10 @@
 """
 try:
     import ujson as json
-except:
+except ImportError:
     import json
 
-from pydoc import locate
+import docr
 
 import psycopg2
 import psycopg2.pool
@@ -28,10 +26,11 @@ from vital.debug import prepr
 
 
 __all__ = (
-    "local_client",
     "Postgres",
     "PostgresPool",
     "db",
+    "local_client",
+    "create_db",
     "create_client",
     "create_pool",
     # TODO: remove these
@@ -46,7 +45,7 @@ class BaseClient(object):
     @DictProperty('_cache', 'cursor_factory', read_only=True)
     def cursor_factory(self):
         if isinstance(self._cursor_factory, str):
-            return locate(self._cursor_factory)
+            return Docr.get_obj(self._cursor_factory)
         return self._cursor_factory
 
     @property
@@ -63,12 +62,14 @@ class BaseClient(object):
         """ Converts @opt to a string if it isn't one already.
             @opt: (#dict) dsn options
         """
-        if isinstance(opt, str):
+        try:
+            return " ".join(
+                '{}={}'.format(k.replace('database', 'dbname'), v)
+                for k, v in opt.items()
+                if k in {'dbname', 'database', 'user', 'password',
+                         'host', 'port'})
+        except AttributeError:
             return opt
-        return " ".join(
-            '{}={}'.format(k.replace('database', 'dbname'), v)
-            for k, v in opt.items()
-            if k in {'dbname', 'database', 'user', 'password', 'host', 'port'})
 
 
 class Postgres(BaseClient):
@@ -192,6 +193,12 @@ class Postgres(BaseClient):
             self.set_schema(cursor, schema)
         return cursor
 
+    def _register_extras(self, connection):
+        try:
+            psycopg2.extras.register_hstore(connection)
+        except psycopg2.ProgrammingError:
+            pass
+
     def connect(self, dsn=None, **options):
         """ Opens a :mod:psycopg2 connection with @options combined with
             :prop:connection_options
@@ -213,14 +220,7 @@ class Postgres(BaseClient):
                 self._connection.set_session(autocommit=self.autocommit)
             if self.encoding:
                 self._connection.set_client_encoding(encoding=self.encoding)
-            psycopg2.extras.register_inet(None, self._connection)
-            try:
-                psycopg2.extras.register_default_json(
-                    self._connection, True, json.loads)
-                psycopg2.extras.register_default_jsonb(
-                    self._connection, True, json.loads)
-            except:
-                pass
+            self._register_extras(self._connection)
 
     def commit(self):
         """ Commits a transaction """
@@ -351,8 +351,10 @@ class PostgresPool(BaseClient):
         """ Returns the connection to the pool
             @poolcon: (:class:PostgresPoolConnection) object
         """
-        if hasattr(poolconn, '_connection'):
+        try:
             poolconn = poolconn._connection
+        except AttributeError:
+            pass
         self.pool.putconn(poolconn, *args, **kwargs)
 
     def close(self):
@@ -361,6 +363,7 @@ class PostgresPool(BaseClient):
 
 
 #: Storage for connection clients/pools
+local_client = local_property()
 local_client = {}
 
 
@@ -372,8 +375,11 @@ class _db(object):
         self.engine = local_property()
 
     def __getattr__(self, name):
-        if name != 'engine' and hasattr(self.engine, name):
-            return self.engine.__getattribute__(name)
+        if name != 'engine':
+            try:
+                return self.engine.__getattribute__(name)
+            except AttributeError:
+                pass
         return self.__getattribute__(name)
 
     def __setattr__(self, name, value):

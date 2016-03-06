@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Integer Fields`
@@ -17,11 +15,11 @@ __all__ = ('SmallInt', 'Int', 'BigInt')
 
 
 class SmallInt(Field, NumericLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT2|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = INT
@@ -42,6 +40,9 @@ class SmallInt(Field, NumericLogic):
             self._set_value(int(value) if value is not None else None)
         return self.value
 
+    def __int__(self):
+        return int(self.value)
+
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, **kwargs)
         cls.minval = self.minval
@@ -52,11 +53,11 @@ class SmallInt(Field, NumericLogic):
 
 
 class Int(Field, NumericLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT4|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = INT
@@ -79,11 +80,11 @@ class Int(Field, NumericLogic):
 
 
 class BigInt(Field, NumericLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT8|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = INT

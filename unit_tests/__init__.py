@@ -3,7 +3,6 @@
 import os
 import sys
 import unittest
-print(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -36,4 +35,7 @@ from unit_tests.validators.ValidationValue import *
 
 if __name__ == '__main__':
     # Unit test
+    from unit_tests import configure
+    configure.setup()
     unittest.main()
+    configure.cleanup()

@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Builder Indexes`
@@ -44,7 +42,7 @@ class Index(BaseCreator):
     def __init__(self, orm, *fields, method=None, name=None, collate=None,
                  order=None, nulls=None, unique=None, concurrent=False,
                  fillfactor=None, fastupdate=None, buffering=False,
-                 table=None, tablespace=None, partial=None):
+                 table=None, tablespace=None, partial=None, not_exists=False):
         """`Create an Index`
             :see::func:bloom.builder.create_index
         """
@@ -101,6 +99,10 @@ class Index(BaseCreator):
         if buffering is not None and self.type == 'gist':
             self.buffering(buffering)
 
+        self._not_exists = None
+        if not_exists:
+            self.not_exists()
+
     def set_name(self, name):
         self._name = name
 
@@ -130,7 +132,9 @@ class Index(BaseCreator):
                 return safe(self.fields[0].table)
         raise ValueError('No table name was provided.')
 
-    gin_types = {types.ARRAY, types.JSONB, types.JSONTYPE}
+    gin_types = {types.ARRAY, types.JSONB, types.JSON, types.HSTORE}
+    gist_types = {types.INTRANGE, types.BIGINTRANGE, types.NUMRANGE,
+                  types.DATERANGE, types.TSRANGE}
 
     @property
     def type(self):
@@ -138,9 +142,11 @@ class Index(BaseCreator):
             between 'gin' and 'gist', 'gin' is chosen by default.
         """
         default = 'btree'
-        if len(self.fields) == 1 and isinstance(self.fields[0], Field) and\
-           self.fields[0].sqltype in self.gin_types:
+        if len(self.fields) == 1 and isinstance(self.fields[0], Field):
+            if self.fields[0].sqltype in self.gin_types:
                 default = 'gin'
+            elif self.fields[0].sqltype in self.gist_types:
+                default = 'gist'
         return self._type or default
 
     @property
@@ -236,6 +242,10 @@ class Index(BaseCreator):
         self._partial = Clause('WHERE', self._cast_safe(val))
         return self
 
+    def not_exists(self):
+        self._not_exists = Clause('IF NOT EXISTS')
+        return self
+
     partial = where
 
     @property
@@ -255,6 +265,7 @@ class Index(BaseCreator):
             type = 'UNIQUE {}'.format(type)
         self._add(Clause('CREATE {}'.format(type),
                          self._concurrent or _empty,
+                         self._not_exists or _empty,
                          self.name),
                   Clause('ON', self.table),
                   self.method,

@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Tablespace Builder`
@@ -20,7 +19,7 @@ class Tablespace(BaseCreator):
 
     def __init__(self, orm, name, location, owner=None, **options):
         """ `Create a Tablespace`
-            :see::func:bloom.builders.create_tablespace
+            :see::func:bloom.builder.create_tablespace
         """
         super().__init__(orm, name)
         self._location = None

@@ -1,30 +1,27 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
 from bloom.fields import Char
 
-from unit_tests.fields.Field import *
+from unit_tests.fields.Field import TestField
+from unit_tests import configure
 
 
-class TestChar(TestField):
+class TestChar(configure.CharTestCase, TestField):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Char()
-        self.base.table = 'test'
-        self.base.field_name = 'char'
+    @property
+    def base(self):
+        return self.orm.char
 
     def test_validate(self):
-        self.base.minlen, self.base.maxlen, self.base.notNull = 1, 2, True
-        self.base('123')
-        self.assertFalse(self.base.validate())
-        self.base('12')
-        self.assertTrue(self.base.validate())
-        self.base('')
-        self.assertFalse(self.base.validate())
-        self.base = Char()
+        base = self.base.__class__()
+        base.minlen, base.maxlen, base.notNull = 1, 2, True
+        base('123')
+        self.assertFalse(base.validate())
+        base('12')
+        self.assertTrue(base.validate())
+        base('')
+        self.assertFalse(base.validate())
+        base = self.base.__class__()
 
     def test___call__(self):
         for val in (40, [], dict(), set(), tuple(), 'foo', self):
@@ -32,12 +29,24 @@ class TestChar(TestField):
             self.assertEqual(self.base.value, str(val))
 
     def test_additional_kwargs(self):
-        char = Char(minlen=1)
+        char = self.base.__class__(minlen=1)
         self.assertEqual(char.minlen, 1)
-        char = Char(maxlen=5)
+        char = self.base.__class__(maxlen=5)
         self.assertEqual(char.maxlen, 5)
+
+    def test_insert(self):
+        self.base('foo')
+        self.orm.insert(self.base)
+
+    def test_select(self):
+        self.base('foo')
+        self.orm.insert(self.base)
+        r = getattr(self.orm.new().desc(self.orm.uid).get(self.base),
+                    self.base.field_name)
+        self.assertEqual(len(r.value), 200)
+        self.assertEqual(r.value.strip(), 'foo')
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestChar, failfast=True, verbosity=2)

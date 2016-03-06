@@ -13,12 +13,7 @@ from unit_tests.fields.Char import *
 
 
 class TestUsername(TestChar):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Username()
-        self.base.table = 'test'
-        self.base.field_name = 'username'
+    base = Username()
 
     def test_validate(self):
         self.base = Username()
@@ -59,6 +54,12 @@ class TestUsername(TestChar):
         for username in randlist:
             self.base(username)
             self.assertFalse(self.base.validate())
+
+    def test_insert(self):
+        pass
+
+    def test_select(self):
+        pass
 
 
 if __name__ == '__main__':

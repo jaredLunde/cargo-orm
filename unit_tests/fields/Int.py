@@ -1,14 +1,13 @@
-
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 import sys
-import unittest
-
-from kola import config
-
 from bloom.fields import Int
 
+from unit_tests import configure
 from unit_tests.fields.SmallInt import TestSmallInt
+
+
+__all__ = ("TestInt",)
 
 
 class TestInt(TestSmallInt):
@@ -25,24 +24,22 @@ class TestInt(TestSmallInt):
     minval: int() minimum interger value
     maxval: int() maximum integer value
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Int()
-        self.base.table = 'test'
-        self.base.field_name = 'int'
+    @property
+    def base(self):
+        return self.orm.integer
 
     def test_init_(self):
-        self.base = Int()
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertIsNone(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.minval, -2147483648)
-        self.assertEqual(self.base.maxval, 2147483647)
+        base = Int()
+        self.assertEqual(base.value, base.empty)
+        self.assertIsNone(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsNone(base.default)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.minval, -2147483648)
+        self.assertEqual(base.maxval, 2147483647)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestInt, verbosity=2, failfast=True)

@@ -26,69 +26,67 @@ class TestKey(TestField):
     size: int() size of random bits to generate
     chars: iterable chars to include in the key
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Key()
-
     def test_init(self):
-        self.base = Key()
-        self.base.table = 'test'
-        self.base.field_name = 'authkey'
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertIsNone(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.size, 256)
+        base = Key()
+        base.table = 'test'
+        base.field_name = 'authkey'
+        self.assertEqual(base.value, base.empty)
+        self.assertIsNone(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsNone(base.default)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.size, 256)
         self.assertEqual(
-            self.base.keyspace, string.ascii_letters+string.digits+'/.#+')
+            base.keyspace, string.ascii_letters+string.digits+'/.#+')
 
     def test_additional_kwargs(self):
-        self.base = Key(value="foo")
-        self.assertEqual(self.base.value, "foo")
-        self.base = Key(default='field')
-        self.assertEqual(self.base.default, 'field')
-        self.base = Key(keyspace=string.ascii_letters)
-        self.assertEqual(self.base.keyspace, string.ascii_letters)
-        self.base = Key(size=512)
-        self.assertEqual(self.base.size, 512)
+        base = Key(value="foo")
+        self.assertEqual(base.value, "foo")
+        base = Key(default='field')
+        self.assertEqual(base.default, 'field')
+        base = Key(keyspace=string.ascii_letters)
+        self.assertEqual(base.keyspace, string.ascii_letters)
+        base = Key(size=512)
+        self.assertEqual(base.size, 512)
 
     def test_validate(self):
-        self.base = Key(size=512, not_null=True)
-        self.assertFalse(self.base.validate())
-        self.base.new()
-        self.assertTrue(self.base.validate())
+        base = Key(size=512, not_null=True)
+        self.assertFalse(base.validate())
+        base.new()
+        self.assertTrue(base.validate())
 
     def test_new(self):
-        self.base = Key()
-        self.base.new()
-        a = self.base.value
-        self.base.new()
-        b = self.base.value
+        base = Key()
+        base.new()
+        a = base.value
+        base.new()
+        b = base.value
         self.assertNotEqual(a, b)
         self.assertAlmostEqual(
-            len(self.base.value),
-            ceil(chars_in(self.base.size, self.base.keyspace)))
+            len(base.value),
+            ceil(chars_in(base.size, base.keyspace)))
 
     def test___call__(self):
-        a = self.base.generate()
-        self.assertEqual(self.base(a), a)
-        self.assertEqual(self.base.value, a)
-        self.assertEqual(self.base(), a)
+        base = Key()
+        a = base.generate()
+        self.assertEqual(base(a), a)
+        self.assertEqual(base.value, a)
+        self.assertEqual(base(), a)
 
     def test_generate(self):
-        a = self.base.generate()
-        self.base.value
-        b = self.base.generate()
+        base = Key()
+        a = base.generate()
+        base.value
+        b = base.generate()
         self.assertNotEqual(a, b)
         self.assertAlmostEqual(
-            len(a), ceil(chars_in(self.base.size, self.base.keyspace)))
+            len(a), ceil(chars_in(base.size, base.keyspace)))
         self.assertAlmostEqual(
-            len(self.base.generate(512)),
-            ceil(chars_in(512, self.base.keyspace)))
+            len(base.generate(512)),
+            ceil(chars_in(512, base.keyspace)))
         self.assertAlmostEqual(
-            bits_in(len(self.base.generate(512)), self.base.keyspace),
+            bits_in(len(base.generate(512)), base.keyspace),
             512,
             delta=6)
 

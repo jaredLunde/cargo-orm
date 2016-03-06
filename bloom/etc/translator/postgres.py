@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Postgres Translators`
@@ -22,19 +20,30 @@ datatype_map = {
     'bigint': 'BigInt',
     'bigserial': 'BigSerial',
     'boolean': 'Bool',
-    # TODO
+    'box': 'Box',
     'bytea': 'Binary',
     'character': 'Char',
     'character varying': 'Varchar',
+    'cidr': 'Cidr',
+    'circle': 'Circle',
+    'daterange': 'DateRange',
     'double precision': 'Double',
-    # TODO
     'hstore': 'HStore',
     'inet': 'Inet',
     'integer': 'Int',
+    'int4range': 'IntRange',
+    'int8range': 'BigIntRange',
     'json': 'Json',
     'jsonb': 'JsonB',
+    'line': 'Line',
+    'lseg': 'LSeg',
+    'macaddr': 'MacAddress',
     'money': 'Decimal',
     'numeric': 'Numeric',
+    'numrange': 'NumericRange',
+    'path': 'Path',
+    'point': 'Point',
+    'polygon': 'Polygon',
     'real': 'Float',
     'smallint': 'SmallInt',
     'smallserial': 'SmallSerial',
@@ -44,9 +53,8 @@ datatype_map = {
     'time': 'Time',
     'timestamp without time zone': 'Timestamp',
     'timestamp': 'Timestamp',
-    'uuid': 'UUID',
-    # TODO
-    'xml': 'XML'
+    'tsrange': 'TimestampRange',
+    'uuid': 'UUID'
 }
 
 
@@ -96,6 +104,7 @@ sqltype_map = {
     BOOL: 'boolean',
     CHAR: 'char',
     ARRAY: 'ARRAY',
+    SMALLSERIAL: 'smallserial',
     SERIAL: 'serial',
     BIGSERIAL: 'bigserial',
     PASSWORD: 'text',
@@ -104,17 +113,20 @@ sqltype_map = {
     VARCHAR: 'varchar',
     JSON: 'json',
     JSONB: 'jsonb',
-    UIDTYPE: 'biginteger',
-    STRUID: 'biginteger',
+    UIDTYPE: 'bigint',
+    STRUID: 'bigint',
     USERNAME: 'varchar',
     EMAIL: 'varchar',
     TIME: 'time',
     NUMERIC: 'numeric',
-    SMALLSERIAL: 'smallserial',
     ENCRYPTED: 'text',
     # TODO: Geometry and other fields
     HSTORE: 'hstore',
-    RANGE: 'int4range',  # Depends on type
+    INTRANGE: 'int4range',
+    BIGINTRANGE: 'int8range',
+    NUMRANGE: 'numrange',
+    TSRANGE: 'tsrange',
+    DATERANGE: 'daterange',
     # http://www.postgresql.org/docs/8.2/static/functions-geometry.html
     CIDR: 'cidr',
     BOX: 'box',
@@ -125,8 +137,7 @@ sqltype_map = {
     POINT: 'point',
     POLYGON: 'polygon',
     MACADDR: 'macaddr',
-    CURRENCY: 'money',
-    XML: 'xml'
+    CURRENCY: 'money'
 }
 
 

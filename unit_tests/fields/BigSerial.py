@@ -1,16 +1,11 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
-from kola import config
-
 from bloom.fields import BigSerial
+from unit_tests.fields.Serial import TestSerial
+from unit_tests import configure
 
-from unit_tests.fields.BigInt import TestBigInt
 
-
-class TestBigSerial(TestBigInt):
+class TestBigSerial(TestSerial):
     '''
     value: value to populate the field with
     not_null: bool() True if the field cannot be Null
@@ -24,24 +19,22 @@ class TestBigSerial(TestBigInt):
     minval: int() minimum interger value
     maxval: int() maximum integer value
     '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = BigSerial()
+    orm = configure.BigSerialModel()
 
     def test_init_(self):
-        self.base = BigSerial()
-        self.base.table = 'test'
-        self.base.field_name = 'int'
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertTrue(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.assertIsNone(self.base.index)
-        self.assertIsNone(self.base.default)
-        self.assertIsNone(self.base.notNull)
-        self.assertEqual(self.base.minval, 1)
-        self.assertEqual(self.base.maxval, 9223372036854775807)
+        base = BigSerial()
+        base.table = 'test'
+        base.field_name = 'int'
+        self.assertEqual(base.value, base.empty)
+        self.assertTrue(base.primary)
+        self.assertIsNone(base.unique)
+        self.assertIsNone(base.index)
+        self.assertIsNone(base.default)
+        self.assertIsNone(base.not_null)
+        self.assertEqual(base.minval, 1)
+        self.assertEqual(base.maxval, 9223372036854775807)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestBigSerial, verbosity=2, failfast=True)

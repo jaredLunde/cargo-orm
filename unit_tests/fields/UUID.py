@@ -1,28 +1,59 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
 import uuid
-import unittest
 
+from bloom import safe
 from bloom.fields import UUID
 
 from unit_tests.fields.Field import *
+from unit_tests import configure
 
 
-class TestUUID(TestField):
+class TestUUID(configure.IdentifierTestCase, TestField):
+    orm = configure.UUIDModel()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        id = uuid.uuid4()
-        self.base = UUID(id)
+    @property
+    def base(self):
+        return self.orm.uuid
 
     def test_init_(self):
         id = uuid.uuid4()
-        self.base = UUID(id)
-        self.assertEqual(self.base(), id)
-        self.assertEqual(self.base.value, id)
+        base = UUID(id)
+        self.assertEqual(base(), id)
+        self.assertEqual(base.value, id)
+        self.assertTrue(base.primary, True)
+
+    def test_real_value(self):
+        id = uuid.uuid4()
+        self.base(id)
+        self.assertIs(self.base.value, self.base.value)
+        self.base.clear()
+        self.assertIs(self.base.value, self.base.empty)
+        self.base(None)
+        self.assertIsNone(self.base.value)
+
+    def test_insert(self):
+        id = uuid.uuid4()
+        self.base(id)
+        self.orm.insert(self.base)
+        self.base.clear()
+        self.orm.insert(self.base)
+
+    def test_select(self):
+        id = uuid.uuid4()
+        self.base(id)
+        self.orm.insert(self.base)
+        self.assertEqual(
+            getattr(self.orm.new().desc(self.orm.uid).get(),
+                    self.base.field_name).value,
+            self.base.value)
+
+    def test_new(self):
+        self.assertIs(self.base.value, self.base.empty)
+        self.base.new()
+        self.assertIsNotNone(self.base.value)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestUUID, verbosity=2, failfast=True)

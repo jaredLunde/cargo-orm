@@ -14,12 +14,7 @@ from unit_tests.fields.Field import *
 
 
 class TestDate(TestField):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Date()
-        self.base.table = 'test'
-        self.base.field_name = 'time'
+    base = Date()
 
     def test___call__(self):
         dts = []
@@ -28,8 +23,8 @@ class TestDate(TestField):
             self.base(phrase)
             self.assertIsInstance(self.base.value, arrow.Arrow)
             self.assertEqual(self.base.day, int(phrase.split(' ')[1]))
-            self.assertIsInstance(self.base.real_value, datetime.datetime)
-            dts.append(self.base.real_value)
+            self.assertIsInstance(self.base.value, arrow.Arrow)
+            dts.append(self.base.value)
             ars.append(self.base())
 
         for phrase in [Function('now'), Clause('now')]:
@@ -37,12 +32,12 @@ class TestDate(TestField):
             self.assertIsInstance(self.base.value, phrase.__class__)
             with self.assertRaises(AttributeError):
                 self.assertEqual(self.base.day, phrase)
-            self.assertIsInstance(self.base.real_value, phrase.__class__)
+            self.assertIsInstance(self.base.value, phrase.__class__)
 
         for dt in (dts + ars):
             self.base(dt)
             self.assertIsInstance(self.base(), arrow.Arrow)
-            self.assertIsInstance(self.base.real_value, datetime.datetime)
+            self.assertIsInstance(self.base.value, arrow.Arrow)
 
     def test_replace(self):
         self.base('October 31, 1984 at 11:17am')
@@ -61,9 +56,9 @@ class TestDate(TestField):
         for attr, obj in d.data_descriptors.items():
             pass
 
-    def test_real_value(self):
+    def test_value(self):
         self.base('October 31')
-        self.assertIsInstance(self.base.real_value, datetime.datetime)
+        self.assertIsInstance(self.base.value, arrow.Arrow)
 
 
 if __name__ == '__main__':

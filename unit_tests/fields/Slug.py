@@ -9,12 +9,7 @@ from unit_tests.fields.Field import TestField
 
 
 class TestSlug(TestField):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Slug()
-        self.base.table = 'test'
-        self.base.field_name = 'slug'
+    base = Slug()
 
     def test___call__(self):
         subjects = [

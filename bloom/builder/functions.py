@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Function Builder`
@@ -76,6 +75,10 @@ class Function(BaseCreator):
         """ @*cols: (#tuple) |(col_name data_type)| """
         cols = (safe(" ".join(map(str, col))) for col in cols)
         self._returns = ValuesClause('RETURNS TABLE', *cols)
+
+    @property
+    def _common_name(self):
+        return self._function
 
     @property
     def query(self):

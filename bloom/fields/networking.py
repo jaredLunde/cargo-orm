@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Networking Fields`
@@ -8,31 +6,84 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-import psycopg2.extras
+import copy
+from netaddr import *
+from psycopg2.extensions import *
 
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
 
-# TODO: 'CIDR': 'cidr'
-# TODO: 'MACADDR': 'macaddr'
-# NOTE : http://www.postgresql.org/docs/9.3/static/functions-net.html
 
-__slots__ = ('IP', 'Inet')
+__all__ = ('IP', 'Inet', 'Cidr', 'MacAddress')
 
 
-class IP(Field, StringLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+class NetworkingLogic(BaseLogic):
+    '''
+    <	is less than	inet '192.168.1.5' < inet '192.168.1.6'
+    <=	is less than or equal	inet '192.168.1.5' <= inet '192.168.1.5'
+    =	equals	inet '192.168.1.5' = inet '192.168.1.5'
+    >=	is greater or equal	inet '192.168.1.5' >= inet '192.168.1.5'
+    >	is greater than	inet '192.168.1.5' > inet '192.168.1.4'
+    <>	is not equal	inet '192.168.1.5' <> inet '192.168.1.4'
+    <<	is contained by	inet '192.168.1.5' << inet '192.168.1/24'
+    <<=	is contained by or equals	inet
+        '192.168.1/24' <<= inet '192.168.1/24'
+    >>	contains	inet '192.168.1/24' >> inet '192.168.1.5'
+    >>=	contains or equals	inet '192.168.1/24' >>= inet '192.168.1/24'
+    &&	contains or is contained by	inet
+        '192.168.1/24' && inet '192.168.1.80/28'
+    ~	bitwise NOT	~ inet '192.168.1.6'
+    &	bitwise AND	inet '192.168.1.6' & inet '0.0.0.255'
+    |	bitwise OR	inet '192.168.1.6' | inet '0.0.0.255'
+    +	addition	inet '192.168.1.6' + 25
+    -	subtraction	inet '192.168.1.43' - 36
+    -	subtraction	inet '192.168.1.43' - inet '192.168.1.19'
+
+    abbrev(inet)	text	abbreviated display format as text
+        abbrev(inet '10.1.0.0/16')	10.1.0.0/16
+    abbrev(cidr)	text	abbreviated display format as text
+        abbrev(cidr '10.1.0.0/16')	10.1/16
+    broadcast(inet)	inet	broadcast address for network
+        broadcast('192.168.1.5/24')	192.168.1.255/24
+    family(inet)	int	extract family of address; 4 for IPv4, 6 for IPv6
+        family('::1')	6
+    host(inet)	text	extract IP address as text	host('192.168.1.5/24')
+        192.168.1.5
+    hostmask(inet)	inet	construct host mask for network
+        hostmask('192.168.23.20/30')	0.0.0.3
+    masklen(inet)	int	extract netmask length	masklen('192.168.1.5/24')	24
+    netmask(inet)	inet	construct netmask for network
+        netmask('192.168.1.5/24')	255.255.255.0
+    network(inet)	cidr	extract network part of address
+        network('192.168.1.5/24')	192.168.1.0/24
+    set_masklen(inet, int)	inet	set netmask length for inet value
+        set_masklen('192.168.1.5/24', 16)	192.168.1.5/16
+    set_masklen(cidr, int)	cidr	set netmask length for cidr value
+        set_masklen('192.168.1.0/24'::cidr, 16)	192.168.0.0/16
+    text(inet)	text	extract IP address and netmask length as text
+        text(inet '192.168.1.5')	192.168.1.5/32
+    inet_same_family(inet, inet)	boolean	are the addresses from the same
+        family?	inet_same_family('192.168.1.5/24', '::1')	false
+    inet_merge(inet, inet)	cidr	the smallest network which includes both of
+        the given networks	inet_merge('192.168.1.5/24', '192.168.2.5/24')
+        192.168.0.0/22
+    '''
+
+
+class IP(Field, NetworkingLogic):
+    """ =======================================================================
         Field object for the PostgreSQL field type |INET|.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', '_default', 'table',
         '_request')
     sqltype = IP
     current = -1
 
-    def __init__(self, value=Field.empty, request=None, default=None, **kwargs):
+    def __init__(self, value=Field.empty, request=None, default=None,
+                 **kwargs):
         """ `IP Address`
             :see::meth:Field.__init__
             @request: Django, Flask or Bottle-like request object
@@ -42,16 +93,23 @@ class IP(Field, StringLogic):
         super().__init__(**kwargs)
         self.__call__(value)
 
+    def __getattr__(self, name):
+        try:
+            return self.__getattribute__(name)
+        except AttributeError:
+            return self.value.__getattribute__(name)
+
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
             if value == self.current:
                 value = self.request_ip
-                self._set_value(psycopg2.extras.Inet(value))
-            elif value is None:
-                self._set_value(value)
-            else:
-                self._set_value(psycopg2.extras.Inet(value))
+            if value is not None:
+                value = IPAddress(value)
+            self._set_value(value)
         return self.value
+
+    def __int__(self):
+        return int(self.value)
 
     @property
     def request_ip(self):
@@ -70,7 +128,8 @@ class IP(Field, StringLogic):
     @property
     def default(self):
         if self._default == self.current:
-            return psycopg2.extras.Inet(self.request_ip)
+            return self.request_ip
+        return self._default
 
     def __getstate__(self):
         return dict(
@@ -83,13 +142,17 @@ class IP(Field, StringLogic):
         for slot, value in state.items():
             setattr(self, slot, value)
 
+    @staticmethod
+    def to_db(value):
+        return adapt(str(value))
+
     def copy(self, *args, **kwargs):
         cls = self.__class__(*args, **kwargs)
         cls.field_name = self.field_name
         cls.primary = self.primary
         cls.unique = self.unique
         cls.index = self.index
-        cls.notNull = self.notNull
+        cls.not_null = self.not_null
         if self.value is not None and self.value is not self.empty:
             cls.value = copy.copy(self.value)
         cls.table = self.table
@@ -104,3 +167,79 @@ class IP(Field, StringLogic):
 
 
 Inet = IP
+register_adapter(IPAddress, IP.to_db)
+
+
+class Cidr(Field, StringLogic):
+    """ =======================================================================
+        Field object for the PostgreSQL field type |CIDR|.
+    """
+    __slots__ = (
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
+        'validation', 'validation_error', '_alias', 'default', 'table')
+    sqltype = CIDR
+
+    def __init__(self, value=Field.empty, *args, **kwargs):
+        """ `Cidr Addresses`
+            :see::meth:Field.__init__
+        """
+        super().__init__(value, *args, **kwargs)
+
+    def __getattr__(self, name):
+        try:
+            return self.__getattribute__(name)
+        except AttributeError:
+            return self.value.__getattribute__(name)
+
+    def __call__(self, value=Field.empty):
+        if value is not Field.empty:
+            if value is not None:
+                value = IPNetwork(value)
+            self._set_value(value)
+        return self.value
+
+    def __int__(self):
+        return int(self.value)
+
+    @staticmethod
+    def to_db(value):
+        return adapt(str(value))
+
+register_adapter(IPNetwork, Cidr.to_db)
+
+
+class MacAddress(Cidr):
+    """ =======================================================================
+        Field object for the PostgreSQL field type |MACADDR|.
+    """
+    sqltype = MACADDR
+    __slots__ = (
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
+        'validation', 'validation_error', '_alias', 'default', 'table')
+
+    def __init__(self, value=Field.empty,  *args, **kwargs):
+        """ `Mac Addresses`
+            :see::meth:Field.__init__
+        """
+        super().__init__(value, *args, **kwargs)
+
+    def __getattr__(self, name):
+        try:
+            return self.__getattribute__(name)
+        except AttributeError:
+            return self.value.__getattribute__(name)
+
+    def __call__(self, value=Field.empty):
+        if value is not Field.empty:
+            if value is not None:
+                value = EUI(value)
+            self._set_value(value)
+        return self.value
+
+    def trunc(self, *args, **kwargs):
+        """ Sets last 3 bytes to zero
+            -> (:class:Function)
+        """
+        return Function(trunc, self, *args, **kwargs)
+
+register_adapter(EUI, MacAddress.to_db)

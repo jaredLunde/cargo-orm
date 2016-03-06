@@ -11,17 +11,13 @@ from unit_tests.fields.Char import *
 
 
 class TestJsonB(TestField):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = JsonB()
+    base = JsonB()
 
     def test_init_(self):
         self.base = JsonB()
         rd = RandData(str).dict(4, 2)
         self.base(rd)
-        self.assertIsInstance(self.base.real_value, psycopg2.extras.Json)
-        self.assertNotEqual(self.base.value, self.base.real_value)
+        self.assertIsInstance(self.base.value, dict)
 
     def test_cast(self):
         j = JsonB(cast=dict)
@@ -37,8 +33,16 @@ class TestJsonB(TestField):
         self.assertIsInstance(j.value, list)
 
     def test_real_value(self):
-        self.base(RandData(str).dict(4, 2))
-        self.assertIsInstance(self.base.real_value, psycopg2.extras.Json)
+        def test_real_value(self):
+            self.base(RandData(str).dict(4, 2))
+            self.assertIsInstance(self.base.value, dict)
+            self.base(RandData(str).list(4, 2))
+            self.assertIsInstance(self.base.value, list)
+            self.base(RandData().randstr)
+            self.assertIsInstance(self.base.value, str)
+            self.base(RandData().randint)
+            self.assertIsInstance(self.base.value, int)
+            self.base.clear()
 
 
 if __name__ == '__main__':

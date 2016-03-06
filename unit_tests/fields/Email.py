@@ -11,13 +11,7 @@ from unit_tests.fields.Field import *
 
 
 class TestEmail(TestField):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Email()
-        self.base.table = 'test'
-        self.base.field_name = 'email'
-
+    base = Email()
     def test_validate(self):
         for email in RandData(RandData.emailType).list(200):
             self.base(email)

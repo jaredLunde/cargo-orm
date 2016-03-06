@@ -44,4 +44,7 @@ from unit_tests.validators.ValidationValue import *
 
 if __name__ == '__main__':
     # Unit test
+    from unit_tests import configure
+    configure.setup()
     unittest.main()
+    configure.cleanup()

@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Character Fields`
@@ -17,11 +15,11 @@ __all__ = ('Char', 'Varchar', 'Text')
 
 
 class Char(Field, StringLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |CHAR|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minlen',
         'maxlen', 'table')
     sqltype = CHAR
@@ -53,11 +51,11 @@ class Char(Field, StringLogic):
 
 
 class Varchar(Char):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |VARCHAR|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minlen',
         'maxlen', 'table')
     sqltype = VARCHAR
@@ -74,11 +72,11 @@ class Varchar(Char):
 
 
 class Text(Char):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |TEXT|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minlen',
         'maxlen', 'table')
     sqltype = TEXT

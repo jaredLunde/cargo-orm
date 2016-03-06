@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Relationships`
@@ -17,7 +16,7 @@ from vital.debug import prepr, get_obj_name
 
 from bloom.fields import *
 from bloom.etc.types import *
-from bloom.expressions import Clause
+from bloom.expressions import Clause, safe
 from bloom.exceptions import RelationshipImportError, PullError
 
 
@@ -82,7 +81,8 @@ class Reference(object):
     def __repr__(self): return
 
     def add_constraint(self, name, val=None):
-        """ Adds foreign key constraints to the reference.
+        """ Adds foreign key constraints to the reference. This is used
+            primarily with :class:bloom.builder.Builder
 
             @name: (#str) the clause, e.g. |name='MATCH PARTIAL'|
             @val: (#str) the clause value,
@@ -97,10 +97,17 @@ class Reference(object):
             ..
         """
         if not isinstance(name, Clause):
-            clause = Clause(name, val or _empty)
+            clause = Clause(name, safe(val) if val is not None else _empty)
         else:
             clause = name
         self.constraints.append(clause)
+        return self
+
+    def on_update(self, val):
+        return self.add_constraint('ON UPDATE', val)
+
+    def on_delete(self, val):
+        return self.add_constraint('ON DELETE', val)
 
     @cached_property
     def model(self):
@@ -248,6 +255,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                     primary = _kwargs['primary']
                     del _kwargs['primary']
                 super().__init__(*_args, primary=primary, **_kwargs)
+                self.default = _kwargs.get('default')
                 self.table = _owner.table
                 self.field_name = _owner_attr
                 self.ref = Reference(_ref_model, _ref_attr)
@@ -430,7 +438,7 @@ class Relationship(BaseRelationship):
         if order_field is not None:
             model.order_by(order_field.asc() if not reverse else
                            order_field.desc())
-        model.where(self.foreign_key == self.join_field.real_value)
+        model.where(self.foreign_key.eq(self.join_field.real_value))
         if dry:
             model.dry()
         results = model._select(*args, **kwargs)

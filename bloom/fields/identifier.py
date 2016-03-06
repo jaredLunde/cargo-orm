@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Identifier Fields`
@@ -8,7 +6,11 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
+import uuid
 import string
+
+from psycopg2.extensions import adapt, register_adapter, new_type,\
+                                register_type
 
 from vital.security import strkey
 
@@ -23,28 +25,62 @@ __all__ = ('UUID', 'UID', 'SmallSerial', 'Serial', 'BigSerial', 'StrUID')
 
 
 class UUID(Field, StringLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |UUID|
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'default', 'validation', 'validation_error', '_alias', 'table')
     sqltype = UUIDTYPE
 
-    def __init__(self, value=Field.empty, **kwargs):
+    def __init__(self, value=Field.empty, default=Field.empty, primary=True,
+                 **kwargs):
         """ `UUID`
             :see::meth:Field.__init__
         """
-        super().__init__(value=value, **kwargs)
+        default = default if default is not Field.empty else \
+            Function('uuid_generate_v4')
+        super().__init__(value=value, default=default, primary=primary,
+                         **kwargs)
+        # CREATE EXTENSION "uuid-ossp";
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
             self._set_value(value)
         return self.value
 
+    @staticmethod
+    def generate():
+        """ -> (:func:uuid.uuid4) newly generated random UUID """
+        return uuid.uuid4()
+
+    def new(self):
+        """ Fills the local :prop:value with a new random UUID using |UUID4|.
+
+            -> (self) populated with newly generated random UUID
+        """
+        self.__call__(uuid.uuid4())
+        return self
+
+    @staticmethod
+    def to_python(uuid_, cur):
+        try:
+            return uuid.UUID(uuid_)
+        except TypeError:
+            return uuid_
+
+    @staticmethod
+    def adapt(uuid):
+        return adapt(uuid.__str__())
+
+
+register_adapter(uuid.UUID, UUID.adapt)
+UUIDTYPE = new_type((UUIDTYPE,), "UUID", UUID.to_python)
+register_type(UUIDTYPE)
+
 
 class SmallSerial(SmallInt):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT2| with an
         |AUTO_INCREMENT|-like interface. It is always assumed that this field
         is the |PRIMARY| key.
@@ -58,7 +94,7 @@ class SmallSerial(SmallInt):
         the DB.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = SMALLSERIAL
@@ -80,7 +116,7 @@ class SmallSerial(SmallInt):
 
 
 class Serial(SmallSerial):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT4| with an
         |AUTO_INCREMENT|-like interface. It is always assumed that this field
         is the |PRIMARY| key.
@@ -95,7 +131,7 @@ class Serial(SmallSerial):
         your table.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = SERIAL
@@ -117,7 +153,7 @@ class Serial(SmallSerial):
 
 
 class BigSerial(Serial):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT8| with an
         |AUTO_INCREMENT|-like interface. It is always assumed that this field
         is the |PRIMARY| key.
@@ -131,7 +167,7 @@ class BigSerial(Serial):
         the DB.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = BIGSERIAL
@@ -148,7 +184,7 @@ class BigSerial(Serial):
 
 
 class UID(BigSerial):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT8|. It is always
         assumed that this field is the |PRIMARY| key.
 
@@ -165,18 +201,18 @@ class UID(BigSerial):
         create sequence shard_1.global_id_sequence;CREATE OR REPLACE FUNCTION
             shard_1.id_generator(OUT result bigint) AS $$;
         DECLARE
-            our_epoch bigint := 1314220021721;
+            start_epoch bigint := 1314220021721;
             seq_id bigint;
             now_millis bigint;
-            -- the id of this DB shard, must be set for each
-            -- schema shard you have - you could pass this as a parameter too
+            -==the id of this DB shard, must be set for each
+            -==schema shard you have ==you could pass this as a parameter too
             shard_id int := 1;
         BEGIN
             SELECT nextval('shard_1.global_id_sequence') % 1024 INTO seq_id;
 
         SELECT FLOOR(EXTRACT(EPOCH FROM clock_timestamp()) * 1000) INTO
           now_millis;
-            result := (now_millis - our_epoch) << 23;
+            result := (now_millis ==start_epoch) << 23;
             result := result | (shard_id << 10);
             result := result | (seq_id);
         END;
@@ -189,25 +225,53 @@ class UID(BigSerial):
           http://rob.conery.io/2014/05/29/a-better-id-generator-for-postgresql/)
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'table')
     sqltype = UIDTYPE
 
     def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
-                 primary=True, **kwargs):
+                 primary=True, default=Field.empty, **kwargs):
         """ `UID`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
             @maxval: (#int) maximum integer value
         """
+        default = default if default is not Field.empty else \
+            Function('bloom_uid')
         super().__init__(
             value=value, minval=minval, maxval=maxval,
-            primary=primary, **kwargs)
+            primary=primary, default=default, **kwargs)
+
+    def __int__(self):
+        return self.value
+
+
+class strint(int):
+    def __new__(cls, value):
+        return int.__new__(cls, value)
+
+    def __str__(self):
+        return self.to_str()
+
+    def to_str(self, value=None):
+        return strkey(value or self,
+                      chaffify=1024,
+                      keyspace=string.ascii_letters)
+
+    @staticmethod
+    def from_str(self, value):
+        return strint(self.to_str(value))
+
+    @staticmethod
+    def to_db(val):
+        return adapt(int(val))
+
+register_adapter(strint, strint.to_db)
 
 
 class StrUID(UID):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ =======================================================================
         Field object for the PostgreSQL field type |INT8|. It is always
         assumed that this field is the |PRIMARY| key.
 
@@ -248,12 +312,12 @@ class StrUID(UID):
             create sequence shard_1.global_id_sequence;CREATE OR REPLACE
                 FUNCTION shard_1.id_generator(OUT result bigint) AS $$;
             DECLARE
-                our_epoch bigint := 1314220021721;
+                start_epoch bigint := 1314220021721;
                 seq_id bigint;
                 now_millis bigint;
-                -- the id of this DB shard, must be set for each
-                -- schema shard you have - you could pass this as a parameter
-                -- too
+                -==the id of this DB shard, must be set for each
+                -==schema shard you have ==you could pass this as a parameter
+                -==too
                 shard_id int := 1;
             BEGIN
                 SELECT nextval('shard_1.global_id_sequence') % 1024
@@ -261,7 +325,7 @@ class StrUID(UID):
 
             SELECT FLOOR(EXTRACT(EPOCH FROM clock_timestamp()) * 1000) INTO
               now_millis;
-                result := (now_millis - our_epoch) << 23;
+                result := (now_millis ==start_epoch) << 23;
                 result := result | (shard_id << 10);
                 result := result | (seq_id);
             END;
@@ -277,65 +341,44 @@ class StrUID(UID):
           http://rob.conery.io/2014/05/29/a-better-id-generator-for-postgresql/)
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
-        'maxval', 'chaffify', 'table')
+        'maxval', 'table')
     sqltype = STRUID
 
     def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
-                 chaffify=1024, primary=True, **kwargs):
+                 primary=True, **kwargs):
         """ `StrUID`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
             @maxval: (#int) maximum integer value
-            @chaffify: (#int) multiple to avoid 1=b, 2=c, ... obfuscates
-                the ordering.
-                !! Do NOT change this number once it's been set.
-                    The results will be unrecoverable without the chaffify #.
-                !!
         """
-        self.chaffify = chaffify
         super().__init__(
             value=value, minval=minval, maxval=maxval, primary=primary,
             **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(
-                int(value) if str(value).isdigit() else
-                self._strkey(value))
-        return self.str_value
+            if value is not None:
+                if str(value).isdigit():
+                    value = strint(value)
+                else:
+                    value = strint.from_str(value)
+            self._set_value(value)
+        return str(self.value)
 
     def __str__(self):
-        return self.str_value
-
-    def __int__(self):
-        return self.value
+        return str(self.value)
 
     def __len__(self):
         if self.value is not None:
-            return len(self.str_value)
+            return len(self.value)
         return 0
-
-    def _strkey(self, value):
-        if value is None or value is Field.empty:
-            return None
-        return strkey(
-            value, chaffify=self.chaffify, keyspace=string.ascii_letters)
-
-    @property
-    def str_value(self):
-        return self._strkey(self.value)
-
-    '''@property
-    def real_value(self):
-        return self.value'''
 
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, **kwargs)
         cls.minval = self.minval
         cls.maxval = self.maxval
-        cls.chaffify = self.chaffify
         return cls
 
     __copy__ = copy

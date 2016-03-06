@@ -1,22 +1,25 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
-
 from bloom.fields import Text
 
-from unit_tests.fields.Char import *
+from unit_tests.fields.Varchar import TestVarchar
+from unit_tests import configure
 
 
-class TestText(TestChar):
+class TestText(TestVarchar):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.base = Text()
-        self.base.table = 'test'
-        self.base.field_name = 'text'
+    @property
+    def base(self):
+        return self.orm.text
+
+    def test_select(self):
+        self.base('foo')
+        self.orm.insert(self.base)
+        r = getattr(self.orm.new().desc(self.orm.uid).get(self.base),
+                    self.base.field_name)
+        self.assertEqual(r.value, 'foo')
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestText, failfast=True, verbosity=2)

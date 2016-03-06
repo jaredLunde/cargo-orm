@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Numeric and Float Fields`
@@ -17,17 +15,20 @@ __all__ = ('Decimal', 'Numeric', 'Float', 'Double')
 
 
 class Decimal(Field, NumericLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |DECIMAL|
+    """ =======================================================================
+        Field object for the PostgreSQL field type |DECIMAL|. Use this
+        field as opposed to :class:Float or :class:Double when exact precision
+        is necessary.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'digits', 'table')
     sqltype = DECIMAL
 
-    def __init__(self, value=Field.empty, digits=16383, minval=-9223372036854775808.0,
-                 maxval=9223372036854775807.0, **kwargs):
+    def __init__(self, value=Field.empty, digits=-1,
+                 minval=-9223372036854775808.0, maxval=9223372036854775807.0,
+                 **kwargs):
         """ `Decimal`
             :see::meth:SmallInt.__init__
             @digits: (#int) maximum digit precision
@@ -47,6 +48,9 @@ class Decimal(Field, NumericLogic):
                 self._set_value(float(value))
         return self.value
 
+    def __float__(self):
+        return float(self.vlaue)
+
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, **kwargs)
         cls.minval = self.minval
@@ -58,11 +62,13 @@ class Decimal(Field, NumericLogic):
 
 
 class Numeric(Decimal):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |NUMERIC|
+    """ =======================================================================
+        Field object for the PostgreSQL field type |NUMERIC|. Use this
+        field as opposed to :class:Float or :class:Double when exact precision
+        is necessary.
     """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'digits', 'table')
     sqltype = NUMERIC
@@ -78,7 +84,7 @@ class Numeric(Decimal):
 class Float(Decimal):
     """ Field object for the PostgreSQL field type |FLOAT| """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'digits', 'table')
     sqltype = FLOAT
@@ -94,7 +100,7 @@ class Float(Decimal):
 class Double(Float):
     """ Field object for the PostgreSQL field type |FLOAT| """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'minval',
         'maxval', 'digits', 'table')
     sqltype = DOUBLE

@@ -1,4 +1,3 @@
-#!/usr/bin/python3 -S
 """
 
   `Bloom ORM Cast Builder`
@@ -55,6 +54,10 @@ class Cast(BaseCreator):
 
     def inout(self):
         self._inout = Clause('WITH INOUT')
+
+    @property
+    def _common_name(self):
+        return ' AS '.join((self._source_type, self._target_type))
 
     @property
     def query(self):

@@ -1,8 +1,6 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
-  `Bloom SQL Integer Fields`
+  `Bloom SQL Boolean Fields`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
    http://github.com/jaredlunde/bloom-orm
@@ -19,11 +17,11 @@ __all__ = ('Bool',)
 class Bool(Field):
     """ Field object for the PostgreSQL field type |BOOL| """
     __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'notNull', 'value',
+        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
         'validation', 'validation_error', '_alias', 'default', 'table')
     sqltype = BOOL
 
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=Field.empty, **kwargs):
         """ `Bool`
             :see::meth:Field.__init__
         """
@@ -35,6 +33,6 @@ class Bool(Field):
         return self.value
 
     def validate(self):
-        if self.notNull:
+        if self.not_null:
             return self.value in {True, False}
         return self.value in {True, False, None, Field.empty}

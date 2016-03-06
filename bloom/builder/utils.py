@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Builder Utils`
@@ -13,6 +11,7 @@ import os
 from docr import Docr
 
 from bloom import fields
+from bloom.clients import db
 from bloom.expressions import safe
 from bloom.etc.translator import postgres
 
@@ -45,11 +44,12 @@ def _get_docr(field):
 class BaseCreator(object):
 
     def __init__(self, orm, name):
+        orm = orm if orm is not None else db
         self.orm = orm.copy()
-        if name is not None:
-            self._name = safe(name)
-        else:
-            self._name = None
+        try:
+            self._name = name
+        except AttributeError:
+            pass
 
     def __repr__(self):
         try:
@@ -70,6 +70,10 @@ class BaseCreator(object):
             return val.query
         else:
             return val
+
+    @property
+    def _common_name(self):
+        return self.name
 
     @property
     def name(self):

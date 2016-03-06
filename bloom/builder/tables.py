@@ -1,10 +1,8 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 
   `Bloom SQL Builder Tables`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
-   The MIT License (MIT) © 2015 Jared Lunde
+   The MIT License (MIT) © 2016 Jared Lunde
    http://github.com/jaredlunde/bloom-orm
 
 """
@@ -97,7 +95,7 @@ class TableMeta(object):
 class Table(BaseCreator):
 
     def __init__(self, orm, name, *column, local=False, temporary=False,
-                 unlogged=False, not_exists=True, storage_parameters=None,
+                 unlogged=False, not_exists=False, storage_parameters=None,
                  on_commit=None, inherits=None, tablespace=None,
                  type_name=None, like=None, constraints=None, **columns):
         """`Create a Table`
@@ -147,7 +145,7 @@ class Table(BaseCreator):
 
         self._columns = []
         if column:
-            self.from_fields(*columns)
+            self.from_fields(*column)
 
         if columns:
             self.set_columns(**columns)
@@ -244,10 +242,10 @@ class Table(BaseCreator):
         return self
 
     def constraints(self, *constraint, **constraints):
-        """ @*constraint: (#str|:class:BaseExpression) single argument
+        """ @*constraint: (#str or :class:BaseExpression) single argument
                 constraint to add
-            @**constraints: (#str|:class:BaseExpression) key=value constraint
-                pairs |constraint_name=constraint_value|
+            @**constraints: (#str or :class:BaseExpression) key=value
+                constraint pairs |constraint_name=constraint_value|
             ..
             { CHECK ( expression ) [ NO INHERIT ] |
               UNIQUE ( column_name [, ... ] ) index_parameters |
@@ -277,7 +275,7 @@ class Table(BaseCreator):
             self._constraints.append(cls)
 
     def timing(self, timing):
-        """ @timing: (#str|:class:bloom.BaseExpression)
+        """ @timing: (#str or :class:bloom.BaseExpression)
             * |[ DEFERRABLE | NOT DEFERRABLE ]|
             * |[ INITIALLY DEFERRED | INITIALLY IMMEDIATE ]|
         """
@@ -286,7 +284,7 @@ class Table(BaseCreator):
         return self
 
     def check(self, expression):
-        """ @expression: (#str|:class:bloom.BaseExpression) """
+        """ @expression: (#str or :class:bloom.BaseExpression) """
         cls = Clause('CHECK', self._cast_safe(expression), wrap=True)
         self._constraints.append(cls)
         return self
@@ -298,8 +296,8 @@ class Table(BaseCreator):
 
     def primary_key(self, fields, *params):
         """ `Defines the primary key(s)`
-            @fields: (#tuple|:class:Field|#str) one or more fields
-            @params: (#str|:class:Clause) index parameters
+            @fields: (#tuple or :class:Field or #str) one or more fields
+            @params: (#str or :class:Clause) index parameters
         """
         fields = self._cast_fields(fields)
         cls = Clause('PRIMARY KEY', fields, *params, use_field_name=True)
@@ -308,8 +306,8 @@ class Table(BaseCreator):
 
     def unique(self, fields, *params):
         """ `Creates a unique constraint`
-            @fields: (#tuple|:class:Field|#str) one or more fields
-            @params: (#str|:class:Clause) unique parameters
+            @fields: (#tuple or :class:Field or #str) one or more fields
+            @params: (#str or :class:Clause) unique parameters
         """
         fields = self._cast_fields(fields)
         cls = Clause('UNIQUE', fields, *params, use_field_name=True)
@@ -319,18 +317,18 @@ class Table(BaseCreator):
     def foreign_key(self, fields, ref_table, ref_fields, *params,
                     on_delete=None, on_update=None):
         """ `Defines foreign key field(s)`
-            @fields: (#tuple|:class:Field|#str) one or more fields
-            @ref_table: (#str|:class:BaseExpression) referenced table
-            @ref_fields: (#tuple|:class:Field|#str) one or more fields from
-                the referenced table
-            @params: (#str|:class:Clause) foreign key constraints
-            @on_delete: (#str|:class:BaseExpression) one of
+            @fields: (#tuple or :class:Field or #str) one or more fields
+            @ref_table: (#str or :class:BaseExpression) referenced table
+            @ref_fields: (#tuple or :class:Field or #str) one or more fields
+                from the referenced table
+            @params: (#str or :class:Clause) foreign key constraints
+            @on_delete: (#str or :class:BaseExpression) one of
                 * NO ACTION
                 * RESTRICT
                 * CASCADE
                 * SET NULL
                 * SET DEFAULT
-            @on_update: (#str|:class:BaseExpression) one of
+            @on_update: (#str or :class:BaseExpression) one of
                 * NO ACTION
                 * RESTRICT
                 * CASCADE
@@ -432,31 +430,31 @@ class Column(BaseCreator):
         """`Column wrapper for :class:Field(s)`
 
             @field: (:class:Field)
-            @check: (#str|:class:BaseExpression) check constraint is the most
-                generic constraint type. It allows you to specify that the
+            @check: (#str or :class:BaseExpression) check constraint is the
+                most generic constraint type. It allows you to specify that the
                 value in a certain column must satisfy a Boolean (truth-value)
                 expression
             @not_null: (#bool) |True| if the column cannot be null
-            @unique: (#bool|#str|:class:Clause) |True| to set plain
+            @unique: (#bool or #str or :class:Clause) |True| to set plain
                 |UNIQUE| constraint #str or :class:Clause to set
                 parameterized constraint
-            @primary: (#bool|#str|:class:Clause) |True| to set plain
+            @primary: (#bool or #str or :class:Clause) |True| to set plain
                 |PRIMARY KEY| constraint #str or :class:Clause to set
                 parameterized constraint
-            @default: (#str|#int|#bool|#list|:class:BaseExpression)
+            @default: (#str|#int|#bool or #list or :class:BaseExpression)
                 sets the default value constraint
-            @references: (#str|:class:BaseExpression) sets the |REFERENCES|
+            @references: (#str or :class:BaseExpression) sets the |REFERENCES|
                 clause to the constraints provided
-            @timing: (#str|:class:Clause) one of:
+            @timing: (#str or :class:Clause) one of:
                 * |DEFERRABLE|
                 * |NOT DEFERRABLE|
                 * |INITIALLY IMMEDIATE|
                 * |INITIALLY DEFERRED|
             @translator: field type translator for converting bloom
                 :class:Field objects to sql types
-            @parameters: (#str|:class:BaseExpression) column data type
+            @parameters: (#str or :class:BaseExpression) column data type
                 parameters
-            @data_type: (#str|:class:BaseExpression) column data type
+            @data_type: (#str or :class:BaseExpression) column data type
             @typed: (#bool) |True| if this is for a typed table
         """
         self._name = field.field_name
@@ -467,7 +465,7 @@ class Column(BaseCreator):
         self._translator = translator
 
         self._not_null = None
-        nn = not_null if not_null is not _empty else field.notNull
+        nn = not_null if not_null is not _empty else field.not_null
         if nn:
             self.not_null()
 
@@ -544,7 +542,7 @@ class Column(BaseCreator):
         return self
 
     def check(self, expression):
-        """ @expression: (#str|:class:bloom.BaseExpression|None) """
+        """ @expression: (#str or :class:bloom.BaseExpression or None) """
         if expression is None:
             self._check = None
         else:
@@ -552,7 +550,7 @@ class Column(BaseCreator):
         return self
 
     def unique(self, *params):
-        """ @params: (#str|:class:bloom.BaseExpression|None) UNIQUE constraint
+        """ @params: (#str or :class:bloom.BaseExpression or None) UNIQUE constraint
                 parameter, if |None| is passed to this method, e.g.,
                 |col.unique(None)|, the unique constraint applied to the
                 column will be removed
@@ -568,7 +566,7 @@ class Column(BaseCreator):
         return self
 
     def primary(self, *params):
-        """ @params: (#str|:class:bloom.BaseExpression|None) PRIMARY
+        """ @params: (#str or :class:bloom.BaseExpression or None) PRIMARY
                 constraint parameter, if |None| is passed to this method,
                 e.g., |col.primary(None)|, the primary constraint applied
                 to the column will be removed
@@ -597,18 +595,26 @@ class Column(BaseCreator):
                                safe(ref.field.field_name)),
                       *field.ref.constraints)
 
-    def references(self, val):
-        """ @val: (:class:bloom.relationships.Reference|None) If |None|
+    def references(self, val, on_delete=None, on_update=None):
+        """ @val: (:class:bloom.relationships.Reference or None or #str) If |None|
                 is passed to this method, e.g., |col.references(None)|,
                 the constraint applied to the column will be removed if
                 it exists
+            :see::meth:Table.foreign_key
         """
         if isinstance(val, Reference):
             self._references = self._get_col_ref(val)
         elif val is None:
             self._references = None
         else:
-            self._references = Clause('REFERENCES', self._cast_safe(val))
+            params = [self._cast_safe(val)]
+            if on_delete:
+                on_delete = Clause('ON DELETE', self._cast_safe(on_delete))
+                params.append(on_delete)
+            if on_update:
+                on_update = Clause('ON UPDATE', self._cast_safe(on_update))
+                params.append(on_update)
+            self._references = Clause('REFERENCES', *params)
         return self
 
     def _add(self, *clauses):
@@ -634,9 +640,9 @@ class Column(BaseCreator):
                    lambda x: ftype.le(x),\
                    lambda x: self._field.ge(x),\
                    lambda x: self._field.le(x)
-            _validate = lambda x: x > 0,\
+            _validate = lambda x: x > 1,\
                         lambda x: x > 0 and\
-                                  self._field.sqltype != types.VARCHAR,\
+                                  'varchar' not in self.field_type.string,\
                         lambda x: abs(x) != sys.maxsize and\
                                   abs(x) != float(sys.maxsize),\
                         lambda x: abs(x) != sys.maxsize and\
@@ -699,10 +705,14 @@ class Column(BaseCreator):
                 field.maxlen > 0:
             opt = field.maxlen
         elif sqltype in {types.NUMERIC, types.DECIMAL} and \
-                field.precision and field.precision > 0:
-            opt = field.precision
+                field.digits and field.digits > 0:
+            opt = field.digits
         return self._cast_type(
             field, self._translator.translate_to(sqltype, opt))
+
+    @property
+    def _common_name(self):
+        return self._field.name
 
     @property
     def expression(self):

@@ -1,5 +1,3 @@
-#!/usr/bin/python3 -S
-# -*- coding: utf-8 -*-
 """
 List of reserved usernames (pre-defined list of special banned and reserved
 keywords in names, such as "root", "www", "admin"). Useful when creating
