@@ -149,6 +149,8 @@ class NumModel(Model):
     dec = Decimal()
     float4 = Float()
     float8 = Double()
+    currency = Currency()
+    money = Money()
 
 
 class NumBuilder(Builder):

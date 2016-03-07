@@ -77,9 +77,8 @@ class IP(Field, NetworkingLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', '_default', 'table',
-        '_request')
-    sqltype = IP
+        '_validator', '_alias', '_default', 'table', '_request')
+    OID = IP
     current = -1
 
     def __init__(self, value=Field.empty, request=None, default=None,
@@ -156,8 +155,7 @@ class IP(Field, NetworkingLogic):
         if self.value is not None and self.value is not self.empty:
             cls.value = copy.copy(self.value)
         cls.table = self.table
-        cls.validation = self.validation
-        cls.validation_error = self.validation_error
+        cls._validator = self._validator
         cls._alias = self._alias
         cls._default = self._default
         cls._request = self._request
@@ -176,8 +174,8 @@ class Cidr(Field, StringLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
-    sqltype = CIDR
+        '_validator', '_alias', 'default', 'table')
+    OID = CIDR
 
     def __init__(self, value=Field.empty, *args, **kwargs):
         """ `Cidr Addresses`
@@ -212,10 +210,10 @@ class MacAddress(Cidr):
     """ =======================================================================
         Field object for the PostgreSQL field type |MACADDR|.
     """
-    sqltype = MACADDR
+    OID = MACADDR
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __init__(self, value=Field.empty,  *args, **kwargs):
         """ `Mac Addresses`

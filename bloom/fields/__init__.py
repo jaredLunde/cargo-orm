@@ -1,9 +1,8 @@
 """
+
   `Bloom SQL Fields`
   ``Field-type classes for the Bloom SQL ORM``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
-  ```Usage Example```
-
   Creates a model with three fields
   ..
     from bloom import *
@@ -16,7 +15,7 @@
         password = Password(not_null=True)
   ..
 
-  ==============================================================================
+--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
   Manipulate fields in the model
   ..
     user = UserModel(username="jared", password="coolpasswordbrah")
@@ -24,7 +23,7 @@
   ..
   |$pbkdf2-sha512$19083$VsoZY6y1NmYsZWxtDQEAoBQCoJRSaq01BiAEQMg5JwQg5Pxf...|
 
-  ==============================================================================
+--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
   Set values via |__setitem__|
   ..
     user['uid'] = 1234
@@ -32,7 +31,7 @@
   ..
   |1234|
 
-  ==============================================================================
+--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
   Creates expressions for querying
   ..
     # Saves the model to the DB
@@ -54,6 +53,7 @@
 """
 from bloom.fields.field import Field
 from bloom.fields.binary import *
+from bloom.fields.bit import *
 from bloom.fields.boolean import *
 from bloom.fields.character import *
 from bloom.fields.datetimes import *

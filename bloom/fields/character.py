@@ -9,6 +9,7 @@
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
+from bloom.validators import CharValidator
 
 
 __all__ = ('Char', 'Varchar', 'Text')
@@ -20,11 +21,11 @@ class Char(Field, StringLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', 'table')
-    sqltype = CHAR
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    OID = CHAR
 
-    def __init__(self, value=Field.empty, minlen=0, maxlen=255, **kwargs):
+    def __init__(self, value=Field.empty, minlen=0, maxlen=255,
+                 validator=CharValidator, **kwargs):
         """ `Char`
             Fixed-length character field
 
@@ -32,7 +33,7 @@ class Char(Field, StringLogic):
             @minlen: (#int) minimum length of string value
             @maxlen: (#int) minimum length of string value
         """
-        super().__init__(value=value, **kwargs)
+        super().__init__(value=value, validator=validator, **kwargs)
         self.maxlen = maxlen
         self.minlen = minlen
 
@@ -56,9 +57,8 @@ class Varchar(Char):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', 'table')
-    sqltype = VARCHAR
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    OID = VARCHAR
 
     def __init__(self, value=Field.empty, minlen=0, maxlen=10485760, **kwargs):
         """ `Varchar`
@@ -77,9 +77,8 @@ class Text(Char):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', 'table')
-    sqltype = TEXT
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    OID = TEXT
 
     def __init__(self, value=Field.empty, minlen=0, maxlen=-1, **kwargs):
         """ `Text`

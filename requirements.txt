@@ -1,8 +1,9 @@
 argon2_cffi
 arrow
+babel
 bcrypt
+bitstring
 cnamedtuple
-# format_sql
 python-dateutil
 passlib
 psycopg2

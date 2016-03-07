@@ -6,14 +6,15 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-from vital.tools.encoding import uniorbytes
 from vital.debug import prepr
+
+from psycopg2.extensions import register_adapter, adapt
 
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields.field import Field
 from bloom.fields.character import Text
-from bloom.validators import ValidationValue
+from bloom.validators import ArrayValidator, NullValidator
 
 
 __all__ = ('Enum', 'Array', 'ArrayLogic')
@@ -179,11 +180,11 @@ class Enum(Field, NumericLogic, StringLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'types',
-        'table')
-    sqltype = ENUM
+        '_validator', '_alias', 'default', 'types', 'table')
+    OID = ENUM
 
-    def __init__(self, types, value=Field.empty, **kwargs):
+    def __init__(self, types, value=Field.empty, validator=NullValidator,
+                 **kwargs):
         """ `Enum`
             :see::meth:Field.__init__
             @types: (#tuple) or #list of allowed enum values
@@ -192,7 +193,7 @@ class Enum(Field, NumericLogic, StringLogic):
             for more valuable information.
         """
         self.types = tuple(types)  # An iterable containing a chain of types
-        super().__init__(value=value, **kwargs)
+        super().__init__(value=value, validator=validator, **kwargs)
 
     @prepr('types', 'name', 'value', _no_keys=True)
     def __repr__(self):
@@ -212,7 +213,7 @@ class Enum(Field, NumericLogic, StringLogic):
             value = None
         if (value is None and self.not_null) or \
            (value is not None and value not in self.types):
-            self.validation_error = "`{}` not in {}".format(
+            self.validator.error = "`{}` not in {}".format(
                 value, self.types)
             return False
         return self._validate()
@@ -233,40 +234,28 @@ class Array(Field, ArrayLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', 'cast', 'type', 'dimensions', 'table')
-    sqltype = ARRAY
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'cast', 'type',
+        'dimensions', 'table')
+    OID = ARRAY
 
-    def __init__(self, type=None, value=Field.empty, cast=None, dimensions=1,
-                 minlen=0, maxlen=-1,  default=None, **kwargs):
+    def __init__(self, type=None, value=Field.empty, dimensions=1,
+                 minlen=0, maxlen=-1,  default=None, validator=ArrayValidator,
+                 **kwargs):
         """ `Array`
             :see::meth:Field.__init__
-            @cast: (#callable) to cast the values with the given callable
-            @type: (initialized :class:Field) the data type represented by this
-                array, defaults to :class:Text
+            @type: (initialized :class:Field) the data type represented by
+                this array, defaults to :class:Text
             @dimensions: (#int) number of array dimensions or depth assigned
                 to the field
         """
         self.minlen = minlen
         self.maxlen = maxlen
         self.type = type.copy() if type is not None else Text()
-        if cast is None:
-            if self.type.sqltype in {TEXT, CHAR, VARCHAR, KEY,
-                                     USERNAME, EMAIL, PASSWORD, UUIDTYPE}:
-                cast = str
-            elif self.type.sqltype in ValidationValue.INTS:
-                cast = int
-            elif self.type.sqltype in ValidationValue.FLOATS:
-                cast = float
-            elif self.type.sqltype == BINARY:
-                def cast(x):
-                    return self.type(x)
-        self.cast = cast or self._nocast
         self.dimensions = dimensions
-        super().__init__(value=value, **kwargs)
+        super().__init__(value=value, validator=validator, **kwargs)
         self.default = default
 
-    @prepr('type', 'name', 'value', _no_keys=True)
+    @prepr('type.__class__.__name__', 'name', 'value', _no_keys=True)
     def __repr__(self): return
 
     def __call__(self, value=Field.empty):
@@ -276,10 +265,7 @@ class Array(Field, ArrayLogic):
 
     def _make_list(self):
         if self.value is None or self.value is Field.empty:
-            self.value = []
-
-    def _nocast(self, val):
-        return val
+            self.value = list()
 
     def __getitem__(self, index):
         """ -> the item at @index """
@@ -298,7 +284,7 @@ class Array(Field, ArrayLogic):
 
     def __contains__(self, value):
         """ Checks if @value is in the local array data """
-        return value in self.value
+        return self._select_cast(value) in self.value
 
     def __iter__(self):
         return iter(self.value)
@@ -312,13 +298,13 @@ class Array(Field, ArrayLogic):
             raise ValueError('Invalid dimensions ({}): max depth is set to {}'
                              .format(dimension, repr(self.dimensions)))
         next_dimension = dimension + 1
-        return [self.cast(x) if not isinstance(x, (tuple, list)) else
-                self._cast(x, next_dimension)
-                for x in value]
+        return list(self.type(x) if not isinstance(x, (list)) else
+                    self._cast(x, next_dimension)
+                    for x in value)
 
     def _select_cast(self, value, dimension=1):
-        return self.cast(value)\
-               if not isinstance(value, (tuple, list)) else\
+        return self.type(value)\
+               if not isinstance(value, list) else\
                self._cast(value, dimension=dimension)
 
     def append(self, value):
@@ -356,11 +342,21 @@ class Array(Field, ArrayLogic):
         """ Sorts the array in place """
         self.value.sort(key=key, reverse=reverse)
 
+    def _to_fields(self, value):
+        return [self.type.copy(value=val)
+                if not isinstance(value, list)
+                else self._to_fields(val)
+                for val in value]
+
+    def to_fields(self):
+        """ Wraps the values in the array with :prop:type """
+        return self._to_fields(self.value)
+
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, type=self.type.copy(), **kwargs)
         cls.minlen = self.minlen
         cls.maxlen = self.maxlen
-        cls.cast = self.cast
+        cls.cast = self.type
         cls.dimensions = self.dimensions
         return cls
 

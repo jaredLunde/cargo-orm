@@ -29,8 +29,8 @@ from bloom.fields.field import Field
 from bloom.fields.binary import Binary
 from bloom.fields.character import Text
 from bloom.fields.sequence import Array
+from bloom.validators import CharValidator, NullValidator
 
-# TODO: Currency field
 
 __all__ = (
     'Username',
@@ -59,9 +59,9 @@ class Slug(Text):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', '_factory', 'table')
-    sqltype = SLUG
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', '_factory',
+        'table')
+    OID = SLUG
 
     def __init__(self, value=Field.empty, minlen=0, maxlen=-1,
                  slug_factory=None, **kwargs):
@@ -149,14 +149,13 @@ class Password(Field, StringLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_value', 'validation_error', '_alias',
-        'default', 'minlen', 'maxlen', 'scheme', 'schemes', 'salt_size',
-        'strict', 'table')
-    sqltype = PASSWORD
+        '_validator', 'validation_value', '_alias', 'default', 'minlen',
+        'maxlen', 'scheme', 'schemes', 'salt_size', 'strict', 'table')
+    OID = PASSWORD
 
     def __init__(self, value=Field.empty, minlen=8, maxlen=-1, scheme="argon2",
                  schemes=None, salt_size=16, rounds=15, strict=True,
-                 **kwargs):
+                 validator=CharValidator, **kwargs):
         """ `Password`
 
             :see::meth:Field.__init__
@@ -172,7 +171,7 @@ class Password(Field, StringLogic):
 
             TODO: Explicitly state if something is a hash coming in
         """
-        super().__init__(**kwargs)
+        super().__init__(validator=validator, **kwargs)
         self.minlen, self.maxlen = minlen, maxlen
         self.rounds = rounds
         self.scheme = scheme
@@ -332,7 +331,7 @@ class Password(Field, StringLogic):
         if not universal_validation:
             return False
         if self.strict and self.validation_value in passwords.blacklist:
-            self.validation_error = "The password entered is blacklisted ({})"\
+            self.validator.error = "The password entered is blacklisted ({})"\
                 .format(repr(self.validation_value))
             return False
         return self.is_hash(self.value)
@@ -367,13 +366,13 @@ class Key(Field, StringLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'size', 'keyspace',
-        '_genargs', 'table', 'rng')
-    sqltype = KEY
+        '_validator', '_alias', 'size', 'keyspace', '_genargs', 'table',
+        'rng')
+    OID = KEY
 
     def __init__(self, value=Field.empty, size=256,
                  keyspace=string.ascii_letters+string.digits+'/.#+',
-                 rng=None, **kwargs):
+                 rng=None, validator=NullValidator, **kwargs):
         """ `Key`
             :see::meth:Field.__init__
             @size: (#int) size in bits to generate
@@ -381,7 +380,7 @@ class Key(Field, StringLogic):
             @rng: the random number generator implementation to use.
                 :class:random.SystemRandom by default
         """
-        super().__init__(value=value, **kwargs)
+        super().__init__(value=value, validator=NullValidator, **kwargs)
         self.size = size
         self.keyspace = keyspace
         self.rng = rng
@@ -431,8 +430,7 @@ class Key(Field, StringLogic):
         cls.not_null = self.not_null
         if self.value is not None and self.value is not Field.empty:
             cls.value = copy.copy(self.value)
-        cls.validation = self.validation
-        cls.validation_error = self.validation_error
+        cls._validator = self._validator
         cls._alias = self._alias
         cls.table = self.table
         cls.size = self.size
@@ -464,9 +462,8 @@ class Email(Text):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', 'table')
-    sqltype = EMAIL
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    OID = EMAIL
 
     def __init__(self, value=Field.empty, minlen=6, maxlen=320, **kwargs):
         """ `Email`
@@ -518,9 +515,9 @@ class Username(Text):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minlen',
-        'maxlen', '_re', 'reserved_usernames', 'table')
-    sqltype = USERNAME
+        '_validator', '_alias', 'default', 'minlen', 'maxlen', '_re',
+        'reserved_usernames', 'table')
+    OID = USERNAME
 
     def __init__(self, value=Field.empty, minlen=1, maxlen=25,
                  reserved_usernames=None, re_pattern=None, **kwargs):
@@ -572,7 +569,7 @@ class Username(Text):
         cls.minlen = self.minlen
         cls.maxlen = self.maxlen
         cls._re = self._re
-        cls.reserved_usernames = self.reserved_usernames.copy()
+        cls.reserved_usernames = self.reserved_usernames
         return cls
 
     __copy__ = copy
@@ -581,8 +578,8 @@ class Username(Text):
         cls = self.__class__()
         for k in list(self.__slots__) + list(dir(self)):
             attr = getattr(self, k)
-            if k not in {'copy', '_re'} and not k.startswith('__')\
-               and not callable(attr):
+            if k not in {'copy', '_re', 'validator'} and \
+               not k.startswith('__') and not callable(attr):
                 try:
                     setattr(cls, k, copy.deepcopy(getattr(self, k)))
                 except AttributeError:

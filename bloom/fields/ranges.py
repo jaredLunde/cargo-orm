@@ -20,12 +20,11 @@ __all__ = (
     'BigIntRange',
     'NumericRange',
     'TimestampRange',
+    'TimestampTZRange',
     'DateRange'
 )
 
 
-# NOTE: http://initd.org/psycopg/docs/extras.html#range-data-types
-# NOTE: http://www.postgresql.org/docs/9.3/static/functions-range.html
 class RangeLogic(BaseLogic):
     '''
     =	equal	int4range(1,5) = '[1,4]'::int4range	t
@@ -67,10 +66,10 @@ class RangeLogic(BaseLogic):
 
 
 class IntRange(Field, RangeLogic):
-    sqltype = INTRANGE
+    OID = INTRANGE
     _slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __init__(self, value=Field.empty, *args, **kwargs):
         """ `Integer Range`
@@ -117,16 +116,20 @@ class IntRange(Field, RangeLogic):
 
 
 class BigIntRange(IntRange):
-    sqltype = BIGINTRANGE
+    OID = BIGINTRANGE
 
 
 class NumericRange(IntRange):
-    sqltype = NUMRANGE
+    OID = NUMRANGE
 
 
 class TimestampRange(IntRange):
-    sqltype = TSRANGE
+    OID = TSRANGE
+
+
+class TimestampTZRange(IntRange):
+    OID = TSTZRANGE
 
 
 class DateRange(IntRange):
-    sqltype = DATERANGE
+    OID = DATERANGE

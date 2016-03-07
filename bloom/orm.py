@@ -39,7 +39,6 @@ from bloom.expressions import *
 from bloom.statements import *
 from bloom.relationships import *
 from bloom.fields import *
-from bloom.validators import ValidationValue
 
 
 __all__ = (
@@ -1872,12 +1871,11 @@ class Model(ORM):
                 add_index(self.primary_key)
         better, worse = [], []
         add_better, add_worse = better.append, worse.append
-        betters = ValidationValue.FLOATS.copy()
-        betters.union({TIME, TIMESTAMP, DATE, EMAIL, USERNAME, KEY, BOOL})
+        betters = category.NUMERIC.union({TIME, TIMESTAMP, DATE, BOOL})
         for index in self.unique_indexes:
-            if index.sqltype in ValidationValue.INTS:
+            if index.OID in category.INTS:
                 add_index(index)
-            elif index.sqltype in betters:
+            elif index.OID in betters:
                 add_better(index)
             else:
                 add_worse(index)
@@ -1885,9 +1883,9 @@ class Model(ORM):
         better.clear()
         worse.clear()
         for index in self.plain_indexes:
-            if index.sqltype in ValidationValue.INTS:
+            if index.OID in category.INTS:
                 add_index(index)
-            elif index.sqltype in betters:
+            elif index.OID in betters:
                 add_better(index)
             else:
                 add_worse(index)

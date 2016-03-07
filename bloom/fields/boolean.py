@@ -18,8 +18,8 @@ class Bool(Field):
     """ Field object for the PostgreSQL field type |BOOL| """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
-    sqltype = BOOL
+        '_validator', '_alias', 'default', 'table')
+    OID = BOOL
 
     def __init__(self, value=Field.empty, **kwargs):
         """ `Bool`

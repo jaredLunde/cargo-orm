@@ -28,17 +28,16 @@ class TestArray(TestField):
     def test_init(self):
         base = Array()
         self.assertIsNone(base.default)
-        self.assertEqual(base.cast, str)
         self.assertIsInstance(base.type, Text)
         self.assertEqual(base.dimensions, 1)
 
     def test_additional_kwargs(self):
         arr = [1, 2, 3, 4]
-        base = Array(value=arr, cast=str)
+        base = Array(value=arr, type=Text())
         self.assertListEqual(base.value, ['1', '2', '3', '4'])
-        base = Array(value=arr, cast=int)
+        base = Array(value=arr, type=Int())
         self.assertListEqual(base.value, [1, 2, 3, 4])
-        base = Array(value=arr, cast=float)
+        base = Array(value=arr, type=Float())
         self.assertListEqual(base.value, [1.0, 2.0, 3.0, 4.0])
         base = Array(value=arr, type=Float())
         self.assertListEqual(base.value, [1.0, 2.0, 3.0, 4.0])
@@ -62,7 +61,7 @@ class TestArray(TestField):
 
     def test_multidim_array(self):
         arr = [1, 2, 3, 4]
-        base = Array(value=arr, cast=int, dimensions=2)
+        base = Array(value=arr, type=Int(), dimensions=2)
         self.assertListEqual(base.value, arr)
         base([[1, 2, 3], [1, 2, 3]])
         self.assertListEqual(base.value, [[1, 2, 3], [1, 2, 3]])
@@ -70,7 +69,7 @@ class TestArray(TestField):
         with self.assertRaises(ValueError):
             base([[[1, 2, 3], 2, 3], [1, 2, 3]])
         self.assertEqual(base.value, None)
-        base = Array(value=[[1, 2, 3], [1, 2, 3]], dimensions=2, cast=str)
+        base = Array(value=[[1, 2, 3], [1, 2, 3]], dimensions=2, type=Text())
         self.assertListEqual(base.value,
                              [['1', '2', '3'], ['1', '2', '3']])
 
@@ -93,7 +92,7 @@ class TestArray(TestField):
         self.assertListEqual(base.value, rd)
 
     def test_append(self):
-        base = Array(cast=str)
+        base = Array(type=Text())
         base.append(1)
         base.append(2)
         self.assertListEqual(base.value, ['1', '2'])
@@ -105,14 +104,14 @@ class TestArray(TestField):
 
     def test_sort(self):
         arr = [4, 1, 3, 2]
-        base = Array(value=arr, cast=int)
+        base = Array(value=arr, type=Int())
         base.sort()
         arr.sort()
         self.assertListEqual(base.value, arr)
 
     def test__cast(self):
         arr = [[1], 2, [3, [[4]]]]
-        base = Array(cast=str, dimensions=4)
+        base = Array(type=Text(), dimensions=4)
         self.assertEqual(base._cast(arr), [['1'], '2', ['3', [['4']]]])
 
     def test___call__(self):
@@ -124,20 +123,20 @@ class TestArray(TestField):
 
     def test_pop(self):
         arr = [1, 2, 3]
-        base = Array(value=arr, cast=str)
+        base = Array(value=arr, type=Text())
         self.assertEqual(base.pop(), '1')
         self.assertEqual(base.pop(1), '3')
 
     def test_reverse(self):
         arr = [1, 2, 3]
-        base = Array(value=arr, cast=int)
+        base = Array(value=arr, type=Int())
         a = base.reverse()
         b = arr.reverse()
         self.assertEqual(a, b)
 
     def test_remove(self):
         arr = [1, 2, 3]
-        base = Array(value=arr, cast=int)
+        base = Array(value=arr, type=Int())
         self.assertListEqual(base.value, arr)
 
     def test___contains__(self):
@@ -148,7 +147,7 @@ class TestArray(TestField):
 
     def test___iter__(self):
         arr = [1, 2, 3]
-        base = Array(value=arr, cast=int)
+        base = Array(type=Int(), value=arr)
         for x, y in zip(base, arr):
             self.assertEqual(x, y)
 

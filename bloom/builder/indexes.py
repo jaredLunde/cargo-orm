@@ -9,7 +9,7 @@
 from vital.debug import prepr
 
 from bloom.fields import Field
-from bloom.etc import types
+from bloom.etc import types as oids
 from bloom.orm import QueryState
 from bloom.expressions import *
 from bloom.statements import *
@@ -19,8 +19,11 @@ from bloom.builder.utils import BaseCreator
 __all__ = ('IndexMeta', 'Index')
 
 
+INDEX_TYPES = ('btree', 'gin', 'gist', 'spgist', 'hash')
+
+
 class IndexMeta(object):
-    types = ('btree', 'gin', 'gist', 'spgist', 'hash')
+    types = INDEX_TYPES
 
     def __init__(self, name, fields, unique=False, primary=False,
                  type="btree", schema=None, table=None):
@@ -38,6 +41,7 @@ class IndexMeta(object):
 
 
 class Index(BaseCreator):
+    types = INDEX_TYPES
 
     def __init__(self, orm, *fields, method=None, name=None, collate=None,
                  order=None, nulls=None, unique=None, concurrent=False,
@@ -132,9 +136,9 @@ class Index(BaseCreator):
                 return safe(self.fields[0].table)
         raise ValueError('No table name was provided.')
 
-    gin_types = {types.ARRAY, types.JSONB, types.JSON, types.HSTORE}
-    gist_types = {types.INTRANGE, types.BIGINTRANGE, types.NUMRANGE,
-                  types.DATERANGE, types.TSRANGE}
+    gin_types = {oids.ARRAY, oids.JSONB, oids.JSON, oids.HSTORE}
+    gist_types = {oids.INTRANGE, oids.BIGINTRANGE, oids.NUMRANGE,
+                  oids.DATERANGE, oids.TSRANGE}
 
     @property
     def type(self):
@@ -143,9 +147,9 @@ class Index(BaseCreator):
         """
         default = 'btree'
         if len(self.fields) == 1 and isinstance(self.fields[0], Field):
-            if self.fields[0].sqltype in self.gin_types:
+            if self.fields[0].OID in self.gin_types:
                 default = 'gin'
-            elif self.fields[0].sqltype in self.gist_types:
+            elif self.fields[0].OID in self.gist_types:
                 default = 'gist'
         return self._type or default
 

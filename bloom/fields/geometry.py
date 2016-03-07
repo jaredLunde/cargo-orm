@@ -100,10 +100,10 @@ class GeometryLogic(object):
 
 
 class Point(Field, GeometryLogic):
-    sqltype = POINT
+    OID = POINT
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -141,15 +141,15 @@ class Point(Field, GeometryLogic):
 
 PointRecord = namedtuple('PointRecord', ('x', 'y'))
 register_adapter(PointRecord, Point.to_db)
-POINTTYPE = new_type((POINT,), "POINT", Point.to_python)
-register_type(POINTTYPE)
+POINTTYPE = reg_type('POINTTYPE', POINT, Point.to_python)
+POINTARRAYTYPE = reg_array_type('POINTARRAYTYPE', POINTARRAY, POINTTYPE)
 
 
 class Box(Field, GeometryLogic):
-    sqltype = BOX
+    OID = BOX
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -185,15 +185,15 @@ class Box(Field, GeometryLogic):
 
 BoxRecord = namedtuple('BoxRecord', ('a', 'b'))
 register_adapter(BoxRecord, Box.to_db)
-BOXTYPE = new_type((BOX,), "BOX", Box.to_python)
-register_type(BOXTYPE)
+BOXTYPE = reg_type('BOXTYPE', BOX, Box.to_python)
+BOXARRAYTYPE = reg_array_type('BOXARRAYTYPE', BOXARRAY, BOXTYPE)
 
 
 class Circle(Field, GeometryLogic):
-    sqltype = CIRCLE
+    OID = CIRCLE
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __call__(self, value=Field.empty):
         """ @value: (#tuple) center, radius e.g., |((0, 5), 1)| """
@@ -227,15 +227,15 @@ class Circle(Field, GeometryLogic):
 
 CircleRecord = namedtuple('CircleRecord', ('center', 'radius'))
 register_adapter(CircleRecord, Circle.to_db)
-CIRCLETYPE = new_type((CIRCLE,), "CIRCLE", Circle.to_python)
-register_type(CIRCLETYPE)
+CIRCLETYPE = reg_type('CIRCLETYPE', CIRCLE, Circle.to_python)
+CIRCLEARRAYTYPE = reg_array_type('CIRCLEARRAYTYPE', CIRCLEARRAY, CIRCLETYPE)
 
 
 class Line(Field, GeometryLogic):
-    sqltype = LINE
+    OID = LINE
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -270,15 +270,15 @@ class Line(Field, GeometryLogic):
 
 LineRecord = namedtuple('LineRecord', ('a', 'b', 'c'))
 register_adapter(LineRecord, Line.to_db)
-LINETYPE = new_type((LINE,), "LINE", Line.to_python)
-register_type(LINETYPE)
+LINETYPE = reg_type('LINETYPE', LINE, Line.to_python)
+LINEARRAYTYPE = reg_array_type('LINEARRAYTYPE', LINEARRAY, LINETYPE)
 
 
 class LSeg(Box):
-    sqltype = LSEG
+    OID = LSEG
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -302,15 +302,15 @@ class LSeg(Box):
 
 LSegRecord = namedtuple('LSegRecord', ('a', 'b'))
 register_adapter(LSegRecord, LSeg.to_db)
-LSEGTYPE = new_type((LSEG,), "LSEG", LSeg.to_python)
-register_type(LSEGTYPE)
+LSEGTYPE = reg_type('LSEGTYPE', LSEG, LSeg.to_python)
+LSEGARRAYTYPE = reg_array_type('LSEGARRAYTYPE', LSEGARRAY, LSEGTYPE)
 
 
 class Path(Field, GeometryLogic):
-    sqltype = PATH
+    OID = PATH
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table',
+        '_validator', '_alias', 'default', 'table',
         '_closed')
 
     def __init__(self, value=Field.empty, closed=None, **kwargs):
@@ -397,15 +397,15 @@ class PathRecord(UserList):
 
 
 register_adapter(PathRecord, Path.to_db)
-PATHTYPE = new_type((PATH,), "PATH", Path.to_python)
-register_type(PATHTYPE)
+PATHTYPE = reg_type('PATHTYPE', PATH, Path.to_python)
+PATHARRAYTYPE = reg_array_type('PATHARRAYTYPE', PATHARRAY, PATHTYPE)
 
 
 class Polygon(Field, GeometryLogic):
-    sqltype = POLYGON
+    OID = POLYGON
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'table')
+        '_validator', '_alias', 'default', 'table')
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -454,5 +454,7 @@ class PolygonRecord(UserList):
 
 
 register_adapter(PolygonRecord, Polygon.to_db)
-POLYGONTYPE = new_type((POLYGON,), "POLYGON", Polygon.to_python)
-register_type(POLYGONTYPE)
+POLYGONTYPE = reg_type('POLYGONTYPE', POLYGON, Polygon.to_python)
+POLYGONARRAYTYPE = reg_array_type('POLYGONARRAYTYPE',
+                                  POLYGONARRAY,
+                                  POLYGONTYPE)

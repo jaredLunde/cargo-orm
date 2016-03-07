@@ -6,7 +6,7 @@ __References:__
 1. http://www.bannedwordlist.com/
 2. http://blog.postbit.com/reserved-username-list.html
 """
-__all__ = ["reserved_usernames"]
+__all__ = ("reserved_usernames",)
 
 reserved_usernames = {
     # Companies we'd love to have use our service

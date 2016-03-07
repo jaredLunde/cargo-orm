@@ -228,14 +228,14 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             model and the field referenced.
         """
         _class = copy.copy(self.ref.__class__)
-        if _class.sqltype == SERIAL:
-            _class.sqltype = INT
-        elif _class.sqltype == BIGSERIAL:
-            _class.sqltype = BIGINT
-        elif _class.sqltype == SMALLSERIAL:
-            _class.sqltype = SMALLINT
-        elif _class.sqltype in {STRUID, UIDTYPE}:
-            _class.sqltype = BIGINT
+        if _class.OID == SERIAL:
+            _class.OID = INT
+        elif _class.OID == BIGSERIAL:
+            _class.OID = BIGINT
+        elif _class.OID == SMALLSERIAL:
+            _class.OID = SMALLINT
+        elif _class.OID in {STRUID, UIDTYPE}:
+            _class.OID = BIGINT
         _args, _kwargs = self._args, self._kwargs
         _owner, _owner_attr = self._owner, self._owner_attr
         _relation = self._relation

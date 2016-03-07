@@ -1,5 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
+import copy
+import decimal
 from bloom.fields import Numeric
 
 from unit_tests.fields.BigInt import TestBigInt
@@ -40,17 +42,17 @@ class TestNumeric(configure.NumTestCase, TestBigInt):
         self.assertEqual(base.digits, 7)
 
     def test___call__(self):
-        for val in (4.0, 4, '4', '4.0'):
+        for val in (4.0, 4, '4', '4.0', decimal.Decimal(4.0), '$4.00'):
             self.base(val)
             self.assertEqual(self.base(), 4.0)
         for val in ([], dict(), set(), {}):
             with self.assertRaises((TypeError, ValueError)):
                 self.base(val)
-        self.base.digits = 5
+        base = Numeric(digits=5)
         for val in (4.82342352352352, '4.82342352352352'):
-            self.base(val)
+            base(val)
             self.assertEqual(
-                self.base(), round(4.82342352352352, self.base.digits))
+                float(base()), round(4.82342352352352, base.digits))
 
     def test_insert(self):
         self.base(10)
@@ -62,6 +64,27 @@ class TestNumeric(configure.NumTestCase, TestBigInt):
         self.assertEqual(
             getattr(self.orm.new().get(), self.base.field_name).value,
             self.base.value)
+
+    def test_copy(self):
+        fielda = self.base
+        fieldb = self.base.copy()
+        self.assertIsNot(fielda, fieldb)
+        for k in list(fielda.__slots__):
+            if k != '_context':
+                self.assertEqual(getattr(fielda, k), getattr(fieldb, k))
+            else:
+                self.assertNotEqual(getattr(fielda, k), getattr(fieldb, k))
+        self.assertEqual(fielda.table, fieldb.table)
+
+        fielda = self.base
+        fieldb = copy.copy(self.base)
+        self.assertIsNot(fielda, fieldb)
+        for k in list(fielda.__slots__):
+            if k != '_context':
+                self.assertEqual(getattr(fielda, k), getattr(fieldb, k))
+            else:
+                self.assertNotEqual(getattr(fielda, k), getattr(fieldb, k))
+        self.assertEqual(fielda.table, fieldb.table)
 
 
 if __name__ == '__main__':

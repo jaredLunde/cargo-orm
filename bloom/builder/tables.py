@@ -7,13 +7,16 @@
 
 """
 import sys
+import decimal
 
 from vital.cache import cached_property
 from vital.debug import prepr
 
-import bloom.etc.translator.postgres
+from bloom.etc.translator import postgres
 
 from bloom.fields.field import Field
+from bloom.fields.identifier import Serial, BigSerial, SmallSerial
+from bloom.fields.encrypted import Encrypted
 from bloom.expressions import *
 from bloom.relationships import Reference
 from bloom.statements import *
@@ -425,7 +428,7 @@ class Column(BaseCreator):
 
     def __init__(self, field, check=_empty, not_null=_empty, unique=_empty,
                  primary=_empty, default=_empty, references=_empty,
-                 timing=_empty, translator=bloom.etc.translator.postgres,
+                 timing=_empty, translator=postgres,
                  parameters=_empty, data_type=_empty, typed=_empty):
         """`Column wrapper for :class:Field(s)`
 
@@ -550,8 +553,8 @@ class Column(BaseCreator):
         return self
 
     def unique(self, *params):
-        """ @params: (#str or :class:bloom.BaseExpression or None) UNIQUE constraint
-                parameter, if |None| is passed to this method, e.g.,
+        """ @params: (#str or :class:bloom.BaseExpression or None) UNIQUE
+                constraint parameter, if |None| is passed to this method, e.g.,
                 |col.unique(None)|, the unique constraint applied to the
                 column will be removed
         """
@@ -626,27 +629,33 @@ class Column(BaseCreator):
 
         def is_constrained(field):
             for constraint in _constraints:
-                if field.sqltype in {types.PASSWORD, types.SLUG}:
+                if field.OID in {types.PASSWORD, types.SLUG}:
                     return False
                 if hasattr(field, constraint) and getattr(field, constraint):
                     return True
 
         if self._check is None and is_constrained(self._field):
-            if not self._field.sqltype == types.ARRAY:
+            if not self._field.OID == types.ARRAY:
                 ftype = Function('char_length', self._field)
             else:
                 ftype = Function('array_length', self._field, 1)
+            _typcast = safe('numeric')
+            numtypes = types.category.INTS.union(types.category.NUMERIC)
+            if self._field.OID in numtypes:
+                _typcast = postgres.OID_map.get(self._field.OID)
             _ops = lambda x: ftype.ge(x),\
                    lambda x: ftype.le(x),\
-                   lambda x: self._field.ge(x),\
-                   lambda x: self._field.le(x)
+                   lambda x: self._field.ge(Functions.cast(x, _typcast)),\
+                   lambda x: self._field.le(Functions.cast(x, _typcast))
             _validate = lambda x: x > 1,\
                         lambda x: x > 0 and\
                                   'varchar' not in self.field_type.string,\
                         lambda x: abs(x) != sys.maxsize and\
-                                  abs(x) != float(sys.maxsize),\
+                                  abs(x) != float(sys.maxsize) and\
+                                  abs(x) != sys.maxsize / 100,\
                         lambda x: abs(x) != sys.maxsize and\
-                                  abs(x) != float(sys.maxsize)
+                                  abs(x) != float(sys.maxsize) and\
+                                  abs(x) != sys.maxsize / 100
             ops = None
             for constraint, op, validate in zip(_constraints, _ops, _validate):
                 if not hasattr(self._field, constraint):
@@ -662,6 +671,8 @@ class Column(BaseCreator):
                 self._check = WrappedClause('CHECK', ops, use_field_name=True)
 
     def _cast_type(self, field, type):
+        if field.__class__ in (BigSerial, SmallSerial, Serial):
+            type = field.__class__.__name__.lower()
         typecast = type
         if type == 'ARRAY':
             maxlen = field.maxlen
@@ -670,11 +681,11 @@ class Column(BaseCreator):
                 maxlen = field.maxlen
                 arr = '[{}]'.format(maxlen if maxlen > 0 else '')
                 dims = ''.join(arr for _ in range(field.dimensions))
-            sqltype = field.type.sqltype
-            if self._field.sqltype == types.ENCRYPTED and \
-               sqltype != types.BINARY:
-                sqltype = types.TEXT
-            typecast = self._translator.translate_to(sqltype)
+            OID = field.type.OID
+            if self._field.OID == types.ENCRYPTED and \
+               OID != types.BINARY:
+                OID = types.TEXT
+            typecast = self._translator.translate_to(OID)
             type = "{}{}".format(typecast, dims)
         if typecast == 'real' and hasattr(field, 'digits'):
             digits = field.digits
@@ -690,25 +701,25 @@ class Column(BaseCreator):
         if self._data_type:
             return self._data_type
         opt = None
-        sqltype = self._field.sqltype
+        OID = self._field.OID
         field = self._field
-        lentypes = {types.CHAR, types.VARCHAR, types.USERNAME, types.EMAIL}
-        if sqltype == types.ENCRYPTED:
+        lentypes = {types.CHAR, types.VARCHAR}
+        if isinstance(field, Encrypted):
             field = self._field._in_type
-            sqltype = field.sqltype
-            if sqltype not in {types.BINARY, types.ARRAY, types.JSON,
-                               types.JSONB}:
-                sqltype = types.TEXT
+            OID = field.OID
+            if OID not in {types.BINARY, types.ARRAY, types.JSON,
+                           types.JSONB}:
+                OID = types.TEXT
         if self._parameters:
             opt = self._parameters
-        elif sqltype in lentypes and field.maxlen and \
+        elif OID in lentypes and field.maxlen and \
                 field.maxlen > 0:
             opt = field.maxlen
-        elif sqltype in {types.NUMERIC, types.DECIMAL} and \
+        elif OID in {types.NUMERIC, types.DECIMAL} and \
                 field.digits and field.digits > 0:
             opt = field.digits
         return self._cast_type(
-            field, self._translator.translate_to(sqltype, opt))
+            field, self._translator.translate_to(OID, opt))
 
     @property
     def _common_name(self):

@@ -6,227 +6,219 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-from collections import UserList, deque
+import decimal
+from bitstring import BitArray
+from collections import Iterable
 
 from bloom.etc.types import *
+from bloom.exceptions import ValidationTypeError, ValidationValueError
 
 
-__all__ = ('ValidationValue', 'Validate')
+__all__ = ('Validator', 'TypeValidator', 'NullValidator', 'LengthValidator',
+           'BoundaryValidator', 'IntValidator', 'CharValidator',
+           'NumericValidator')
 
 
-#
-#  ``Field validation``
-#
-
-
-class ValidationValue(object):
-    """ Used for validating :class:Field values """
-    __slots__ = ('value', 'is_int', 'is_float', 'is_str', 'is_array', 'len')
-    CHARS = {TEXT, CHAR, VARCHAR, PASSWORD, KEY, USERNAME, EMAIL}
-    INTS = {INT, SMALLINT, BIGINT}
-    FLOATS = {FLOAT, DECIMAL, NUMERIC}
-    ARRAYS = {ARRAY}
-
-    def __init__(self, field):
-        value = field.value if not hasattr(field, 'validation_value') \
-            else field.validation_value
-        self.value = value
-        self.is_int = isinstance(value, int)
-        self.is_float = isinstance(value, float)
-        self.is_str = isinstance(value, str)
-        self.is_array = isinstance(value, (list, tuple, set, deque, UserList))
-        if value is None:
-            self.len = 0
-        elif field.sqltype in self.ARRAYS:
-            self.len = len(value)
-        else:
-            self.len = len(str(value))
-
-    def __eq__(self, other):
-        return self.value == other
-
-    def __gt__(self, other):
-        return self.value > other
-
-    def __lt__(self, other):
-        return self.value < other
-
-    def __ge__(self, other):
-        return self.value >= other
-
-    def __le__(self, other):
-        return self.value <= other
-
-    def __repr__(self):
-        return self.value.__repr__()
-
-    def __str__(self):
-        return str(self.value)
-
-    def __get__(self, instance, owner):
-        return instance.value
-
-
-class Validate(object):
-    """ Validators for :class:Field values """
-    __slots__ = ('field', 'value', 'field_name', 'error')
-    CHARS = {TEXT, CHAR, VARCHAR, PASSWORD, USERNAME, EMAIL}
-    INTS = {INT, SMALLINT, BIGINT}
-    FLOATS = {FLOAT, DECIMAL, NUMERIC}
-    ARRAYS = {ARRAY}
-    # DATES = {TIME, DATE, TIMESTAMP}
+class Validator(object):
+    __slots__ = ('field', 'error', 'code')
+    raises = ValidationValueError
 
     def __init__(self, field):
         self.field = field
-        self.value = ValidationValue(field)
-        if self.field.field_name:
-            self.field_name = self.field.field_name.title().replace("_", " ")
-        else:
-            self.field_name = None
+        self.code = 0
         self.error = None
 
-    def minval(self):
-        if self.field.minval is None:
-            return True
-        if self.value is None and self.field.minval <= 0:
-            return True
-        elif self.value.value is not None and self.value >= self.field.minval:
-            return True
-        self.error = "{} is less than minimum value ({})".format(
-            self.field_name, self.field.minval)
-        return False
+    @property
+    def value(self):
+        try:
+            return self.field.validation_value
+        except AttributeError:
+            return self.field.value
 
-    def maxval(self):
-        if self.field.maxval is None or self.value is None:
-            return True
-        elif self.value.value is not None and self.value <= self.field.maxval:
-            return True
-        self.error = "{} exceeded maximum value ({})".format(
-            self.field_name, self.field.maxval)
-        return False
-
-    def minlen(self):
-        if self.field.minlen is None or self.value.len >= self.field.minlen:
-            return True
-        self.error = \
-            "{} did not meet the minimum length requirement ({})".format(
-                self.field_name, self.field.minlen)
-        return False
-
-    def maxlen(self):
-        if self.field.maxlen is None or self.field.maxlen == -1:
-            return True
-        elif self.value.len <= self.field.maxlen:
-            return True
-        self.error = \
-            "{} exceeded the maximum allowed length ({})".format(
-                self.field_name, self.field.maxlen)
-        return False
-
-    def str(self):
-        if self.value.is_str:
-            return True
-        self.error = "{} for this datatype must be str(), not {}".format(
-            self.field_name, type(self.value.value))
-        return False
-
-    def int(self):
-        if self.value.is_int:
-            return True
-        self.error = "{} for this datatype must be int(), not {}".format(
-            self.field_name, type(self.value.value))
-        return False
-
-    def float(self):
-        if self.value.is_float:
-            return True
-        self.error = "{} for this datatype must be float(), not {}".format(
-              self.field_name, type(self.value.value))
-        return False
-
-    def array(self):
-        if self.value.is_array:
-            return True
-        self.error = (
-            "{} for this datatype must be dict(), set(), list(), " +
-            "or tuple(), not {}").format(
-                self.field_name, type(self.value.value))
-        return False
-
-    def _validate_floats(self):
-        if not self.float():
-            #: Float required, not a str
-            return False
-        elif not self.minval() or not self.maxval():
-            #: Minimum/Maximum value validation
-            return False
+    def validate(self):
         return True
 
-    def _validate_ints(self):
-        if not self.int():
-            #: Int required, not a str
-            return False
-        elif not self.minval() or not self.maxval():
-            #: Minimum/Maximum value validation
-            return False
-        return True
 
-    def _validate_chars(self):
-        if not self.str():
-            #: Str required, not a str
-            return False
-        elif not self.minlen() or not self.maxlen():
-            #: Minimum/Maximum length validation
-            return False
-        return True
+class TypeValidator(Validator):
+    TYPE_CODE = 7793
+    types = ()
+    raises = ValidationTypeError
 
-    def _validate_arrays(self):
-        if not self.array():
-            #: Array required, not an array
-            return False
-        elif not self.minlen() or not self.maxlen():
-            #: Minimum/Maximum length validation
-            return False
-        return True
+    def validate_type(self):
+        valid = isinstance(self.value, self.types)
+        if valid:
+            return True
+        self.code = self.TYPE_CODE
+        self.error = "TypeError ({}): this datatype must be {}, not {}".format(
+            self.field.name, self.types, type(self.value))
+        return False
 
-    def _validate_not_null(self):
-        """ If a field is set to |NOT NULL| and the value is |NULL|,
+    validate = validate_type
+
+
+class NullValidator(Validator):
+    NULL_CODE = 7794
+    raises = ValidationValueError
+
+    def is_nullable(self):
+        """ If a field can be |NULL| and it is |NULL|, the field
+            will validate.
+        """
+        return not self.field.not_null and (self.field.value is None or
+                                            self.field.value is
+                                            self.field.empty)
+
+    def validate_null(self):
+        """ If a field can be |NULL| and it is |NULL|, the field will
+            validate. If a field is set to |NOT NULL| and the value is |NULL|,
             the field will not validate.
         """
         if self.field.not_null and (
-           self.value.value is self.field.empty or
-           self.value.value is None or not len(str(self.value))):
-            self.error = "{} cannot be 'Null'".format(self.field_name)
+           self.field.value is self.field.empty or
+           self.field.value is None or
+           not len(str(self.value))):
+            self.code = self.NULL_CODE
+            self.error = "ValueError ({}): this field cannot be NULL".format(
+                self.field.name)
             return False
         return True
 
-    def _is_valid_null(self):
-        """ If a field can be |NULL| and it is |NULL|, the field will validate
-        """
-        if not self.field.not_null and self.value.value is None:
-            #: This field can be null and it is
+    validate = validate_null
+
+
+class LengthValidator(Validator):
+    MINLEN_CODE = 7795
+    MAXLEN_CODE = 7796
+    raises = ValidationValueError
+
+    @property
+    def len(self):
+        try:
+            return len(self.value)
+        except TypeError:
+            return 0
+
+    def validate_minlen(self):
+        if self.field.minlen is None or self.len >= self.field.minlen:
             return True
+        self.code = self.MINLEN_CODE
+        self.error = ("ValueError ({}): did not meet the minimum length " +
+                      "requirement ({})").format(self.field.name,
+                                                 self.field.minlen)
+        return False
+
+    def validate_maxlen(self):
+        if self.field.maxlen is None or self.field.maxlen == -1:
+            return True
+        elif self.len <= self.field.maxlen:
+            return True
+        self.code = self.MAXLEN_CODE
+        self.error = ("ValueError ({}): exceeded the maximum length " +
+                      "boundary ({})").format(self.field.name,
+                                              self.field.maxlen)
+        return False
+
+    def validate_length(self):
+        if self.validate_minlen():
+            return self.validate_maxlen()
+        return False
+
+    validate = validate_length
+
+
+class BoundaryValidator(Validator):
+    MINVAL_CODE = 7797
+    MAXVAL_CODE = 7798
+    raises = ValidationValueError
+
+    def __init__(self, field):
+        super().__init__(field)
+        self.error = None
+
+    @property
+    def value(self):
+        try:
+            return self.field.validation_value
+        except AttributeError:
+            return self.field.value or 0
+
+    def validate_minval(self):
+        if self.field.minval is None:
+            return True
+        if self.value >= self.field.minval:
+            return True
+        self.code = self.MINVAL_CODE
+        self.error = ("ValueError ({}): `{}` is less than minimum value " +
+                      "({})").format(
+            self.field.name, self.field.value, self.field.minval)
+        return False
+
+    def validate_maxval(self):
+        if self.field.maxval is None:
+            return True
+        elif self.value <= self.field.maxval:
+            return True
+        self.code = self.MAXVAL_CODE
+        self.error = ("ValueError ({}): `{}` is morethan maximum value " +
+                      "({})").format(
+            self.field.name, self.field.value, self.field.maxval)
+        return False
+
+    def validate_boundary(self):
+        if self.validate_minval():
+            return self.validate_maxval()
+        return False
+
+    validate = validate_boundary
+
+
+class CharValidator(LengthValidator, NullValidator, TypeValidator):
+    __slots__ = Validator.__slots__
+    types = str
+    raises = ValidationValueError
 
     def validate(self):
-        #: Null validation
-        if self._is_valid_null():
-            #: This field can be null and it is
+        if self.is_nullable():
             return True
-        elif not self._validate_not_null():
-            #: This field cannot be null and it is
+        try:
+            assert self.validate_null()
+            assert self.validate_type()
+            return self.validate_length()
+        except AssertionError:
             return False
-        #: Type-specific validation
-        if hasattr(self.field, 'maxlen'):
-            if self.field.sqltype in self.ARRAYS:
-                # Array
-                return self._validate_arrays()
-            # Char
-            return self._validate_chars()
-        elif self.field.sqltype in self.INTS:
-            # Int
-            return self._validate_ints()
-        elif self.field.sqltype in self.FLOATS:
-            # Float
-            return self._validate_floats()
-        #: Return true by default otherwise
-        return True
+
+
+class ArrayValidator(CharValidator):
+    __slots__ = Validator.__slots__
+    types = Iterable
+
+
+class BitValidator(CharValidator):
+    __slots__ = Validator.__slots__
+    types = BitArray
+
+
+class VarbitValidator(CharValidator):
+    __slots__ = Validator.__slots__
+    types = BitArray
+
+
+class IntValidator(BoundaryValidator, NullValidator, TypeValidator):
+    __slots__ = Validator.__slots__
+    types = int
+    raises = ValidationValueError
+
+    def validate(self):
+        if self.is_nullable():
+            return True
+        try:
+            assert self.validate_null()
+            assert self.validate_type()
+            return self.validate_boundary()
+        except AssertionError:
+            return False
+
+
+class NumericValidator(IntValidator):
+    __slots__ = Validator.__slots__
+    types = (decimal.Decimal, float)

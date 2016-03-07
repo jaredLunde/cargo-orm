@@ -10,6 +10,7 @@ import copy
 
 from psycopg2.extensions import *
 
+from vital.cache import cached_property
 from vital.debug import prepr
 
 from bloom.etc.types import *
@@ -36,12 +37,12 @@ class Field(BaseLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', 'validation', 'validation_error', '_alias', 'table')
-    sqltype = None
+        'default', '_validator', '_alias', 'table')
+    OID = UNKNOWN
     empty = _empty
 
     def __init__(self, value=empty, not_null=None, primary=None,
-                 unique=None, index=None, default=None, validation=None):
+                 unique=None, index=None, default=None, validator=None):
         """ ``SQL Field``
 
             @value: value to populate the field with
@@ -52,8 +53,11 @@ class Field(BaseLogic):
             @index: (#bool) True if this field is a plain index in your table,
                 that is, not unique or primary
             @default: default value to set the field to
-            @validation: (#callable) custom validation plugin, must return True
-                if the field validates, and False if it does not
+            @validator: (:class:Validator) validator plugin,
+                :meth:Validator.validate must return True if the field
+                validates, and False if it does not. It must also include an
+                |error| attribute which stores the content of the error message
+                if the validation fails.
         """
         self.field_name = None
         self.primary = primary
@@ -69,8 +73,7 @@ class Field(BaseLogic):
             pass
         self.value = self.empty
         self._alias = None
-        self.validation = validation
-        self.validation_error = None
+        self._validator = validator
         self.__call__(value)
 
     @prepr('name', 'value', _no_keys=True)
@@ -105,8 +108,7 @@ class Field(BaseLogic):
         if self.value is not None and self.value is not self.empty:
             cls.value = copy.copy(self.value)
         cls.default = self.default
-        cls.validation = self.validation
-        cls.validation_error = self.validation_error
+        cls._validator = self._validator
         cls.table = self.table
         cls._alias = self._alias
         return cls
@@ -160,38 +162,31 @@ class Field(BaseLogic):
         self.value = value
         return self.value
 
-    '''@property
-    def real_value(self):
-        """ !! DEPR !! """
-        if self.value is not self.empty and self.value is not None:
-            return self.value'''
-
     def _should_insert(self):
         if not (self.validate() or self.default is not None):
-            raise ValidationError(self.validation_error, self.field_name)
+            raise self.validator.raises(self.validator.error,
+                                        self.field_name,
+                                        code=self.validator.code)
         return self.value is not self.empty
 
     def _should_update(self):
         if not self.validate():
-            raise ValidationError(self.validation_error, self.field_name)
+            raise self.validator.raises(self.validator.error,
+                                        self.field_name,
+                                        code=self.validator.code)
         return self.value is not self.empty
 
     def clear(self):
         """ Sets the value of the field to :prop:empty """
         self._set_value(self.empty)
 
+    @cached_property
+    def validator(self):
+        return self._validator(self)
+
     def _validate(self):
-        validator = Validate(self)
-        if not validator.validate():
-            self.validation_error = validator.error
-            return False
-        # User submitted validation
-        if callable(self.validation):
-            validate = self.validation(self)
-            if not validate:
-                if not self.validation_error:
-                    self.validation_error = "Failed validation"
-                return False
+        if self._validator is not None:
+            return self.validator.validate()
         return True
 
     def validate(self):

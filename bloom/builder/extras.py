@@ -9,10 +9,9 @@
 import re
 import time
 
-from vital.debug import prepr, logg
-from vital.cache import cached_property
+from vital.debug import logg
 
-from bloom import aliased, Clause, Raw, safe
+from bloom import Clause, Raw, safe
 from bloom.exceptions import *
 from bloom.builder.extensions import *
 from bloom.builder.functions import *
@@ -196,21 +195,10 @@ class UIDFunction(Function):
             except QueryError as e:
                 logg(e.message).notice()
 
-    __comment = """
-        Creates a 64-bit universally unique id. This is accomplished by
-        calculating a 41-bit representation of the milliseconds from a given
-        start epoch, using a 13-bit representation of the ID number of the
-        shard, and a 10-bit representation of a global ID sequence for a given
-        schema.
-        ========================================================================
-        The UID can be sorted by its insertion order, that is, rows
-        submitted sequentially will remain sequential in terms of their UID.
-    """
-
     @staticmethod
     def _get_comment():
         return "\n".join(
-            l.strip() for l in UIDFunction.__comment.splitlines()).strip()
+            l.strip() for l in UIDFunction.__doc__.splitlines()).strip()
 
 
 class UUIDExtension(Extension):
@@ -228,7 +216,7 @@ class HStoreExtension(Extension):
     extras_name = 'hstore'
 
     def __init__(self, orm):
-        super().__init__(orm, safe("'hstore'"), not_exists=True)
+        super().__init__(orm, safe('"hstore"'), not_exists=True)
 
     @staticmethod
     def _get_comment():

@@ -10,7 +10,8 @@ import binascii
 import psycopg2
 from base64 import b64encode, b64decode
 
-from psycopg2.extensions import new_type, register_type, register_adapter
+from psycopg2.extensions import new_type, register_type, register_adapter,\
+                                adapt
 
 from vital.tools.encoding import uniorbytes
 
@@ -139,16 +140,22 @@ class BinaryLogic(BaseLogic):
 
 
 class bloombytes(bytes):
+    def __iadd__(self, other):
+        return self.__class__(self.__add__(other))
+
+    def __isub__(self, other):
+        return self.__class__(self.__sub__(other))
+
     @staticmethod
     def to_db(value):
-        return psycopg2.Binary(b64encode(value))
+        return adapt(psycopg2.Binary(b64encode(value)))
 
 
 class Binary(Field, BinaryLogic):
-    sqltype = BINARY
+    OID = BINARY
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', 'validation', 'validation_error', '_alias', 'table')
+        'default', '_validator', '_alias', 'table')
 
     def __init__(self, *args, **kwargs):
         """ `Binary`
@@ -172,5 +179,5 @@ class Binary(Field, BinaryLogic):
 
 
 register_adapter(bloombytes, bloombytes.to_db)
-BINARYTYPE = new_type((BINARY,), "BINARY", Binary.to_python)
-register_type(BINARYTYPE)
+BINARYTYPE = reg_type('BINARYTYPE', BINARY, Binary.to_python)
+BINARYARRAYTYPE = reg_array_type('BINARYARRAYTYPE', BINARYARRAY, BINARYTYPE)

@@ -92,20 +92,22 @@ class TestEncrypted(TestField):
 
     def test_encrypted(self):
         self.base = Encrypted(Encrypted.generate_secret(),
-                              type=Array(cast=int))
+                              type=Array(Int()))
         l = RandData(int).list(5)
         self.base(l)
         self.base.append(6)
         l.append(6)
         self.assertIsInstance(self.base.value, list)
-        self.assertEqual(self.base.decrypt(self.base.encrypted), l)
+        self.assertEqual(self.base.type.copy().__call__(self.base.decrypt(
+            self.base.encrypted)), l)
 
         self.base = Encrypted(Encrypted.generate_secret(),
-                              type=Array(cast=str, dimensions=2))
+                              type=Array(Int(), dimensions=2))
         l = [[1, 2, 3, 4], [1, 2, 3, 4]]
         self.base(l)
         self.assertIsInstance(self.base.value, list)
-        self.assertEqual(self.base.decrypt(self.base.encrypted), l)
+        self.assertEqual(self.base.type.copy().__call__(self.base.decrypt(
+            self.base.encrypted)), l)
 
         self.base = Encrypted(Encrypted.generate_secret(),
                               type=JsonB())
@@ -137,17 +139,6 @@ class TestEncrypted(TestField):
         self.assertEqual(self.base(self.base.prefix + 'test'), 'test')
 
     def test_validate(self):
-        self.base = Encrypted(Encrypted.generate_secret())
-        self.base('test')
-        self.base.type.validation = lambda x: False
-        self.assertFalse(self.base.validate())
-        self.assertEqual(self.base.validation_error, "Failed validation")
-        self.base.type.validation = lambda x: True
-        self.assertTrue(self.base.validate())
-        self.base.type.validation = lambda x: \
-            isinstance(x, self.base.type.__class__)
-        self.assertTrue(self.base.validate())
-
         self.base = Encrypted(Encrypted.generate_secret(),
                               type=Text(minlen=5))
         self.base('test')

@@ -30,8 +30,8 @@ class UUID(Field, StringLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', 'validation', 'validation_error', '_alias', 'table')
-    sqltype = UUIDTYPE
+        'default', '_validator', '_alias', 'table')
+    OID = UUIDTYPE
 
     def __init__(self, value=Field.empty, default=Field.empty, primary=True,
                  **kwargs):
@@ -75,8 +75,8 @@ class UUID(Field, StringLogic):
 
 
 register_adapter(uuid.UUID, UUID.adapt)
-UUIDTYPE = new_type((UUIDTYPE,), "UUID", UUID.to_python)
-register_type(UUIDTYPE)
+UUIDTYPE_ = reg_type('UUIDTYPE', UUIDTYPE, UUID.to_python)
+UUIDARRAYTYPE = reg_array_type('UUIDARRAYTYPE', UUIDARRAY, UUIDTYPE_)
 
 
 class SmallSerial(SmallInt):
@@ -95,9 +95,9 @@ class SmallSerial(SmallInt):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minval',
+        '_validator', '_alias', 'default', 'minval',
         'maxval', 'table')
-    sqltype = SMALLSERIAL
+    OID = SMALLSERIAL
 
     def __init__(self, value=Field.empty, minval=1, maxval=32767,
                  primary=True, **kwargs):
@@ -132,9 +132,9 @@ class Serial(SmallSerial):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minval',
+        '_validator', '_alias', 'default', 'minval',
         'maxval', 'table')
-    sqltype = SERIAL
+    OID = SERIAL
 
     def __init__(self, value=Field.empty, minval=1, maxval=2147483647,
                  primary=True, **kwargs):
@@ -168,9 +168,9 @@ class BigSerial(Serial):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minval',
+        '_validator', '_alias', 'default', 'minval',
         'maxval', 'table')
-    sqltype = BIGSERIAL
+    OID = BIGSERIAL
 
     def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
                  primary=True, **kwargs):
@@ -226,9 +226,9 @@ class UID(BigSerial):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minval',
+        '_validator', '_alias', 'default', 'minval',
         'maxval', 'table')
-    sqltype = UIDTYPE
+    OID = UIDTYPE
 
     def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
                  primary=True, default=Field.empty, **kwargs):
@@ -342,9 +342,9 @@ class StrUID(UID):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', 'minval',
+        '_validator', '_alias', 'default', 'minval',
         'maxval', 'table')
-    sqltype = STRUID
+    OID = STRUID
 
     def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
                  primary=True, **kwargs):

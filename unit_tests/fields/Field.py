@@ -43,8 +43,8 @@ class TestField(unittest.TestCase):
         self.assertEqual(base.default, 'field')
         base = self.base.__class__(not_null=True)
         self.assertEqual(base.not_null, True)
-        base = self.base.__class__(validation=Tc())
-        self.assertIsInstance(base.validation, Tc)
+        base = self.base.__class__(validator=Tc)
+        self.assertIs(base._validator, Tc)
 
     def test_copy(self):
         fielda = self.base
@@ -104,16 +104,6 @@ class TestField(unittest.TestCase):
         self.assertEqual(self.base.value, 'foobar')
         self.assertEqual(self.base(), 'foobar')
         self.assertEqual(self.base(None), None)
-
-    def test_validate(self):
-        self.base.validation = lambda x: False
-        self.assertFalse(self.base.validate())
-        self.assertEqual(self.base.validation_error, "Failed validation")
-        self.base.validation = lambda x: True
-        self.assertTrue(self.base.validate())
-        self.base.validation = lambda x: isinstance(x, self.base.__class__)
-        self.assertTrue(self.base.validate())
-        self.base.validation = None
 
 
 if __name__ == '__main__':

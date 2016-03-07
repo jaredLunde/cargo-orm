@@ -11,7 +11,7 @@ from bloom.exceptions import TranslationError
 from bloom.etc.types import *
 
 
-__all__ = ('datatype_map', 'sqltype_map', 'udtype_map', 'category_map',
+__all__ = ('datatype_map', 'OID_map', 'udtype_map', 'category_map',
            'translate_to', 'translate_from')
 
 
@@ -19,6 +19,8 @@ datatype_map = {
     'array': 'Array',
     'bigint': 'BigInt',
     'bigserial': 'BigSerial',
+    'bit': 'Bit',
+    'bit varying': 'Varbit',
     'boolean': 'Bool',
     'box': 'Box',
     'bytea': 'Binary',
@@ -38,7 +40,7 @@ datatype_map = {
     'line': 'Line',
     'lseg': 'LSeg',
     'macaddr': 'MacAddress',
-    'money': 'Decimal',
+    'money': 'Money',
     'numeric': 'Numeric',
     'numrange': 'NumericRange',
     'path': 'Path',
@@ -49,11 +51,14 @@ datatype_map = {
     'smallserial': 'SmallSerial',
     'serial': 'Serial',
     'text': 'Text',
+    'time with time zone': 'TimeTZ',
     'time without time zone': 'Time',
     'time': 'Time',
+    'timestamp with time zone': 'TimestampTZ',
     'timestamp without time zone': 'Timestamp',
     'timestamp': 'Timestamp',
     'tsrange': 'TimestampRange',
+    'tstzrange': 'TimestampTZRange',
     'uuid': 'UUID'
 }
 
@@ -70,9 +75,10 @@ udtype_map = {
     'float8': 'Double',
     'float4': 'Float',
     'decimal': 'Decimal',
-    'timetz': 'Time',
-    'timestamptz': 'Timestamp',
-    'varchar': 'Varchar'
+    'timetz': 'TimeTZ',
+    'timestamptz': 'TimestampTZ',
+    'varchar': 'Varchar',
+    'varbit': 'Varbit'
 }
 
 
@@ -87,16 +93,18 @@ category_map = {
 }
 
 
-sqltype_map = {
+OID_map = {
+    BIT: 'bit',
+    VARBIT: 'varbit',
     INT: 'integer',
-    SLUG: 'text',  # Depends if maxlen defined
+    SLUG: 'text',
     IP: 'inet',
     DATE: 'date',
     TIMESTAMP: 'timestamp',
     ENUM: 'USER-DEFINED',
-    FLOAT: 'real',  # Depends on digits
-    DOUBLE: 'double precision',  # Depends on digits
-    BINARY: 'bytea',  # TODO
+    FLOAT: 'real',
+    DOUBLE: 'double precision',
+    BINARY: 'bytea',
     DECIMAL: 'decimal',
     BIGINT: 'bigint',
     SMALLINT: 'smallint',
@@ -104,9 +112,6 @@ sqltype_map = {
     BOOL: 'boolean',
     CHAR: 'char',
     ARRAY: 'ARRAY',
-    SMALLSERIAL: 'smallserial',
-    SERIAL: 'serial',
-    BIGSERIAL: 'bigserial',
     PASSWORD: 'text',
     KEY: 'text',
     UUIDTYPE: 'uuid',
@@ -120,14 +125,13 @@ sqltype_map = {
     TIME: 'time',
     NUMERIC: 'numeric',
     ENCRYPTED: 'text',
-    # TODO: Geometry and other fields
     HSTORE: 'hstore',
     INTRANGE: 'int4range',
     BIGINTRANGE: 'int8range',
     NUMRANGE: 'numrange',
     TSRANGE: 'tsrange',
+    TSTZRANGE: 'tstzrange',
     DATERANGE: 'daterange',
-    # http://www.postgresql.org/docs/8.2/static/functions-geometry.html
     CIDR: 'cidr',
     BOX: 'box',
     CIRCLE: 'circle',
@@ -137,7 +141,8 @@ sqltype_map = {
     POINT: 'point',
     POLYGON: 'polygon',
     MACADDR: 'macaddr',
-    CURRENCY: 'money'
+    CURRENCY: 'decimal',
+    MONEY: 'money'
 }
 
 
@@ -154,8 +159,8 @@ def translate_from(datatype=None, udtype=None, category=None):
                                                            category))
 
 
-def translate_to(sqltype, opt=None):
-    realtype = sqltype_map[sqltype]
+def translate_to(OID, opt=None):
+    realtype = OID_map[OID]
     if opt:
         return '{}({})'.format(realtype, opt)
     else:

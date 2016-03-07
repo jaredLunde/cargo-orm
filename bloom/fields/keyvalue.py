@@ -6,6 +6,7 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
+import decimal
 import collections
 import psycopg2.extras
 import psycopg2.extensions
@@ -274,6 +275,12 @@ class KeyValueOps(object):
 
 
 class _jsontype(object):
+    def __iadd__(self, other):
+        return self.__class__(self.__add__(other))
+
+    def __isub__(self, other):
+        return self.__class__(self.__sub__(other))
+
     @staticmethod
     def to_db(value):
         return psycopg2.extensions.QuotedString(json.dumps(value)).getquoted()
@@ -298,7 +305,12 @@ class jsonstr(str, _jsontype):
 class jsonint(int, _jsontype):
     pass
 
+
 class jsonfloat(float, _jsontype):
+    pass
+
+
+class jsondecimal(decimal.Decimal, _jsontype):
     pass
 
 
@@ -307,14 +319,16 @@ psycopg2.extensions.register_adapter(jsonlist, jsonlist.to_db)
 psycopg2.extensions.register_adapter(jsonstr, jsonstr.to_db)
 psycopg2.extensions.register_adapter(jsonint, jsonint.to_db)
 psycopg2.extensions.register_adapter(jsonfloat, jsonfloat.to_db)
-JSONTYPE = psycopg2.extensions.new_type(
-    (JSON, JSONB), "JSONTYPE", json.loads)
-psycopg2.extensions.register_type(JSONTYPE)
+psycopg2.extensions.register_adapter(jsondecimal, jsondecimal.to_db)
+JSONTYPE = reg_type('JSONTYPE', (JSON, JSONB), json.loads)
+JSONARRAYTYPE = reg_array_type('JSONARRAYTYPE', JSONARRAY, JSONTYPE)
+JSONBARRAYTYPE = reg_array_type('JSONBARRAYTYPE', JSONBARRAY, JSONTYPE)
 
 _jsontypes = (((collections.Mapping, collections.ItemsView, dict), jsondict),
               (str, jsonstr),
               (int, jsonint),
               (float, jsonfloat),
+              (decimal.Decimal, jsondecimal),
               (collections.Iterable, jsonlist))
 
 
@@ -334,9 +348,8 @@ class Json(Field, KeyValueOps, JsonLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', 'validation', 'validation_error', '_alias', 'table',
-        'cast')
-    sqltype = JSON
+        'default', '_validator', '_alias', 'table', 'cast')
+    OID = JSON
 
     def __init__(self, value=Field.empty, cast=None, *args, **kwargs):
         """ `Json`
@@ -404,9 +417,8 @@ class JsonB(Json, JsonBLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', 'validation', 'validation_error', '_alias', 'table',
-        'cast')
-    sqltype = JSONB
+        'default', '_validator', '_alias', 'table', 'cast')
+    OID = JSONB
 
     def __init__(self, value=Field.empty, *args, **kwargs):
         """ `JsonB`
@@ -445,7 +457,7 @@ class HStoreLogic(JsonBLogic):
 
 
 class HStore(Field, KeyValueOps, HStoreLogic):
-    sqltype = HSTORE
+    OID = HSTORE
 
     def __init__(self, value=None, *args, **kwargs):
         """ `HStore`

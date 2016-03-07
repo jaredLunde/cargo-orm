@@ -7,7 +7,7 @@ from kola import config
 
 from docr import Docr
 from bloom.fields import Password
-from bloom import create_pool, ValidationError
+from bloom import create_pool, ValidationValueError, ValidationTypeError
 from vital.security import randkey
 
 from unit_tests.fields.Char import *
@@ -31,12 +31,12 @@ class TestPassword(TestChar):
         self.base.clear()
 
     def test__should_insert(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationValueError):
             self.base._should_insert()
         self.base('fingersInTheCookieJar')
         self.assertTrue(self.base._should_insert())
         self.base('finge')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationValueError):
             self.base._should_insert()
         self.base(None)
         self.base.clear()
@@ -61,12 +61,12 @@ class TestPassword(TestChar):
         self.base.clear()
 
     def test__should_update(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationValueError):
             self.base._should_update()
         self.base('fingersInTheCookieJar')
         self.assertTrue(self.base._should_update())
         self.base('finge')
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationValueError):
             self.base._should_update()
         self.base(None)
         self.base.clear()

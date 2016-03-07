@@ -301,9 +301,8 @@ class Time(_TimeFields, TimeLogic, DateLogic):
     """ Field object for the PostgreSQL field type |TIME|. """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', '_arrow',
-        'table')
-    sqltype = TIME
+        '_validator', '_alias', 'default', '_arrow', 'table')
+    OID = TIME
     _arrow_type = ArrowTime
 
     def __init__(self, *args, **kwargs):
@@ -339,9 +338,9 @@ class TimeTZ(Time):
     """ Field object for the PostgreSQL field type |TIMETZ|. """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', '_arrow',
+        '_validator', '_alias', 'default', '_arrow',
         'table')
-    sqltype = TIMETZ
+    OID = TIMETZ
     _arrow_type = ArrowTimeTZ
 
     def __init__(self, *args, **kwargs):
@@ -357,9 +356,8 @@ class Date(_DateFields, DateLogic):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', '_arrow',
-        'table')
-    sqltype = DATE
+        '_validator', '_alias', 'default', '_arrow', 'table')
+    OID = DATE
     _arrow_type = ArrowDate
 
     def __init__(self, value=Field.empty, **kwargs):
@@ -385,9 +383,8 @@ class Timestamp(Time):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', '_arrow',
-        'table')
-    sqltype = TIMESTAMP
+        '_validator', '_alias', 'default', '_arrow', 'table')
+    OID = TIMESTAMP
     _arrow_type = ArrowTimestamp
 
     def __init__(self, value=Field.empty, **kwargs):
@@ -403,9 +400,8 @@ class TimestampTZ(Time):
     """
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'validation', 'validation_error', '_alias', 'default', '_arrow',
-        'table')
-    sqltype = TIMESTAMPTZ
+        '_validator', '_alias', 'default', '_arrow', 'table')
+    OID = TIMESTAMPTZ
     _arrow_type = ArrowTimestampTZ
 
     def __init__(self, value=Field.empty, **kwargs):
