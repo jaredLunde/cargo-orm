@@ -113,6 +113,11 @@ class EnumType(BaseCreator):
     def add_type(self, *types):
         self.types.extend(types)
 
+    @staticmethod
+    def from_column(orm, col):
+        name = '%s_enum_type' % col.field_name
+        return EnumType(orm, col.raw_datatype, *col.field.types)
+
     @property
     def query(self):
         self.orm.reset()

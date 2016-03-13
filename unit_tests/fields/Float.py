@@ -17,7 +17,7 @@ class TestFloat(TestNumeric):
     default: default value to set the field to
     validation: callable() custom validation plugin, must return True if the
         field validates, and False if it does not
-    digits: int() maximum digit precision
+    decimal_places: int() maximum digit precision
     '''
     @property
     def base(self):
@@ -33,7 +33,7 @@ class TestFloat(TestNumeric):
         self.assertIsNone(base.not_null)
         self.assertEqual(base.minval, -9223372036854775808.0)
         self.assertEqual(base.maxval, 9223372036854775807.0)
-        self.assertEqual(base.digits, 6)
+        self.assertEqual(base.decimal_places, 6)
 
 
 if __name__ == '__main__':

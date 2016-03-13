@@ -56,6 +56,7 @@ from bloom.orm import *
 from bloom.statements import *
 from bloom.expressions import *
 from bloom.relationships import *
+from bloom.validators import *
 # NOTE: http://www.postgresql.org/docs/9.5/static/bookindex.html
 
 

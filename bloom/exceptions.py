@@ -6,8 +6,6 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-
-
 __all__ = (
   'QueryError',
   'SchemaError',
@@ -18,7 +16,8 @@ __all__ = (
   'TranslationError',
   'ValidationError',
   'ValidationValueError',
-  'ValidationTypeError'
+  'ValidationTypeError',
+  'IncorrectPasswordError',
 )
 
 
@@ -93,3 +92,11 @@ class ValidationValueError(ValidationError, ValueError):
 
 class ValidationTypeError(ValidationError, TypeError):
     pass
+
+
+class IncorrectPasswordError(ValueError):
+    """ Raised when a password given to the :class:Password field is incorrect
+    """
+    def __init__(self, message, code=None):
+        self.message = message
+        self.code = code

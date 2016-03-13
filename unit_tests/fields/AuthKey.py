@@ -1,35 +1,28 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import string
 import unittest
+import string
+from math import ceil
 
-from kola import config
+from bloom.fields.extras import *
+from bloom.exceptions import IncorrectPasswordError
 
-from bloom.fields import Key
-from vital.security import *
+from vital.security import chars_in, bits_in
 
-from unit_tests.fields.Field import *
+from unit_tests.fields.Char import TestChar
+from unit_tests import configure
 
 
-class TestKey(TestField):
-    '''
-    value: value to populate the field with
-    not_null: bool() True if the field cannot be Null
-    primary: bool() True if this field is the primary key in your table
-    unique: bool() True if this field is a unique index in your table
-    index: bool() True if this field is a plain index in your table, that is,
-        not unique or primary
-    default: default value to set the field to
-    validation: callable() custom validation plugin, must return True if the
-        field validates, and False if it does not
-    size: int() size of random bits to generate
-    chars: iterable chars to include in the key
-    '''
+class TestKey(configure.ExtrasTestCase, TestChar):
+
+    @property
+    def base(self):
+        return self.orm.key
+
     def test_init(self):
         base = Key()
         base.table = 'test'
-        base.field_name = 'authkey'
+        base.field_name = 'key'
         self.assertEqual(base.value, base.empty)
         self.assertIsNone(base.primary)
         self.assertIsNone(base.unique)
@@ -90,7 +83,18 @@ class TestKey(TestField):
             512,
             delta=6)
 
+    def test_insert(self):
+        self.base.new()
+        self.assertIsNotNone(self.orm.naked().insert(self.base).key)
+
+    def test_select(self):
+        self.assertIs(self.base.value, self.base.empty)
+        self.base.new()
+        self.orm.insert(self.base)
+        self.assertEqual(self.orm.new().desc(self.orm.uid).get().key.value,
+                         self.base.value)
+
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestKey, failfast=True, verbosity=2)

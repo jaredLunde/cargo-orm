@@ -25,7 +25,7 @@ __all__ = ('JsonLogic', 'JsonBLogic', 'Json', 'JsonB', 'HStore')
 
 
 class JsonLogic(BaseLogic):
-
+    __slots__ = tuple()
     _field_op = '->'
     _field_text_op = '->>'
     _field_path_op = '#>'
@@ -78,26 +78,26 @@ class JsonLogic(BaseLogic):
         """ Expands the outermost JSON object into a set of key/value pairs.
             -> (:class:Function)
         """
-        return Functions.json_each(self, **kwargs)
+        return F.json_each(self, **kwargs)
 
     def each_text(self, **kwargs):
         """ Expands the outermost JSON object into a set of key/value pairs.
             The returned values will be of type text.
             -> (:class:Function)
         """
-        return Functions.json_each_text(self, **kwargs)
+        return F.json_each_text(self, **kwargs)
 
     def array_length(self, **kwargs):
         """ Finds the number of elements in the outermost JSON array.
             -> (:class:Function)
         """
-        return Functions.json_array_length(self, **kwargs)
+        return F.json_array_length(self, **kwargs)
 
     def get_fields(self, **kwargs):
         """ Returns set of keys in the outermost JSON object.
             -> (:class:Function)
         """
-        return Functions.json_object_keys(self, **kwargs)
+        return F.json_object_keys(self, **kwargs)
 
     get_keys = get_fields
 
@@ -105,7 +105,7 @@ class JsonLogic(BaseLogic):
         """ Expands a JSON array to a set of JSON values.
             -> (:class:Function)
         """
-        return Functions.json_array_elements(self, **kwargs)
+        return F.json_array_elements(self, **kwargs)
 
     def set_path(self, path, create_missing=True, **kwargs):
         """ Returns target with the section designated by path replaced by
@@ -115,11 +115,11 @@ class JsonLogic(BaseLogic):
             appear in path count from the end of JSON arrays.
             -> (:class:Function)
         """
-        return Functions.json_set_path(self, path, create_missing, **kwargs)
+        return F.json_set_path(self, path, create_missing, **kwargs)
 
 
 class JsonBLogic(JsonLogic):
-
+    __slots__ = tuple()
     _contains_op = '@>'
     _contained_op = '<@'
     _key_op = '?'
@@ -197,26 +197,26 @@ class JsonBLogic(JsonLogic):
         """ Expands the outermost JSON object into a set of key/value pairs.
             -> (:class:Function)
         """
-        return Functions.jsonb_each(self, **kwargs)
+        return F.jsonb_each(self, **kwargs)
 
     def each_text(self, **kwargs):
         """ Expands the outermost JSON object into a set of key/value pairs.
             The returned values will be of type text.
             -> (:class:Function)
         """
-        return Functions.jsonb_each_text(self, **kwargs)
+        return F.jsonb_each_text(self, **kwargs)
 
     def array_length(self, **kwargs):
         """ Finds the number of elements in the outermost JSON array.
             -> (:class:Function)
         """
-        return Functions.jsonb_array_length(self, **kwargs)
+        return F.jsonb_array_length(self, **kwargs)
 
     def get_fields(self, **kwargs):
         """ Returns set of keys in the outermost JSON object.
             -> (:class:Function)
         """
-        return Functions.jsonb_object_keys(self, **kwargs)
+        return F.jsonb_object_keys(self, **kwargs)
 
     get_keys = get_fields
 
@@ -224,7 +224,7 @@ class JsonBLogic(JsonLogic):
         """ Expands a JSON array to a set of JSON values.
             -> (:class:Function)
         """
-        return Functions.jsonb_array_elements(self, **kwargs)
+        return F.jsonb_array_elements(self, **kwargs)
 
     def set_path(self, path, create_missing=True, **kwargs):
         """ Returns target with the section designated by path replaced by
@@ -234,24 +234,35 @@ class JsonBLogic(JsonLogic):
             appear in path count from the end of JSON arrays.
             -> (:class:Function)
         """
-        return Functions.jsonb_set_path(self, path, create_missing, **kwargs)
+        return F.jsonb_set_path(self, path, create_missing, **kwargs)
 
 
 class KeyValueOps(object):
+    __slots__ = tuple()
+
+    def _make_dict_if(self):
+        if self.value_is_null:
+            try:
+                self.value = self.cast()
+            except (AttributeError, TypeError):
+                self.value = {}
 
     def __contains__(self, name):
         return name in self.value
 
     def __getitem__(self, name):
+        self._make_dict_if()
         return self.value[name]
 
     def __setitem__(self, name, value):
+        self._make_dict_if()
         self.value[name] = value
 
     def __delitem__(self, name):
         del self.value[name]
 
     def __iter__(self):
+        self._make_dict_if()
         return self.value.__iter__()
 
     def keys(self):
@@ -270,8 +281,63 @@ class KeyValueOps(object):
         return self.value.pop(index)
 
     def update(self, value):
+        self._make_dict_if()
         self.value.update(value)
         return self.value
+
+
+class SequenceOps(object):
+    __slots__ = tuple()
+
+    def _make_list_if(self):
+        if self.value_is_null:
+            self.value = self.cast() if self.cast else []
+
+    def __getitem__(self, name):
+        self._make_list_if()
+        return self.value[name]
+
+    def __setitem__(self, name, value):
+        self._make_list_if()
+        self.value[name] = value
+
+    def __delitem__(self, name):
+        self._make_list_if()
+        del self.value[name]
+
+    def __iter__(self):
+        self._make_list_if()
+        return self.value.__iter__()
+
+    def remove(self, name):
+        self.value.remove(name)
+        return self
+
+    def append(self, value):
+        self._make_list_if()
+        self.value.append(value)
+        return self
+
+    def insert(self, index, value):
+        self._make_list_if()
+        self.value.insert(index, value)
+        return self
+
+    def extend(self, value):
+        """ Extends a list with @value """
+        self._make_list_if()
+        self.value.extend(value)
+        return self
+
+    def reverse(self):
+        """ Reverses a list in place """
+        self.value.reverse()
+        return self
+
+    def sort(self, key=None, reverse=False):
+        """ Sorts a list in place """
+        self.value.sort(key=key, reverse=reverse)
+        return self
 
 
 class _jsontype(object):
@@ -281,13 +347,48 @@ class _jsontype(object):
     def __isub__(self, other):
         return self.__class__(self.__sub__(other))
 
+    def __imul__(self, other):
+        return self.__class__(self.__mul__(other))
+
+    def __ipow__(self, other):
+        return self.__class__(self.__pow__(other))
+
+    def __ixor__(self, other):
+        return self.__class__(self.__xor__(other))
+
+    def __ior__(self, other):
+        return self.__class__(self.__or__(other))
+
+    def __imatmul__(self, other):
+        return self.__class__(self.__matmul__(other))
+
+    def __ilshift__(self, other):
+        return self.__class__(self.__lshift__(other))
+
+    def __irshift__(self, other):
+        return self.__class__(self.__rshift__(other))
+
+    def __imod__(self, other):
+        return self.__class__(self.__mod__(other))
+
+    def __ifloordiv__(self, other):
+        return self.__class__(self.__floordiv__(other))
+
+    def __itruediv__(self, other):
+        return self.__class__(self.__truediv__(other))
+
+    def __iconcat__(self, other):
+        return self.__class__(self.__concat__(other))
+
+    def __iand__(self, other):
+        return self.__class__(self.__and__(other))
+
     @staticmethod
     def to_db(value):
-        return psycopg2.extensions.QuotedString(json.dumps(value)).getquoted()
+        return psycopg2.extensions.QuotedString(json.dumps(value))
 
     def __str__(self):
-        # getquoted is binary in Py3
-        return self.to_db(self).decode('ascii', 'replace')
+        return self.to_db(self).getquoted().decode('ascii', 'replace')
 
 
 class jsondict(dict, _jsontype):
@@ -320,9 +421,6 @@ psycopg2.extensions.register_adapter(jsonstr, jsonstr.to_db)
 psycopg2.extensions.register_adapter(jsonint, jsonint.to_db)
 psycopg2.extensions.register_adapter(jsonfloat, jsonfloat.to_db)
 psycopg2.extensions.register_adapter(jsondecimal, jsondecimal.to_db)
-JSONTYPE = reg_type('JSONTYPE', (JSON, JSONB), json.loads)
-JSONARRAYTYPE = reg_array_type('JSONARRAYTYPE', JSONARRAY, JSONTYPE)
-JSONBARRAYTYPE = reg_array_type('JSONBARRAYTYPE', JSONBARRAY, JSONTYPE)
 
 _jsontypes = (((collections.Mapping, collections.ItemsView, dict), jsondict),
               (str, jsonstr),
@@ -339,27 +437,25 @@ def _get_json(val):
     raise TypeError('Could not adapt type `%s` to json.' % type(val))
 
 
-class Json(Field, KeyValueOps, JsonLogic):
+class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |JSON|
 
         The value given to this field must be Json serializable. It is
         automatically encoded and decoded on insertion and retrieval.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', '_validator', '_alias', 'table', 'cast')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'default', 'validator', '_alias', 'table', 'cast')
     OID = JSON
 
-    def __init__(self, value=Field.empty, cast=None, *args, **kwargs):
+    def __init__(self, cast=None, *args, **kwargs):
         """ `Json`
             :see::meth:Field.__init__
             @cast: type cast for specifying the type of data should be expected
                 for the value property, e.g. |dict| or |list|
         """
         self.cast = cast
-        value = value or (self.cast() if self.cast is not None else value)
-        super().__init__(value, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -367,7 +463,7 @@ class Json(Field, KeyValueOps, JsonLogic):
                 value = self.cast(value)
             if value is not None:
                 value = _get_json(value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def from_json(self, value):
@@ -380,32 +476,17 @@ class Json(Field, KeyValueOps, JsonLogic):
         """
         return json.dumps(value, *opt, **opts)
 
-    def remove(self, name):
-        self.value.remove(name)
-        return self
+    @staticmethod
+    def to_python(value, cur):
+        try:
+            return json.loads(value)
+        except TypeError:
+            return value
 
-    def append(self, value):
-        self.value.append(value)
-        return self
 
-    def insert(self, index, value):
-        self.value.insert(index, value)
-        return self
-
-    def extend(self, value):
-        """ Extends a list with @value """
-        self.value.extend(value)
-        return self
-
-    def reverse(self):
-        """ Reverses a list in place """
-        self.value.reverse()
-        return self
-
-    def sort(self, key=None, reverse=False):
-        """ Sorts a list in place """
-        self.value.sort(key=key, reverse=reverse)
-        return self
+JSONTYPE = reg_type('JSONTYPE', (JSON, JSONB), Json.to_python)
+JSONARRAYTYPE = reg_array_type('JSONARRAYTYPE', JSONARRAY, JSONTYPE)
+JSONBARRAYTYPE = reg_array_type('JSONBARRAYTYPE', JSONBARRAY, JSONTYPE)
 
 
 class JsonB(Json, JsonBLogic):
@@ -415,19 +496,18 @@ class JsonB(Json, JsonBLogic):
         The value given to this field must be able Json serializable. It is
         automatically encoded and decoded on insertion and retrieval.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', '_validator', '_alias', 'table', 'cast')
+    __slots__ = Json.__slots__
     OID = JSONB
 
-    def __init__(self, value=Field.empty, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `JsonB`
             :see::meth:Field.__init__
         """
-        super().__init__(value=value, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class HStoreLogic(JsonBLogic):
+    __slots__ = tuple()
     _replace_keys_op = '#='
     _convert_to_array = """%%"""
     _convert_to_items = """%#"""
@@ -457,17 +537,18 @@ class HStoreLogic(JsonBLogic):
 
 
 class HStore(Field, KeyValueOps, HStoreLogic):
+    __slots__ = Field.__slots__
     OID = HSTORE
 
-    def __init__(self, value=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `HStore`
             :see::meth:Field.__init__
         """
-        super().__init__(value, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(dict(value) if value is not None else None)
+            self.value = dict(value) if value is not None else None
         return self.value
 
     '''

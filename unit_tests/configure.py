@@ -63,7 +63,7 @@ class GeoModel(Model):
     circle = Circle()
 
 
-class GeoBuilder(Builder):
+class GeoPlan(Plan):
     model = GeoModel()
 
 
@@ -73,7 +73,7 @@ class GeoTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        GeoBuilder().run()
+        GeoPlan().execute()
 
 
 #: Integer setup
@@ -83,7 +83,7 @@ class IntModel(Model):
     smallint = SmallInt()
 
 
-class IntBuilder(Builder):
+class IntPlan(Plan):
     model = IntModel()
 
 
@@ -93,7 +93,7 @@ class IntTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        IntBuilder().run()
+        IntPlan().execute()
 
 
 #: Character setup
@@ -103,7 +103,7 @@ class CharModel(Model):
     text = Text()
 
 
-class CharBuilder(Builder):
+class CharPlan(Plan):
     model = CharModel()
 
 
@@ -113,7 +113,7 @@ class CharTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        CharBuilder().run()
+        CharPlan().execute()
 
 
 #: Networking setup
@@ -123,7 +123,7 @@ class NetModel(Model):
     mac = MacAddress()
 
 
-class NetBuilder(Builder):
+class NetPlan(Plan):
     model = NetModel()
 
 
@@ -133,7 +133,7 @@ class NetTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        NetBuilder().run()
+        NetPlan().execute()
 
     @classmethod
     def tearDownClass(self):
@@ -145,7 +145,6 @@ class NetTestCase(BaseTestCase):
 
 #: Numeric setup
 class NumModel(Model):
-    num = Numeric()
     dec = Decimal()
     float4 = Float()
     float8 = Double()
@@ -153,7 +152,7 @@ class NumModel(Model):
     money = Money()
 
 
-class NumBuilder(Builder):
+class NumPlan(Plan):
     model = NumModel()
 
 
@@ -163,7 +162,7 @@ class NumTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        NumBuilder().run()
+        NumPlan().execute()
 
 
 #: Extras setup
@@ -173,14 +172,11 @@ class ExtrasModel(Model):
     password = Password()
     slug = Slug()
     key = Key()
-    enc_bin = Encrypted(Encrypted.generate_secret(), Binary())
-    enc_text = Encrypted(Encrypted.generate_secret(), Text())
-    enc_int = Encrypted(Encrypted.generate_secret(), Int())
-    enc_float = Encrypted(Encrypted.generate_secret(), Float())
-    enc_json = Encrypted(Encrypted.generate_secret(), JsonB())
+    '''enc_bin = Encrypted(Encrypted.generate_secret(), Binary())
+    enc_text = Encrypted(Encrypted.generate_secret(), Text())'''
 
 
-class ExtrasBuilder(Builder):
+class ExtrasPlan(Plan):
     model = ExtrasModel()
 
 
@@ -190,7 +186,7 @@ class ExtrasTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        ExtrasBuilder().run()
+        ExtrasPlan().execute()
 
 
 #: Binary setup
@@ -199,7 +195,7 @@ class BinaryModel(Model):
     binary_field = Binary()
 
 
-class BinaryBuilder(Builder):
+class BinaryPlan(Plan):
     model = BinaryModel()
 
 
@@ -209,7 +205,34 @@ class BinaryTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        BinaryBuilder().run()
+        BinaryPlan().execute()
+
+    @classmethod
+    def tearDownClass(self):
+        cleanup()
+
+    def setUp(self):
+        self.orm.clear()
+
+
+#: Binary setup
+class BitModel(Model):
+    uid = UID()
+    bit_field = Bit(4)
+    varbit_field = Varbit(4)
+
+
+class BitPlan(Plan):
+    model = BitModel()
+
+
+class BitTestCase(BaseTestCase):
+    orm = BitModel()
+
+    @classmethod
+    def setUpClass(cls):
+        setup()
+        BitPlan().execute()
 
     @classmethod
     def tearDownClass(self):
@@ -224,7 +247,7 @@ class BooleanModel(Model):
     boolean = Bool()
 
 
-class BooleanBuilder(Builder):
+class BooleanPlan(Plan):
     model = BooleanModel()
 
 
@@ -234,17 +257,19 @@ class BooleanTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        BooleanBuilder().run()
+        BooleanPlan().execute()
 
 
 #: DateTime setup
 class DateTimeModel(Model):
     time = Time()
+    timetz = TimeTZ()
     ts = Timestamp()
+    tstz = TimestampTZ()
     date = Date()
 
 
-class DateTimeBuilder(Builder):
+class DateTimePlan(Plan):
     model = DateTimeModel()
 
 
@@ -254,7 +279,7 @@ class DateTimeTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        DateTimeBuilder().run()
+        DateTimePlan().execute()
 
     @classmethod
     def tearDownClass(self):
@@ -298,17 +323,17 @@ class IdentifierTestCase(BaseTestCase):
         setup()
         for m in (UIDModel(), StrUIDModel(), SerialModel(), SmallSerialModel(),
                   BigSerialModel(), UUIDModel()):
-            Builder(model=m).run()
+            Plan(model=m).execute()
 
 
 #: KeyValue setup
 class KeyValueModel(Model):
-    json = Json()
-    jsonb = JsonB()
-    hstore = HStore()
+    json_field = Json()
+    jsonb_field = JsonB()
+    hstore_field = HStore()
 
 
-class KeyValueBuilder(Builder):
+class KeyValuePlan(Plan):
     model = KeyValueModel()
 
 
@@ -318,7 +343,7 @@ class KeyValueTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        KeyValueBuilder().run()
+        KeyValuePlan().execute()
 
     @classmethod
     def tearDownClass(self):
@@ -335,9 +360,10 @@ class RangeModel(Model):
     date = DateRange()
     numeric = NumericRange()
     timestamp = TimestampRange()
+    timestamptz = TimestampTZRange()
 
 
-class RangeBuilder(Builder):
+class RangePlan(Plan):
     model = RangeModel()
 
 
@@ -347,16 +373,17 @@ class RangeTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        RangeBuilder().run()
+        RangePlan().execute()
 
 
 #: Sequence setup
 class SequenceModel(Model):
-    enum = Enum(('red', 'white', 'blue'))
+    #enum = Enum(('red', 'white', 'blue'))
+    enum = Array()
     arr = Array(Text())
 
 
-class SequenceBuilder(Builder):
+class SequencePlan(Plan):
     model = SequenceModel()
 
 
@@ -366,7 +393,7 @@ class SequenceTestCase(BaseTestCase):
     @classmethod
     def setUpClass(cls):
         setup()
-        SequenceBuilder().run()
+        SequencePlan().execute()
 
     @classmethod
     def tearDownClass(self):

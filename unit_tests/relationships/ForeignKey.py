@@ -100,7 +100,7 @@ class TestForeignKey(unittest.TestCase):
         model = FooB()
         b = pickle.loads(pickle.dumps(model))
         self.assertEqual(len(model.foreign_keys), len(b.foreign_keys))
-        self.assertEqual(b.owner.sqltype, model.owner.sqltype)
+        self.assertEqual(b.owner.OID, model.owner.OID)
         self.assertIsInstance(b.owner.ref.field,
                               model.owner.ref.field.__class__)
         self.assertIsInstance(b.owner.ref.model,

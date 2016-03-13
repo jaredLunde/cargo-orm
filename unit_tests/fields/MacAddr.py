@@ -21,7 +21,8 @@ class TestMacAddress(configure.NetTestCase, TestField):
 
     def test_insert(self):
         self.base('08-00-2b-01-02-03')
-        self.orm.insert(self.base)
+        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        self.assertEqual(val, '08:00:2b:01:02:03')
 
     def test_select(self):
         self.base('08-00-2b-01-02-03')

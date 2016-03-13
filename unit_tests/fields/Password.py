@@ -1,170 +1,180 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
 import unittest
+from bloom.fields.extras import *
+from bloom.exceptions import IncorrectPasswordError
 
-from kola import config
-
-from docr import Docr
-from bloom.fields import Password
-from bloom import create_pool, ValidationValueError, ValidationTypeError
-from vital.security import randkey
-
-from unit_tests.fields.Char import *
+from unit_tests.fields.Field import TestField
+from unit_tests import configure
 
 
-class TestPassword(TestChar):
-    base = Password()
+class FakeHasher(Hasher):
+    scheme = 'fake_hasher'
 
-    def test_init_(self):
-        self.base = Password()
-        self.assertEqual(self.base.maxlen, -1)
-        self.assertEqual(self.base.minlen, 8)
-        self.assertEqual(self.base.salt_size, 16)
-        self.assertEqual(self.base.strict, True)
-        self.assertEqual(self.base.value, self.base.empty)
-        self.assertIsNone(self.base.not_null)
-        self.assertEqual(self.base.scheme, 'argon2')
-        self.assertIsNone(self.base.primary)
-        self.assertIsNone(self.base.unique)
-        self.base(None)
-        self.base.clear()
 
-    def test__should_insert(self):
-        with self.assertRaises(ValidationValueError):
-            self.base._should_insert()
-        self.base('fingersInTheCookieJar')
-        self.assertTrue(self.base._should_insert())
-        self.base('finge')
-        with self.assertRaises(ValidationValueError):
-            self.base._should_insert()
-        self.base(None)
-        self.base.clear()
+class HasherTests(object):
+    base = Hasher()
 
-    def test_validate(self):
-        self.base.minlen, self.base.maxlen = 1, 2
-        self.base('123')
-        self.assertFalse(self.base.validate())
-        self.base('12')
-        self.assertTrue(self.base.validate())
-        self.base('')
-        self.assertFalse(self.base.validate())
-        self.base = Password()
-        self.assertFalse(self.base.validate())
-        self.base('fingersInTheCookieJar')
-        self.assertTrue(self.base.validate())
-        self.base('finge')
-        self.assertFalse(self.base.validate())
-        self.base('password')
-        self.assertFalse(self.base.validate())
-        self.base(None)
-        self.base.clear()
-
-    def test__should_update(self):
-        with self.assertRaises(ValidationValueError):
-            self.base._should_update()
-        self.base('fingersInTheCookieJar')
-        self.assertTrue(self.base._should_update())
-        self.base('finge')
-        with self.assertRaises(ValidationValueError):
-            self.base._should_update()
-        self.base(None)
-        self.base.clear()
-
-    def test_generate(self):
-        self.assertTrue(
-            len(self.base.generate(128)) > len(self.base.generate(64)))
-        self.base(None)
-        self.base.clear()
-
-    def test_argon2(self):
-        hash = self.base.argon2_encrypt('fish')
-        self.assertTrue(self.base.argon2_verify('fish', hash))
-        self.assertFalse(self.base.argon2_verify('fisher', hash))
-        self.assertIn('argon2i', hash)
-        self.base('fish')
-        self.assertIn('argon2i', self.base.value)
-        self.assertEqual('fish', self.base.validation_value)
-        self.base(None)
-        self.base.scheme = 'argon2'
-        self.base.clear()
-
-    def test_encrypt(self):
-        hash = self.base.encrypt('fish')
-        self.assertTrue(self.base.verify('fish', hash))
-        self.assertIn('argon2i', hash)
-        self.base('fish')
-        self.assertIn('argon2i', self.base.value)
-        self.assertEqual('fish', self.base.validation_value)
-        self.base.scheme = 'pbkdf2_sha512'
-        hash = self.base.encrypt('fish')
-        self.assertTrue(self.base.verify('fish', hash))
-        self.assertNotIn('argon2i', hash)
-        self.base(None)
-        self.base.clear()
-
-    def test___call__(self):
-        self.base('test')
-        self.assertEqual(self.base.validation_value, 'test')
-        self.assertTrue(self.base.is_hash(self.base.value))
-        self.assertTrue(self.base.is_hash(self.base()))
-        self.base(self.base())
-        self.assertEqual(self.base.validation_value, 'test')
-        self.assertTrue(self.base.is_hash(self.base.value))
-        self.assertTrue(self.base.is_hash(self.base()))
-        self.base(None)
-        self.base.clear()
+    def test_register_scheme(self):
+        self.base.register_scheme(FakeHasher)
+        self.assertIs(self.base.find_class('fake_hasher'), FakeHasher)
 
     def test_verify(self):
-        hash = self.base.encrypt('fish')
-        self.assertTrue(self.base.verify('fish', hash))
-        self.assertFalse(self.base.verify('fiserh', hash))
-        self.base(None)
-        self.base.clear()
+        self.assertTrue(self.base.verify('foo', self.base.hash('foo')))
+        self.assertFalse(self.base.verify('fooo', self.base.hash('foo')))
 
     def test_is_hash(self):
-        self.assertTrue(self.base.is_hash(self.base('fish')))
-        for scheme in self.base.schemes:
-            self.base.rounds = 5
-            self.base.scheme = scheme
-            self.assertTrue(self.base.is_hash(self.base('fish')))
-        for string in (randkey(128) for _ in range(1000)):
-            self.base(string)
-            self.assertFalse(self.base.is_hash(self.base.validation_value))
-        self.assertFalse(self.base.is_hash(
-            '$argon3i$m=3,t=1,p=1$aweflkaewgLWEGN$alwefawefweflawefewaf'))
-        self.base.scheme = 'argon2'
-        self.base.rounds = 12
-        self.base(None)
-        self.base.clear()
+        self.assertTrue(self.base.is_hash(self.base.hash('foo')))
+        self.assertFalse(self.base.is_hash('$sfwmef$alnaewlgew$alngawgwegg'))
+        self.assertFalse(self.base.is_hash('$argon2d$alnaewlgew$alngawgwegg'))
 
-    def test_additional_kwargs(self):
-        pwd = Password(value='fish')
-        self.assertEqual(pwd.validation_value, 'fish')
-        schemes = ['pbkdf2_sha512']
-        pwd = Password(schemes=schemes)
-        self.assertEqual(pwd.schemes, schemes)
-        pwd = Password(primary=True)
-        self.assertEqual(pwd.primary, True)
-        pwd = Password(unique=True)
-        self.assertEqual(pwd.unique, True)
-        pwd = Password(index=True)
-        self.assertEqual(pwd.index, True)
-        pwd = Password(default='password')
-        self.assertEqual(pwd.default, 'password')
-        pwd = Password(minlen=1)
-        self.assertEqual(pwd.minlen, 1)
-        pwd = Password(maxlen=5)
-        self.assertEqual(pwd.maxlen, 5)
+    def test_identify(self):
+        self.assertEqual(self.base.identify(self.base.hash('foo')),
+                         self.base.scheme)
+        self.assertIs(self.base.identify(self.base.hash('foo'),
+                                         find_class=True),
+                      self.base.__class__)
+
+    def test_slots(self):
+        self.assertFalse(hasattr(self.base, '__dict__'))
+
+    def test_raises(self):
+        self.base.raises = True
+        with self.assertRaises(IncorrectPasswordError):
+            self.base.verify('fooo', self.base.hash('foo'))
+
+
+class TestArgon2Hasher(unittest.TestCase, HasherTests):
+    def setUp(self):
+        self.base = self.base.__class__()
+    base = Argon2Hasher()
+
+
+class TestBcrypt256Hasher(TestArgon2Hasher):
+    base = BcryptHasher()
+
+
+class TestBcryptHasher(TestArgon2Hasher):
+    base = BcryptHasher()
+
+
+class TestPBKDF2Hasher(TestArgon2Hasher):
+    base = PBKDF2Hasher()
+
+
+class TestSHA256Hasher(TestArgon2Hasher):
+    base = SHA256Hasher()
+
+
+class TestSHA512Hasher(TestArgon2Hasher):
+    base = SHA512Hasher()
+
+
+class TestPassword(configure.ExtrasTestCase, TestField):
+
+    @property
+    def base(self):
+        return self.orm.password
+
+    def test_init(self):
+        base = Password()
+        self.assertEqual(base.maxlen, -1)
+        self.assertEqual(base.minlen, 8)
+        self.assertEqual(base.value, base.empty)
+        self.assertIsNone(base.not_null)
+        self.assertIsInstance(base.hasher, Argon2Hasher)
+        self.assertIsNone(base.primary)
+        self.assertIsNone(base.unique)
+
+    def test___call__(self):
+        self.assertIs(self.base.value, self.base.empty)
+        self.base('somepassword')
+        self.assertEqual(self.base.validation_value, 'somepassword')
+        self.assertTrue(self.base.hasher.is_hash(self.base.value))
+        hsh = self.base.hash('somepassword')
+        self.base(hsh)
+        self.assertIsNone(self.base.validation_value)
+        self.assertEqual(self.base.value, hsh)
+        self.base(None)
+        self.assertIsNone(self.base.value)
+        self.assertIsNone(self.base.validation_value)
+        self.base(self.base.empty)
+        self.assertIsNone(self.base.value)
         self.base.clear()
+        self.assertIs(self.base.value, self.base.empty)
+
+    def test_clear(self):
+        self.base('algwhglegaweg')
+        self.assertIsNot(self.base.value, self.base.empty)
+        self.assertIsNot(self.base.validation_value, self.base.empty)
+        self.base.clear()
+        self.assertIs(self.base.value, self.base.empty)
+        self.assertIs(self.base.validation_value, self.base.empty)
+
+    hashes = [Argon2Hasher, BcryptHasher, Bcrypt256Hasher, PBKDF2Hasher,
+              SHA512Hasher, SHA256Hasher]
+
+    def test_migrate(self):
+        for h1, h2 in zip(self.hashes, reversed(self.hashes)):
+            base = Password(h1())
+            hsh = base('somepassword')
+            self.assertIsInstance(base._get_hasher_for(hsh), h1)
+            self.assertTrue(base.verify('somepassword'))
+
+            base.hasher = h2()
+            self.assertTrue(base.verify_and_migrate('somepassword'))
+            self.assertIsInstance(base._get_hasher_for(base.value), h2)
+            self.assertTrue(base.verify('somepassword'))
+
+            hsh = base.value
+            self.assertTrue(base.verify_and_migrate('somepassword'))
+            self.assertIsInstance(base._get_hasher_for(base.value), h2)
+            self.assertTrue(base.verify('somepassword'))
+            self.assertEqual(base.value, hsh)
+
+    def test_refresh(self):
+        for h1, h2 in zip(self.hashes, reversed(self.hashes)):
+            base = Password(h1())
+            hsh = base('somepassword')
+            self.assertIsInstance(base._get_hasher_for(hsh), h1)
+            self.assertTrue(base.verify('somepassword'))
+
+            base.hasher = h2()
+            self.assertTrue(base.verify_and_refresh('somepassword'))
+            self.assertIsInstance(base._get_hasher_for(base.value), h1)
+            self.assertTrue(base.verify('somepassword'))
+            self.assertNotEqual(base.value, hsh)
+
+    def test_verify(self):
+        self.assertFalse(self.base.verify('foo'))
+        self.base('foo')
+        self.assertTrue(self.base.verify('foo'))
+        self.assertFalse(self.base.verify('fooo'))
+        self.base('bar')
+        self.assertTrue(self.base.verify('foo', self.base.hash('foo')))
+        self.assertFalse(self.base.verify('fooo', self.base.hash('foo')))
 
     def test_insert(self):
-        pass
+        self.base('somepassword')
+        self.assertEqual(self.orm.new().insert().password.value,
+                         self.base.value)
 
     def test_select(self):
-        pass
+        self.base('somepassword')
+        self.orm.insert()
+        orm = self.orm.new().naked()
+        self.assertEqual(orm.desc(self.orm.uid).get().password,
+                         self.base.value)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestArgon2Hasher,
+                        TestBcryptHasher,
+                        TestBcrypt256Hasher,
+                        TestPBKDF2Hasher,
+                        TestSHA512Hasher,
+                        TestSHA256Hasher,
+                        TestPassword,
+                        failfast=True,
+                        verbosity=2)

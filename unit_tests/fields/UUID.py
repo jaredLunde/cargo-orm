@@ -35,9 +35,11 @@ class TestUUID(configure.IdentifierTestCase, TestField):
     def test_insert(self):
         id = uuid.uuid4()
         self.base(id)
-        self.orm.insert(self.base)
+        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        self.assertEqual(val, id)
         self.base.clear()
-        self.orm.insert(self.base)
+        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        self.assertIsNotNone(val)
 
     def test_select(self):
         id = uuid.uuid4()

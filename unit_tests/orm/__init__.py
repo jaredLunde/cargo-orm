@@ -7,8 +7,6 @@ path = os.path.dirname(os.path.abspath(__file__)).split('bloom-orm')[0] + \
     'bloom-orm'
 sys.path.insert(0, path)
 
-
-from kola import config
 from unit_tests.orm.Model import *
 from unit_tests.orm.QueryState import *
 from unit_tests.orm.RestModel import *

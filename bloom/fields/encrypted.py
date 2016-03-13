@@ -8,10 +8,12 @@
 """
 import string
 import decimal
+import arrow
 import collections
 
 from psycopg2.extensions import *
 
+from vital.cache import high_pickle
 from vital.debug import prepr
 from vital.security import aes_b64_encrypt, aes_b64_decrypt,\
                            aes_encrypt, aes_decrypt, randstr
@@ -20,6 +22,7 @@ from bloom.etc.types import *
 from bloom.expressions import *
 
 from bloom.fields.field import Field
+from bloom.fields.binary import bloombytes
 from bloom.fields.character import Text
 
 
@@ -48,11 +51,11 @@ class AESFactory(EncryptionFactory):
 
     @staticmethod
     def decrypt(val, secret):
-        return aes_b64_decrypt(val, secret)
+        return aes_b64_decrypt(str(val), secret)
 
     @staticmethod
     def encrypt(val, secret):
-        return aes_b64_encrypt(val, secret)
+        return aes_b64_encrypt(str(val), secret)
 
 
 class AESBytesFactory(EncryptionFactory):
@@ -65,10 +68,13 @@ class AESBytesFactory(EncryptionFactory):
 
     @staticmethod
     def encrypt(val, secret):
-        return aes_encrypt(val, secret)
+        return bloombytes(aes_encrypt(val, secret))
 
 
 class _EncryptedValue(object):
+    def __getstate__(self):
+        return {}
+
     def set_field(self, field):
         self.field = field
 
@@ -82,18 +88,79 @@ class _EncryptedValue(object):
         _self.set_field(self.field)
         return _self
 
+    def __imul__(self, other):
+        _self = self.__class__(self.__mul__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __ipow__(self, other):
+        _self = self.__class__(self.__pow__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __ixor__(self, other):
+        _self = self.__class__(self.__xor__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __ior__(self, other):
+        _self = self.__class__(self.__or__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __imatmul__(self, other):
+        _self = self.__class__(self.__matmul__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __ilshift__(self, other):
+        _self = self.__class__(self.__lshift__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __irshift__(self, other):
+        _self = self.__class__(self.__rshift__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __imod__(self, other):
+        _self = self.__class__(self.__mod__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __ifloordiv__(self, other):
+        _self = self.__class__(self.__floordiv__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __itruediv__(self, other):
+        _self = self.__class__(self.__truediv__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __iconcat__(self, other):
+        return self.__class__(self.__concat__(other))
+        _self.set_field(self.field)
+        return _self
+
+    def __iand__(self, other):
+        _self = self.__class__(self.__and__(other))
+        _self.set_field(self.field)
+        return _self
+
     @property
     def encrypted(self):
         return self.field.encrypted
 
     @staticmethod
     def to_db(val):
-        inherit = {JSON, JSONB, BINARY}
-        if val.field.type.OID in inherit or \
-           (val.field.type.OID == ARRAY and
-                val.field.type.type.OID in inherit):
-            return adapt(val.field._in_type(val.encrypted))
-        return adapt(val.encrypted)
+        inherit = {JSON, JSONB}
+        try:
+            if val.field.type.OID in inherit or (
+               val.field.type == ARRAY and val.field.type.type.OID in inherit):
+                return adapt(val.field.type(val.encrypted))
+        except AttributeError:
+            return adapt(val.encrypted)
 
 
 class encstr(str, _EncryptedValue):
@@ -131,7 +198,16 @@ class enctuple(tuple, _EncryptedValue):
 class encset(set, _EncryptedValue):
     pass
 
-register_adapter(encstr, encstr.to_db)
+
+class _EncArrow(arrow.Arrow, _EncryptedValue):
+    def __getstate__(self):
+        return self.__dict__
+
+
+def encarrow(a):
+    return _EncArrow.fromdatetime(a.datetime)
+
+
 register_adapter(encint, encint.to_db)
 register_adapter(encfloat, encfloat.to_db)
 register_adapter(encdecimal, encdecimal.to_db)
@@ -149,7 +225,8 @@ _enctypes = (((collections.Mapping, collections.ItemsView, dict), encdict),
              (set, encset),
              (tuple, enctuple),
              (decimal.Decimal, encdecimal),
-             (collections.Iterable, enclist))
+             (collections.Iterable, enclist),
+             (arrow.Arrow, encarrow))
 
 
 def _get_enc_value(value, field):
@@ -158,7 +235,7 @@ def _get_enc_value(value, field):
             ev = typ(value)
             ev.set_field(field)
             return ev
-    raise TypeError('Cannot encrypt type `%s`.' % type(val))
+    raise TypeError('Cannot encrypt type `%s`.' % type(value))
 
 
 class Encrypted(Field):
@@ -191,19 +268,20 @@ class Encrypted(Field):
 
         =========================
         ``Types and Limitations``
-        * :class:Array types: will be stored as |text[]| arrays in Postgres
-            regardless of their defined cast. The cast will be obeyed on the
-            client side, however.
+        * :class:Array types: will be stored in the same fashion as their
+            value types below
         * :class:Binary types: will be stored as |bytea| in Postgres
         * :class:Integer and :class:Numeric types: will be stored as |text|
             in Postgres
-        * :class:JSON and JSONb types: will remain JSON and JSONb types. All
-            field values will be converted to strings, however, on both
-            client and database levels.
-        * :class:Text types: will remain text
+        * :mod:keyvalue types: will remain |json|, |jsonb| and |hstore| types
+            and JSONb types. All field keys/values will be converted to
+            strings on both client and database layers.
+        * :class:Text types: will remain |text|
         * :class:Inet types: will be stored as |text|
-        * :mod:identifier, :mod:datetimes, :mod:geometric, :mod:boolean,
-            :mod:xml, and :mod:range types are unsupported
+        * :mod:datetimes types: will be stored as |text|
+        * :mod:identifier, :mod:geometric, :mod:bits, :mod:boolean,
+            :class:Enum and :mod:range, types are unsupported, as you
+            should expect.
 
         =========================
         ``Usage``
@@ -228,7 +306,7 @@ class Encrypted(Field):
     __slots__ = ('type', '_secret', 'factory')
 
     def __init__(self, secret, type=Text(), value=Field.empty,
-                 validation=None, factory=AESFactory):
+                 validation=None, factory=None):
         """ `Encrypted`
             @secret: (#str|#callable) secret key to encrypt the field with. A
                 cryptographically secure key can be generated by calling
@@ -248,17 +326,15 @@ class Encrypted(Field):
                 |value| and |secret| keyword arguments.
         """
         self._secret = secret
-        if (type.OID == BINARY and factory == AESFactory) or\
-           (type.OID == ARRAY and type.type.OID == BINARY):
-            factory = AESBytesFactory
+        if factory is None:
+            factory = AESFactory
+            type_ = type
+            if type_.OID == ARRAY:
+                type_ = type.type
+            if type_.OID == BINARY:
+                factory = AESBytesFactory
         self.factory = factory
         self.type = type.copy()
-        self._in_type = type.copy()
-        if type.OID == ARRAY:
-            if type.type.OID == BINARY:
-                self._in_type.cast = bytes
-            else:
-                self._in_type.cast = str
         self._alias = None
         self.__call__(value)
 
@@ -267,8 +343,7 @@ class Encrypted(Field):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self.type._set_value(
-                _get_enc_value(self.type.__call__(self.decrypt(value)), self))
+            self.type.value = self.type.__call__(self.decrypt(value))
         return self.value
 
     def __getattr__(self, name):
@@ -277,9 +352,27 @@ class Encrypted(Field):
         except AttributeError:
             return self.type.__getattribute__(name)
 
+    def __setattr__(self, name, value):
+        try:
+            super().__setattr__(name, value)
+        except AttributeError:
+            self.type.__setattr__(name, value)
+
+    def __getitem__(self, name):
+        return self.type.__getitem__(name)
+
+    def __setitem__(self, name, value):
+        return self.type.__setitem__(name, value)
+
+    def __delitem__(self, name):
+        self.type.__delitem__(name)
+
     @property
     def value(self):
-        return self.type.value
+        try:
+            return _get_enc_value(self.type.value, self)
+        except TypeError:
+            return self.type.value
 
     @value.setter
     def value(self, value):
@@ -410,7 +503,7 @@ class Encrypted(Field):
         return self.encrypt(self.value)
 
     def _label(self, val):
-        """ Adds |__bloomcrypt__:| prefix to @val """
+        """ Adds |$cipher$| prefix to @val """
         if val is not None and not self._labeled(val):
             prefix = self.prefix
             if isinstance(val, bytes):
@@ -452,16 +545,10 @@ class Encrypted(Field):
         return self.type.validate()
 
     def copy(self, *args, **kwargs):
-        cls = self.__class__(self._secret, *args, type=self.type.copy(),
-                             **kwargs)
-        cls.field_name = self.field_name
-        cls.primary = self.primary
-        cls.unique = self.unique
-        cls.index = self.index
-        cls.not_null = self.not_null
-        cls.default = self.default
-        cls.table = self.table
-        cls._alias = self._alias
-        return cls
+        return self.__class__(self._secret,
+                              *args,
+                              type=self.type.copy(),
+                              factory=self.factory,
+                              **kwargs)
 
     __copy__ = copy

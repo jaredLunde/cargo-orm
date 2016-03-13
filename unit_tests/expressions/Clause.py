@@ -17,7 +17,7 @@ from bloom import *
 from bloom import fields
 
 
-def new_field(type='char'):
+def new_field(type='varchar'):
     field = getattr(fields, type.title())()
     keyspace = 'aeioubcdlhzpwnmp'
     name = randkey(24, keyspace)
@@ -56,7 +56,7 @@ class TestClause(unittest.TestCase):
 
     def test__format_arg(self):
         vals = (
-            (new_field(), new_field('char')),
+            (new_field(), new_field('varchar')),
             (new_field().alias('test'),),
             (new_field().alias('test', use_field_name=True),),
             (safe('some_table'),),

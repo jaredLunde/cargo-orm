@@ -7,7 +7,8 @@
 
 """
 from bitstring import BitArray
-from psycopg2.extensions import new_type, register_type, register_adapter
+from psycopg2.extensions import new_type, register_type, register_adapter,\
+                                adapt, AsIs
 
 
 from bloom.etc.types import *
@@ -20,6 +21,7 @@ __all__ = ('BitLogic', 'Bit', 'Varbit',)
 
 
 class BitLogic(object):
+    __slots__ = tuple()
     '''
     ||	concatenation	B'10001' || B'011'	10001011
     &	bitwise AND	B'10001' & B'01101'	00001
@@ -29,7 +31,6 @@ class BitLogic(object):
     <<	bitwise shift left	B'10001' << 3	01000
     >>	bitwise shift right	B'10001' >> 2	00100
     '''
-    pass
 
 
 class Bit(Field, BitLogic):
@@ -39,33 +40,41 @@ class Bit(Field, BitLogic):
     OID = BIT
     __slots__ = (
         'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', '_validator', '_alias', 'table', 'length')
+        'default', 'validator', '_alias', 'table', 'length')
 
     def __init__(self, length, *args, validator=BitValidator, **kwargs):
         """ `Bit`
             :see::meth:Field.__init__
         """
         self.length = length
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, validator=validator, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not self.empty:
             if value is not None:
                 value = BitArray(value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     @staticmethod
     def to_python(value, cur):
-        return value
+        if value is not None:
+            return BitArray(bin=value)
+
+    @staticmethod
+    def to_db(value):
+        return AsIs("B%s" % adapt(value.bin).getquoted().decode())
 
     def copy(self, *args, **kwargs):
         cls = self._copy(self.length, *args, **kwargs)
         return cls
 
+    __copy__ = copy
 
-BITTYPE = reg_type("BIT", BIT, Bit.to_python)
-BITARRAYTYPE = reg_array_type('BITARRAYTYPE', BITARRAY, BITTYPE)
+
+register_adapter(BitArray, Bit.to_db)
+BITTYPE = reg_type("BITTYPE", (BIT, VARBIT), Bit.to_python)
+BITARRAYTYPE = reg_array_type('BITARRAYTYPE', (VARBITARRAY, BITARRAY), BITTYPE)
 
 
 class Varbit(Bit):
@@ -73,12 +82,10 @@ class Varbit(Bit):
         Field object for the PostgreSQL field type |VARBIT|.
     """
     OID = VARBIT
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', '_validator', '_alias', 'table', 'length')
+    __slots__ = Bit.__slots__
 
     def __init__(self, length, *args, validator=VarbitValidator, **kwargs):
         """ `Bit Varying`
             :see::meth:Field.__init__
         """
-        super().__init__(length, *args, **kwargs)
+        super().__init__(length, *args, validator=validator, **kwargs)

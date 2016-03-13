@@ -19,33 +19,32 @@ class Char(Field, StringLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |CHAR|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'minlen',
+                 'maxlen', 'table')
     OID = CHAR
 
-    def __init__(self, value=Field.empty, minlen=0, maxlen=255,
-                 validator=CharValidator, **kwargs):
+    def __init__(self, maxlen, minlen=0,  validator=CharValidator,  **kwargs):
         """ `Char`
-            Fixed-length character field
+            Fixed-length, blank-padded character field
 
             :see::meth:Field.__init__
+            @maxlen: (#int) blank-padded length of string value - this is the
+                exact length of the field in the SQL table
             @minlen: (#int) minimum length of string value
-            @maxlen: (#int) minimum length of string value
         """
-        super().__init__(value=value, validator=validator, **kwargs)
+        super().__init__(validator=validator, **kwargs)
         self.maxlen = maxlen
         self.minlen = minlen
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(str(value) if value is not None else None)
+            self.value = str(value) if value is not None else None
         return self.value
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minlen = self.minlen
-        cls.maxlen = self.maxlen
+        cls = self._copy(maxlen=self.maxlen, minlen=self.minlen, *args,
+                         **kwargs)
         return cls
 
     __copy__ = copy
@@ -55,37 +54,33 @@ class Varchar(Char):
     """ =======================================================================
         Field object for the PostgreSQL field type |VARCHAR|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    __slots__ = Char.__slots__
     OID = VARCHAR
 
-    def __init__(self, value=Field.empty, minlen=0, maxlen=10485760, **kwargs):
+    def __init__(self, maxlen=-1, minlen=0, **kwargs):
         """ `Varchar`
-            Variable-length character field.
+            Variable-length character field with 10485760 byte maximum limit.
 
             :see::meth:Field.__init__
+            @maxlen: (#int) maximum length of string value
             @minlen: (#int) minimum length of string value
-            @maxlen: (#int) minimum length of string value
         """
-        super().__init__(value=value, minlen=minlen, maxlen=maxlen, **kwargs)
+        super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
 
 
 class Text(Char):
     """ =======================================================================
         Field object for the PostgreSQL field type |TEXT|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    __slots__ = Char.__slots__
     OID = TEXT
 
-    def __init__(self, value=Field.empty, minlen=0, maxlen=-1, **kwargs):
+    def __init__(self, maxlen=-1, minlen=0, **kwargs):
         """ `Text`
-            Variable-length character field.
+            Variable unlimited-length character field.
 
             :see::meth:Field.__init__
+            @maxlen: (#int) maximum length of string value
             @minlen: (#int) minimum length of string value
-            @maxlen: (#int) minimum length of string value
         """
-        super().__init__(value=value, minlen=minlen, maxlen=maxlen, **kwargs)
+        super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)

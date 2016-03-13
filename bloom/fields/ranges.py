@@ -6,11 +6,16 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-from psycopg2.extras import Range
+import arrow
+import decimal
+
+from psycopg2.extensions import adapt, register_adapter
+from psycopg2.extras import Range, DateRange, DateTimeRange, DateTimeTZRange,\
+                            NumericRange, Range
 
 from bloom.etc.types import *
 from bloom.expressions import *
-from bloom.fields.field import Field
+from bloom.fields import Field, Date, Timestamp, TimestampTZ
 
 
 __all__ = (
@@ -21,11 +26,11 @@ __all__ = (
     'NumericRange',
     'TimestampRange',
     'TimestampTZRange',
-    'DateRange'
-)
+    'DateRange')
 
 
 class RangeLogic(BaseLogic):
+    __slots__ = tuple()
     '''
     =	equal	int4range(1,5) = '[1,4]'::int4range	t
     <>	not equal	numrange(1.1,2.2) <> numrange(1.1,2.3)	t
@@ -64,14 +69,13 @@ class RangeLogic(BaseLogic):
         upper_inf('(,)'::daterange)	true
     '''
 
-
 class IntRange(Field, RangeLogic):
     OID = INTRANGE
-    _slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
+    _range_cls = NumericRange
+    _cast = int
 
-    def __init__(self, value=Field.empty, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `Integer Range`
             @value: (#tuple (lower_bound, upper_bound) or
                 :class:psycopg2.extras.Range)
@@ -80,7 +84,7 @@ class IntRange(Field, RangeLogic):
             See also: :class:Range and
                 http://initd.org/psycopg/docs/extras.html#range-data-types
         """
-        super().__init__(value, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, name):
         try:
@@ -90,46 +94,80 @@ class IntRange(Field, RangeLogic):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            try:
-                self._set_value(Range(*value))
-            except TypeError:
-                if not isinstance(value, Range):
-                    raise TypeError(('`%s` values must be of type tuple or ' +
-                                     'psycopg2.extras.Range')
-                                    % self.__class__.__name__)
-                self._set_value(value)
+            if value is not None:
+                try:
+                    value = self._range_cls(*map(self.cast, value))
+                except TypeError:
+                    if not isinstance(value, Range):
+                        raise TypeError(('`%s` values must be of type tuple or'
+                                         ' psycopg2.extras.Range')
+                                        % self.__class__.__name__)
+                    value = self._range_cls(lower=self.cast(value.lower),
+                                            upper=self.cast(value.upper))
+            self.value = value
         return self.value
+
+    def cast(self, value):
+        if value is None:
+            return value
+        return self._cast(value)
+
+    @property
+    def upper(self):
+        try:
+            return self.value._upper
+        except AttributeError:
+            return None
+
+    @property
+    def lower(self):
+        try:
+            return self.value._lower
+        except AttributeError:
+            return None
 
     def set_upper(self, upper):
         try:
-            self.value._upper = upper
+            self.value._upper = self._cast(upper)
         except AttributeError:
-            self.__call__(Range(upper=upper))
+            self.__call__(self._range_cls(upper=upper))
         return
 
     def set_lower(self, lower):
         try:
-            self.value._lower = lower
+            self.value._lower = self._cast(lower)
         except AttributeError:
-            self.__call__(Range(lower=lower))
+            self.__call__(self._range_cls(lower=lower))
         return
 
 
 class BigIntRange(IntRange):
     OID = BIGINTRANGE
+    __slots__ = Field.__slots__
 
 
 class NumericRange(IntRange):
     OID = NUMRANGE
+    __slots__ = Field.__slots__
+    _cast = decimal.Decimal
 
 
 class TimestampRange(IntRange):
     OID = TSRANGE
+    __slots__ = Field.__slots__
+    _cast = Timestamp().__call__
+    _range_cls = DateTimeRange
 
 
 class TimestampTZRange(IntRange):
     OID = TSTZRANGE
+    __slots__ = Field.__slots__
+    _cast = TimestampTZ().__call__
+    _range_cls = DateTimeTZRange
 
 
 class DateRange(IntRange):
     OID = DATERANGE
+    __slots__ = Field.__slots__
+    _cast = Date().__call__
+    _range_cls = DateRange

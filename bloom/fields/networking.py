@@ -19,6 +19,7 @@ __all__ = ('IP', 'Inet', 'Cidr', 'MacAddress')
 
 
 class NetworkingLogic(BaseLogic):
+    __slots__ = tuple()
     '''
     <	is less than	inet '192.168.1.5' < inet '192.168.1.6'
     <=	is less than or equal	inet '192.168.1.5' <= inet '192.168.1.5'
@@ -75,22 +76,20 @@ class IP(Field, NetworkingLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |INET|.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', '_default', 'table', '_request')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', '_default', 'table',
+                 '_request')
     OID = IP
     current = -1
 
-    def __init__(self, value=Field.empty, request=None, default=None,
-                 **kwargs):
+    def __init__(self, request=None, *args, default=None, **kwargs):
         """ `IP Address`
             :see::meth:Field.__init__
             @request: Django, Flask or Bottle-like request object
         """
         self._default = default
         self._request = request
-        super().__init__(**kwargs)
-        self.__call__(value)
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, name):
         try:
@@ -104,7 +103,7 @@ class IP(Field, NetworkingLogic):
                 value = self.request_ip
             if value is not None:
                 value = IPAddress(value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __int__(self):
@@ -131,11 +130,9 @@ class IP(Field, NetworkingLogic):
         return self._default
 
     def __getstate__(self):
-        return dict(
-            (slot, getattr(self, slot))
-            for slot in self.__slots__
-            if hasattr(self, slot)
-        )
+        return dict((slot, getattr(self, slot))
+                    for slot in self.__slots__
+                    if hasattr(self, slot))
 
     def __setstate__(self, state):
         for slot, value in state.items():
@@ -146,19 +143,8 @@ class IP(Field, NetworkingLogic):
         return adapt(str(value))
 
     def copy(self, *args, **kwargs):
-        cls = self.__class__(*args, **kwargs)
-        cls.field_name = self.field_name
-        cls.primary = self.primary
-        cls.unique = self.unique
-        cls.index = self.index
-        cls.not_null = self.not_null
-        if self.value is not None and self.value is not self.empty:
-            cls.value = copy.copy(self.value)
-        cls.table = self.table
-        cls._validator = self._validator
-        cls._alias = self._alias
+        cls = self._copy(self._request, *args, **kwargs)
         cls._default = self._default
-        cls._request = self._request
         return cls
 
     __copy__ = copy
@@ -172,16 +158,14 @@ class Cidr(Field, StringLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |CIDR|.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
     OID = CIDR
 
-    def __init__(self, value=Field.empty, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `Cidr Addresses`
             :see::meth:Field.__init__
         """
-        super().__init__(value, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, name):
         try:
@@ -193,7 +177,7 @@ class Cidr(Field, StringLogic):
         if value is not Field.empty:
             if value is not None:
                 value = IPNetwork(value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __int__(self):
@@ -211,15 +195,13 @@ class MacAddress(Cidr):
         Field object for the PostgreSQL field type |MACADDR|.
     """
     OID = MACADDR
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
-    def __init__(self, value=Field.empty,  *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `Mac Addresses`
             :see::meth:Field.__init__
         """
-        super().__init__(value, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, name):
         try:
@@ -231,7 +213,7 @@ class MacAddress(Cidr):
         if value is not Field.empty:
             if value is not None:
                 value = EUI(value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def trunc(self, *args, **kwargs):

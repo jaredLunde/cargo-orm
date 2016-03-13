@@ -13,7 +13,9 @@ from unit_tests import configure
 
 
 class Tc(object):
-    pass
+
+    def __init__(self, field):
+        self.field = field
 
 
 class FieldModel(Model):
@@ -44,21 +46,32 @@ class TestField(unittest.TestCase):
         base = self.base.__class__(not_null=True)
         self.assertEqual(base.not_null, True)
         base = self.base.__class__(validator=Tc)
-        self.assertIs(base._validator, Tc)
+        self.assertIsInstance(base.validator, Tc)
+
+    def test_slots(self):
+        self.assertFalse(hasattr(self.base, '__dict__'))
 
     def test_copy(self):
         fielda = self.base
         fieldb = self.base.copy()
         self.assertIsNot(fielda, fieldb)
         for k in list(fielda.__slots__):
-            self.assertEqual(getattr(fielda, k), getattr(fieldb, k))
+            if k == 'validator':
+                self.assertEqual(fielda.validator.__class__,
+                                 fieldb.validator.__class__)
+            else:
+                self.assertEqual(getattr(fielda, k), getattr(fieldb, k))
         self.assertEqual(fielda.table, fieldb.table)
 
         fielda = self.base
         fieldb = copy.copy(self.base)
         self.assertIsNot(fielda, fieldb)
         for k in list(fielda.__slots__):
-            self.assertEqual(getattr(fielda, k), getattr(fieldb, k))
+            if k == 'validator':
+                self.assertEqual(fielda.validator.__class__,
+                                 fieldb.validator.__class__)
+            else:
+                self.assertEqual(getattr(fielda, k), getattr(fieldb, k))
         self.assertEqual(fielda.table, fieldb.table)
 
     def test_deepcopy(self):
@@ -83,10 +96,6 @@ class TestField(unittest.TestCase):
             else:
                 self.assertTrue(
                     getattr(self.base, k).__class__ == getattr(b, k).__class__)
-
-    def test__set_value(self):
-        self.base._set_value("foo")
-        self.assertEqual(self.base.value, "foo")
 
     def test_set_alias(self):
         field = self.base.copy()

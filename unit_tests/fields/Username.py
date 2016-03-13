@@ -1,8 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
 import re
-import unittest
 import string
 
 from bloom.etc.usernames import reserved_usernames
@@ -10,58 +8,68 @@ from bloom.fields import Username
 from vital.debug import RandData, gen_rand_str
 
 from unit_tests.fields.Char import *
+from unit_tests import configure
 
 
-class TestUsername(TestChar):
-    base = Username()
+class TestUsername(configure.ExtrasTestCase, TestChar):
+
+    @property
+    def base(self):
+        return self.orm.username
 
     def test_validate(self):
-        self.base = Username()
+        base = Username()
         for username in reserved_usernames:
-            self.base(username)
-            self.assertFalse(self.base.validate())
+            base(username)
+            self.assertFalse(base.validate())
 
         randlist = RandData(str).list(1000)
-        self.base = Username(reserved_usernames=randlist)
+        base = Username(reserved_usernames=randlist)
         for username in randlist:
-            self.base(username)
-            self.assertFalse(self.base.validate())
+            base(username)
+            self.assertFalse(base.validate())
 
-        self.base = Username(reserved_usernames=[])
+        base = Username(reserved_usernames=[])
         for username in randlist:
-            self.base(username)
-            self.assertTrue(self.base.validate())
+            base(username)
+            self.assertTrue(base.validate())
 
     def test_pattern(self):
         ure = re.compile(r"""[a-z]""")
-        self.base = Username(re_pattern=ure)
-        for _ in range(200):
+        base = Username(re_pattern=ure)
+        for _ in range(100):
             username = gen_rand_str(keyspace='ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-            self.base(username)
-            self.assertFalse(self.base.validate())
+            base(username)
+            self.assertFalse(base.validate())
 
         ure = re.compile(r"""[a-z]""")
-        self.base = Username(re_pattern=ure)
-        for _ in range(200):
+        base = Username(re_pattern=ure)
+        for _ in range(100):
             username = gen_rand_str(keyspace='abcdefghijklmnopqrstuvwxyz')
-            self.base(username)
-            self.assertTrue(self.base.validate())
+            base(username)
+            self.assertTrue(base.validate())
 
     def test_add_reserved_username(self):
-        self.base = Username(reserved_usernames=[])
-        randlist = RandData(str).list(1000)
-        self.base.add_reserved_username(*randlist)
+        base = Username(reserved_usernames=[])
+        randlist = RandData(str).list(200)
+        base.add_reserved_username(*randlist)
         for username in randlist:
-            self.base(username)
-            self.assertFalse(self.base.validate())
+            base(username)
+            self.assertFalse(base.validate())
 
     def test_insert(self):
-        pass
+        self.base('jared')
+        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        self.assertEqual(val, 'jared')
 
     def test_select(self):
-        pass
+        self.assertIs(self.base.value, self.base.empty)
+        self.base('jared')
+        self.orm.insert(self.base)
+        self.assertEqual(self.orm.new().desc(self.orm.uid).get().username.value,
+                         self.base.value)
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestUsername, failfast=True, verbosity=2)

@@ -1,6 +1,7 @@
 """
 
   `Bloom SQL Identifier Fields`
+   By default, all of these fields are primary keys.
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
    http://github.com/jaredlunde/bloom-orm
@@ -28,26 +29,16 @@ class UUID(Field, StringLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |UUID|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', '_validator', '_alias', 'table')
+    __slots__ = Field.__slots__
     OID = UUIDTYPE
 
-    def __init__(self, value=Field.empty, default=Field.empty, primary=True,
-                 **kwargs):
+    def __init__(self, *args, default=Field.empty, primary=True, **kwargs):
         """ `UUID`
             :see::meth:Field.__init__
         """
         default = default if default is not Field.empty else \
             Function('uuid_generate_v4')
-        super().__init__(value=value, default=default, primary=primary,
-                         **kwargs)
-        # CREATE EXTENSION "uuid-ossp";
-
-    def __call__(self, value=Field.empty):
-        if value is not Field.empty:
-            self._set_value(value)
-        return self.value
+        super().__init__(*args, default=default, primary=primary, **kwargs)
 
     @staticmethod
     def generate():
@@ -93,26 +84,15 @@ class SmallSerial(SmallInt):
         Its value will not be known until the model record is inserted into
         the DB.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table')
+    __slots__ = SmallInt.__slots__
     OID = SMALLSERIAL
 
-    def __init__(self, value=Field.empty, minval=1, maxval=32767,
-                 primary=True, **kwargs):
+    def __init__(self, minval=1, maxval=32767, *args, primary=True, **kwargs):
         """ `SmallSerial`
             :see::meth:Field.__init__
             @maxval: (#int) maximum integer value
         """
-        super().__init__(
-            value=value, minval=minval, maxval=maxval,
-            primary=primary, **kwargs)
-
-    def __call__(self, value=Field.empty):
-        if value is not Field.empty:
-            self._set_value(int(value) if value is not None else None)
-        return self.value
+        super().__init__(minval, maxval, *args, primary=primary, **kwargs)
 
 
 class Serial(SmallSerial):
@@ -130,26 +110,16 @@ class Serial(SmallSerial):
         the DB. You must set the default value of this field to a sequence in
         your table.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table')
+    __slots__ = SmallInt.__slots__
     OID = SERIAL
 
-    def __init__(self, value=Field.empty, minval=1, maxval=2147483647,
+    def __init__(self, minval=1, maxval=2147483647, *args,
                  primary=True, **kwargs):
         """ `Serial`
             :see::meth:Field.__init__
             @maxval: (#int) maximum integer value
         """
-        super().__init__(
-            value=value, minval=minval, maxval=maxval, primary=primary,
-            **kwargs)
-
-    def __call__(self, value=Field.empty):
-        if value is not Field.empty:
-            self._set_value(int(value) if value is not None else None)
-        return self.value
+        super().__init__(minval, maxval, *args, primary=primary, **kwargs)
 
 
 class BigSerial(Serial):
@@ -166,24 +136,19 @@ class BigSerial(Serial):
         Its value will not be known until the model record is inserted into
         the DB.
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table')
+    __slots__ = SmallInt.__slots__
     OID = BIGSERIAL
 
-    def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
+    def __init__(self, minval=1, maxval=9223372036854775807, *args,
                  primary=True, **kwargs):
         """ `BigSerial`
             :see::meth:Field.__init__
             @maxval: (#int) maximum integer value
         """
-        super().__init__(
-            value=value, minval=minval, maxval=maxval,
-            primary=primary, **kwargs)
+        super().__init__(minval, maxval, *args, primary=primary, **kwargs)
 
 
-class UID(BigSerial):
+class UID(Field, NumericLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |INT8|. It is always
         assumed that this field is the |PRIMARY| key.
@@ -224,27 +189,29 @@ class UID(BigSerial):
         See [here for more information](
           http://rob.conery.io/2014/05/29/a-better-id-generator-for-postgresql/)
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table')
+    __slots__ = Field.__slots__
     OID = UIDTYPE
 
-    def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
-                 primary=True, default=Field.empty, **kwargs):
+    def __init__(self, *args, primary=True, default=Field.empty, **kwargs):
         """ `UID`
             :see::meth:Field.__init__
-            @minval: (#int) minimum interger value
-            @maxval: (#int) maximum integer value
         """
         default = default if default is not Field.empty else \
             Function('bloom_uid')
-        super().__init__(
-            value=value, minval=minval, maxval=maxval,
-            primary=primary, default=default, **kwargs)
+        super().__init__(*args, primary=primary, default=default, **kwargs)
+
+    def __call__(self, value=Field.empty):
+        if value is not Field.empty:
+            self.value = int(value) if value is not None else None
+        return self.value
 
     def __int__(self):
-        return self.value
+        return int(self.value)
+
+
+_ascii_letters = ''.join(letter
+                         for letter in string.ascii_letters
+                         if letter not in {'I', 'l'})
 
 
 class strint(int):
@@ -256,8 +223,8 @@ class strint(int):
 
     def to_str(self, value=None):
         return strkey(value or self,
-                      chaffify=1024,
-                      keyspace=string.ascii_letters)
+                      chaffify=1,
+                      keyspace=_ascii_letters)
 
     @staticmethod
     def from_str(self, value):
@@ -340,22 +307,14 @@ class StrUID(UID):
         See [here for more information](
           http://rob.conery.io/2014/05/29/a-better-id-generator-for-postgresql/)
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table')
+    __slots__ = Field.__slots__
     OID = STRUID
 
-    def __init__(self, value=Field.empty, minval=1, maxval=9223372036854775807,
-                 primary=True, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ `StrUID`
             :see::meth:Field.__init__
-            @minval: (#int) minimum interger value
-            @maxval: (#int) maximum integer value
         """
-        super().__init__(
-            value=value, minval=minval, maxval=maxval, primary=primary,
-            **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -364,7 +323,7 @@ class StrUID(UID):
                     value = strint(value)
                 else:
                     value = strint.from_str(value)
-            self._set_value(value)
+            self.value = value
         return str(self.value)
 
     def __str__(self):
@@ -374,11 +333,3 @@ class StrUID(UID):
         if self.value is not None:
             return len(self.value)
         return 0
-
-    def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minval = self.minval
-        cls.maxval = self.maxval
-        return cls
-
-    __copy__ = copy

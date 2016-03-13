@@ -138,7 +138,7 @@ class Index(BaseCreator):
 
     gin_types = {oids.ARRAY, oids.JSONB, oids.JSON, oids.HSTORE}
     gist_types = {oids.INTRANGE, oids.BIGINTRANGE, oids.NUMRANGE,
-                  oids.DATERANGE, oids.TSRANGE}
+                  oids.DATERANGE, oids.TSRANGE, oids.TSTZRANGE}
 
     @property
     def type(self):

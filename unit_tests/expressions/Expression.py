@@ -18,7 +18,7 @@ from bloom import *
 from bloom import fields
 
 
-def new_field(type='char'):
+def new_field(type='varchar'):
     field = getattr(fields, type.title())()
     keyspace = 'aeioubcdlhzpwnmp'
     name = randkey(24, keyspace)
@@ -53,7 +53,6 @@ class TestExpression(unittest.TestCase):
 
         for val in ('test', 1234, l):
             pkey = self.base._get_param_key(val)
-            print(val, list(self.base.params.values()))
             self.assertEqual(1, list(self.base.params.values()).count(val))
             self.assertEqual(self.base.params["".join(pkey[2:-2])], val)
 
@@ -91,7 +90,7 @@ class TestExpression(unittest.TestCase):
             new_function(), new_function(str), new_function(float),
             new_function(bytes), new_expression(), new_expression(str),
             new_expression(float), new_expression(bytes), new_field('int'),
-            new_field('char'), '1234', 1234, '1234'.encode(),
+            new_field('varchar'), '1234', 1234, '1234'.encode(),
             psycopg2.Binary(b'1234'))
         for val in types:
             nval = self.base._parameterize(val)

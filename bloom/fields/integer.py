@@ -21,15 +21,13 @@ class SmallInt(Field, NumericLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |INT2|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table', 'locale')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'minval',
+                 'maxval', 'table', 'locale')
     OID = SMALLINT
 
-    def __init__(self, value=Field.empty, minval=-32768, maxval=32767,
-                 locale=babel.numbers.LC_NUMERIC, validator=IntValidator,
-                 **kwargs):
+    def __init__(self, minval=-32768, maxval=32767, validator=IntValidator,
+                 locale=babel.numbers.LC_NUMERIC, **kwargs):
         """ `SmallInt`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -37,14 +35,14 @@ class SmallInt(Field, NumericLogic):
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
         """
-        super().__init__(value=value, validator=validator, **kwargs)
+        super().__init__(validator=validator, **kwargs)
         self.minval = minval
         self.maxval = maxval
         self.locale = locale
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(int(value) if value is not None else None)
+            self.value = int(value) if value is not None else None
         return self.value
 
     def __int__(self):
@@ -79,14 +77,10 @@ class Int(SmallInt):
     """ =======================================================================
         Field object for the PostgreSQL field type |INT4|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table', 'locale')
+    __slots__ = SmallInt.__slots__
     OID = INT
 
-    def __init__(self, value=Field.empty, minval=-2147483648,
-                 maxval=2147483647,  **kwargs):
+    def __init__(self, minval=-2147483648, maxval=2147483647,  **kwargs):
         """ `Int`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -94,21 +88,18 @@ class Int(SmallInt):
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
         """
-        super().__init__(value=value, minval=minval, maxval=maxval, **kwargs)
+        super().__init__(minval=minval, maxval=maxval, **kwargs)
 
 
 class BigInt(SmallInt):
     """ =======================================================================
         Field object for the PostgreSQL field type |INT8|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minval',
-        'maxval', 'table', 'locale')
+    __slots__ = SmallInt.__slots__
     OID = BIGINT
 
-    def __init__(self, value=Field.empty, minval=-9223372036854775808,
-                 maxval=9223372036854775807, **kwargs):
+    def __init__(self, minval=-9223372036854775808, maxval=9223372036854775807,
+                 **kwargs):
         """ `BigInt`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -116,4 +107,4 @@ class BigInt(SmallInt):
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
         """
-        super().__init__(value=value, minval=minval, maxval=maxval, **kwargs)
+        super().__init__(minval=minval, maxval=maxval, **kwargs)

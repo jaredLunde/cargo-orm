@@ -33,6 +33,7 @@ __all__ = (
     "Function",
     "WindowFunctions",
     "Functions",
+    "F",
     "Subquery",
     "aliased",
     "safe",
@@ -42,6 +43,7 @@ __all__ = (
 
 class BaseLogic(object):
     """ Logical expression wrappers for PostgreSQL """
+    __slots__ = tuple()
 
     def and_(self, other):
         """ Creates an |AND| SQL expression
@@ -122,12 +124,12 @@ class BaseLogic(object):
     __ne__ = not_eq
 
     def distinct(self, *args, **kwargs):
-        """ :see::meth:Functions.distinct """
-        return Functions.distinct(self, *args, **kwargs)
+        """ :see::meth:F.distinct """
+        return F.distinct(self, *args, **kwargs)
 
     def distinct_on(self, *args, **kwargs):
-        """ :see::meth:Functions.distinct_on """
-        return Functions.distinct_on(self, *args, **kwargs)
+        """ :see::meth:F.distinct_on """
+        return F.distinct_on(self, *args, **kwargs)
 
     def distinct_from(self, other):
         """ Creates a |DISTINCT FROM| SQL clause
@@ -262,20 +264,20 @@ class BaseLogic(object):
                           operators.DESC)
 
     def nullif(self, other, alias=None, **kwargs):
-        """ :see::meth:Functions.nullif """
-        return Functions.nullif(self, other, alias=alias, **kwargs)
+        """ :see::meth:F.nullif """
+        return F.nullif(self, other, alias=alias, **kwargs)
 
     def count(self, alias=None, **kwargs):
-        """ :see::meth:Functions.count """
-        return Functions.count(self, alias=alias, **kwargs)
+        """ :see::meth:F.count """
+        return F.count(self, alias=alias, **kwargs)
 
     def using(self, b, **kwargs):
-        """ :see::meth:Functions.using """
-        return Functions.using(self, b, **kwargs)
+        """ :see::meth:F.using """
+        return F.using(self, b, **kwargs)
 
     def lag(self, *expressions, offset=None, default=None,
             window_name=None, partition_by=None, order_by=None, alias=None):
-        """ :see::meth:WindowFunctions.lag """
+        """ :see::meth:WindowF.lag """
         return Function('lag', self, offset or _empty, default or _empty)\
             .over(*expressions,
                   window_name=window_name,
@@ -285,7 +287,7 @@ class BaseLogic(object):
 
     def lead(self, *expressions, offset=None, default=None, window_name=None,
              partition_by=None, order_by=None, alias=None):
-        """ :see::meth:WindowFunctions.lead """
+        """ :see::meth:WindowF.lead """
         return Function('lead', self, offset or _empty, default or _empty)\
             .over(*expressions,
                   window_name=window_name,
@@ -295,7 +297,7 @@ class BaseLogic(object):
 
     def first_value(self, *expressions, window_name=None,
                     partition_by=None, order_by=None, alias=None):
-        """ :see::meth:WindowFunctions.first_value """
+        """ :see::meth:WindowF.first_value """
         return Function('first_value', self).over(
             *expressions,
             window_name=window_name,
@@ -305,7 +307,7 @@ class BaseLogic(object):
 
     def last_value(self, *expressions, window_name=None,
                    partition_by=None, order_by=None, alias=None):
-        """ :see::meth:WindowFunctions.last_value """
+        """ :see::meth:WindowF.last_value """
         return Function('last_value', self).over(
             *expressions,
             window_name=window_name,
@@ -315,7 +317,7 @@ class BaseLogic(object):
 
     def nth_value(self, nth_integer, *expressions, window_name=None,
                   partition_by=None, order_by=None, alias=None):
-        """ :see::meth:WindowFunctions.nth_value """
+        """ :see::meth:WindowF.nth_value """
         return Function('nth_value', self, nth_integer).over(
             *expressions,
             window_name=window_name,
@@ -324,15 +326,16 @@ class BaseLogic(object):
             alias=alias)
 
     def cast(self, as_):
-        """ :see::meth:Functions.func """
-        return Functions.func(self, as_)
+        """ :see::meth:F.new """
+        return F.new(self, as_)
 
     def func(self, *args, **kwargs):
-        """ :see::meth:Functions.func """
-        return Functions.func(args[0], self, *args[1:], **kwargs)
+        """ :see::meth:F.new """
+        return F.new(args[0], self, *args[1:], **kwargs)
 
 
 class BaseNumericLogic(BaseLogic):
+    __slots__ = tuple()
 
     def lt(self, other):
         """ Creates a |<| (less than) SQL expression
@@ -489,16 +492,16 @@ class BaseNumericLogic(BaseLogic):
     __sub__ = subtract
 
     def max(self, alias=None, **kwargs):
-        """ :see::meth:Functions.max """
-        return Functions.max(self, alias=alias, **kwargs)
+        """ :see::meth:F.max """
+        return F.max(self, alias=alias, **kwargs)
 
     def min(self, alias=None, **kwargs):
-        """ :see::meth:Functions.min """
-        return Functions.min(self, alias=alias, **kwargs)
+        """ :see::meth:F.min """
+        return F.min(self, alias=alias, **kwargs)
 
     def avg(self, alias=None, **kwargs):
-        """ :see::meth:Functions.avg """
-        return Functions.avg(self, alias=alias, **kwargs)
+        """ :see::meth:F.avg """
+        return F.avg(self, alias=alias, **kwargs)
 
     def between(self, *others):
         """ Creates a |BETWEEN| SQL expression
@@ -536,95 +539,97 @@ class BaseNumericLogic(BaseLogic):
 
 
 class NumericLogic(BaseNumericLogic):
+    __slots__ = tuple()
 
     def sum(self, alias=None, **kwargs):
-        """ :see::meth:Functions.sum """
-        return Functions.sum(self, alias=alias, **kwargs)
+        """ :see::meth:F.sum """
+        return F.sum(self, alias=alias, **kwargs)
 
     def abs(self, alias=None, **kwargs):
-        """ :see::meth:Functions.abs """
-        return Functions.abs(self, alias=alias, **kwargs)
+        """ :see::meth:F.abs """
+        return F.abs(self, alias=alias, **kwargs)
 
     def atan(self, alias=None, **kwargs):
-        """ :see::meth:Functions.atan """
-        return Functions.atan(self, alias=alias, **kwargs)
+        """ :see::meth:F.atan """
+        return F.atan(self, alias=alias, **kwargs)
 
     def atan2(self, y, alias=None, **kwargs):
-        """ :see::meth:Functions.atan2 """
-        return Functions.atan2(self, y, alias=alias, **kwargs)
+        """ :see::meth:F.atan2 """
+        return F.atan2(self, y, alias=alias, **kwargs)
 
     def acos(self, alias=None, **kwargs):
-        """ :see::meth:Functions.acos """
-        return Functions.acos(self, alias=alias, **kwargs)
+        """ :see::meth:F.acos """
+        return F.acos(self, alias=alias, **kwargs)
 
     def asin(self, alias=None, **kwargs):
-        """ :see::meth:Functions.asin """
-        return Functions.asin(self, alias=alias, **kwargs)
+        """ :see::meth:F.asin """
+        return F.asin(self, alias=alias, **kwargs)
 
     def cos(self, alias=None, **kwargs):
-        """ :see::meth:Functions.cos """
-        return Functions.cos(self, alias=alias, **kwargs)
+        """ :see::meth:F.cos """
+        return F.cos(self, alias=alias, **kwargs)
 
     def cot(self, alias=None, **kwargs):
-        """ :see::meth:Functions.cot """
-        return Functions.cot(self, alias=alias, **kwargs)
+        """ :see::meth:F.cot """
+        return F.cot(self, alias=alias, **kwargs)
 
     def degrees(self, alias=None, **kwargs):
-        """ :see::meth:Functions.degrees """
-        return Functions.degrees(self, alias=alias, **kwargs)
+        """ :see::meth:F.degrees """
+        return F.degrees(self, alias=alias, **kwargs)
 
     def exp(self, alias=None, **kwargs):
-        """ :see::meth:Functions.exp """
-        return Functions.exp(self, alias=alias, **kwargs)
+        """ :see::meth:F.exp """
+        return F.exp(self, alias=alias, **kwargs)
 
     def floor(self, alias=None, **kwargs):
-        """ :see::meth:Functions.floor """
-        return Functions.floor(self, alias=alias, **kwargs)
+        """ :see::meth:F.floor """
+        return F.floor(self, alias=alias, **kwargs)
 
     def ceil(self, alias=None, **kwargs):
-        """ :see::meth:Functions.ceil """
-        return Functions.ceil(self, alias=alias, **kwargs)
+        """ :see::meth:F.ceil """
+        return F.ceil(self, alias=alias, **kwargs)
 
     def log(self, *base, alias=None, **kwargs):
-        """ :see::meth:Functions.log """
-        return Functions.log(self, *base, alias=alias, **kwargs)
+        """ :see::meth:F.log """
+        return F.log(self, *base, alias=alias, **kwargs)
 
     def mod(self, dmod=0, alias=None, **kwargs):
-        """ :see::meth:Functions.mod """
-        return Functions.mod(self, dmod, alias=alias, **kwargs)
+        """ :see::meth:F.mod """
+        return F.mod(self, dmod, alias=alias, **kwargs)
 
     __mod__ = mod
 
     def pow(self, power=0, alias=None, **kwargs):
-        """ :see::meth:Functions.pow """
-        return Functions.pow(self, power, alias=alias, **kwargs)
+        """ :see::meth:F.pow """
+        return F.pow(self, power, alias=alias, **kwargs)
 
     def radians(self, alias=None, **kwargs):
-        """ :see::meth:Functions.radians """
-        return Functions.radians(self, alias=alias, **kwargs)
+        """ :see::meth:F.radians """
+        return F.radians(self, alias=alias, **kwargs)
 
     def round(self, alias=None, **kwargs):
-        """ :see::meth:Functions.round """
-        return Functions.round(self, alias=alias, **kwargs)
+        """ :see::meth:F.round """
+        return F.round(self, alias=alias, **kwargs)
 
     def sign(self, alias=None, **kwargs):
-        """ :see::meth:Functions.sign """
-        return Functions.sign(self, alias=alias, **kwargs)
+        """ :see::meth:F.sign """
+        return F.sign(self, alias=alias, **kwargs)
 
     def sin(self, alias=None, **kwargs):
-        """ :see::meth:Functions.sin """
-        return Functions.sin(self, alias=alias, **kwargs)
+        """ :see::meth:F.sin """
+        return F.sin(self, alias=alias, **kwargs)
 
     def sqrt(self, alias=None, **kwargs):
-        """ :see::meth:Functions.sqrt """
-        return Functions.sqrt(self, alias=alias, **kwargs)
+        """ :see::meth:F.sqrt """
+        return F.sqrt(self, alias=alias, **kwargs)
 
     def tan(self, alias=None, **kwargs):
-        """ :see::meth:Functions.tan """
-        return Functions.tan(self, alias=alias, **kwargs)
+        """ :see::meth:F.tan """
+        return F.tan(self, alias=alias, **kwargs)
 
 
 class StringLogic(BaseLogic):
+    __slots__ = tuple()
 
     def like(self, other):
         """ Creates a |LIKE| SQL expression
@@ -785,21 +790,21 @@ class StringLogic(BaseLogic):
             self if not invert else other, op, other if not invert else self)
 
     def concat_ws(self, *others, separator=',', **kwargs):
-        """ :see::meth:Functions.concat_ws """
-        return Functions.concat_ws(self, *others, separator=separator,
+        """ :see::meth:F.concat_ws """
+        return F.concat_ws(self, *others, separator=separator,
                                    **kwargs)
 
     def regexp_replace(self, pattern, repl, *flags, **kwargs):
-        """ :see::meth:Functions.regexp_replace """
-        return Functions.regexp_replace(self, pattern, repl, *flags, **kwargs)
+        """ :see::meth:F.regexp_replace """
+        return F.regexp_replace(self, pattern, repl, *flags, **kwargs)
 
     def regexp_matches(self, pattern, *flags, **kwargs):
-        """ :see::meth:Functions.regexp_matches """
-        return Functions.regexp_matches(self, pattern, *flags, **kwargs)
+        """ :see::meth:F.regexp_matches """
+        return F.regexp_matches(self, pattern, *flags, **kwargs)
 
     def concat(self, *others, **kwargs):
-        """ :see::meth:Functions.concat """
-        return Functions.concat(self, *others, **kwargs)
+        """ :see::meth:F.concat """
+        return F.concat(self, *others, **kwargs)
 
 
 class Subquery(NumericLogic, StringLogic):
@@ -850,16 +855,17 @@ class Subquery(NumericLogic, StringLogic):
         return self.query
 
     def exists(self, alias=None):
-        return Functions.exists(self, alias=alias)
+        return F.exists(self, alias=alias)
 
     def not_exists(self, alias=None):
-        return Functions.not_exists(self, alias=alias)
+        return F.not_exists(self, alias=alias)
 
     def compile(self):
         return self
 
 
 class BaseExpression(BaseLogic):
+    __slots__ = tuple()
 
     def __str__(self):
         return self.string or ""
@@ -923,7 +929,7 @@ class BaseExpression(BaseLogic):
 
 
 class __empty(object):
-    __slots__ = []
+    __slots__ = tuple()
 
     @property
     def string(self):
@@ -933,7 +939,7 @@ class __empty(object):
         return 0
 
     @staticmethod
-    def to_db():
+    def to_db(val):
         return adapt(None).getquoted()
 
 
@@ -951,6 +957,8 @@ class Expression(BaseExpression, NumericLogic, StringLogic):
         Corrected::
         |model.where(model.id > 1000)|
           or
+         |model.where(model.id.gt(1000))|
+           or
         |model.where(Expression(model.id, ">", 1000))|
 
         ===================================================================
@@ -1100,7 +1108,6 @@ class ValuesClause(Clause):
 class Case(BaseExpression):
     """ ===================================================================
         ``Usage Example`
-        `
         ..
             orm.select(Case(fielda.eq(1), 'one',
                             fielda.eq(2), 'two',
@@ -1245,7 +1252,7 @@ class Function(BaseExpression, NumericLogic, StringLogic):
                 expressions.append(Clause('ORDER BY', order_by))
         elif len(expressions) == 1 and isinstance(expressions[0], str):
             #: Window name alias
-            expressions = [aliased(expressions[0])]
+            expressions = [safe(expressions[0])]
             wrap = False
         return Expression(self,
                           Clause('OVER', *expressions, wrap=wrap),
@@ -1267,6 +1274,7 @@ class Function(BaseExpression, NumericLogic, StringLogic):
 
 
 class WindowFunctions(object):
+    __slots__ = tuple()
 
     @staticmethod
     def row_number(*expressions, window_name=None, partition_by=None,
@@ -1482,6 +1490,8 @@ class Functions(WindowFunctions):
     """ Wrapper functions for common SQL functions, providing a simpler path
         to respective :class:Function objects.
     """
+    __slots__ = tuple()
+
     @staticmethod
     def coalesce(*vals, alias=None, **kwargs):
         """ Creates a |COALESCE| SQL expression.
@@ -1494,11 +1504,11 @@ class Functions(WindowFunctions):
 
             ``Usage Example``
             ..
-                model.select(Functions.coalesce(1, 2, 3, 4))
+                model.select(F.coalesce(1, 2, 3, 4))
             ..
             |COALESCE(1, 2, 3, 4)|
         """
-        return Function("COALESCE", *vals, alias=alias, **kwargs)
+        return Function("coalesce", *vals, alias=alias, **kwargs)
 
     @staticmethod
     def greatest(*series, alias=None, **kwargs):
@@ -1509,11 +1519,11 @@ class Functions(WindowFunctions):
 
             ``Usage Example``
             ..
-                model.select(Functions.greatest(1, 2, 3, 4))
+                model.select(F.greatest(1, 2, 3, 4))
             ..
             |GREATEST(1, 2, 3, 4)|
         """
-        return Function("GREATEST", *series, alias=alias, **kwargs)
+        return Function("greatest", *series, alias=alias, **kwargs)
 
     @staticmethod
     def least(*series, alias=None, **kwargs):
@@ -1524,11 +1534,11 @@ class Functions(WindowFunctions):
 
             ``Usage Example``
             ..
-                model.select(Functions.least(1, 2, 3, 4))
+                model.select(F.least(1, 2, 3, 4))
             ..
             |LEAST(1, 2, 3, 4)|
         """
-        return Function("LEAST", *series, alias=alias, **kwargs)
+        return Function("least", *series, alias=alias, **kwargs)
 
     @staticmethod
     def generate_series(start, stop, alias=None, **kwargs):
@@ -1539,7 +1549,7 @@ class Functions(WindowFunctions):
 
             ``Usage Example``
             ..
-                model.select(Functions.generate_series(1, 5))
+                model.select(F.generate_series(1, 5))
             ..
             |generate_series(1, 5)|
         """
@@ -1554,12 +1564,12 @@ class Functions(WindowFunctions):
 
             ``Usage Example``
             ..
-                model.select(Functions.generate_dates(
+                model.select(F.generate_dates(
                     '2009-01-01', '2009-12-31', 1))
             ..
             |generate_dates('2009-01-01', '2009-12-31', 1) |
         """
-        return Function("GENERATE_DATES", *series, alias=alias, **kwargs)
+        return Function("generate_dates", *series, alias=alias, **kwargs)
 
     @staticmethod
     def max(val, alias=None, **kwargs):
@@ -1572,11 +1582,11 @@ class Functions(WindowFunctions):
             ..
                 model.select(model.field.max('max_posts'))
                 # or
-                model.select(Functions.max(model.field, 'max_posts'))
+                model.select(F.max(model.field, 'max_posts'))
             ..
             |MAX(field) max_posts|
         """
-        return Function("MAX", val, alias=alias, **kwargs)
+        return Function("max", val, alias=alias, **kwargs)
 
     @staticmethod
     def min(val, alias=None, **kwargs):
@@ -1589,11 +1599,11 @@ class Functions(WindowFunctions):
             ..
                 model.select(model.field.min('min_posts'))
                 # or
-                model.select(Functions.min(model.field, 'min_posts'))
+                model.select(F.min(model.field, 'min_posts'))
             ..
             |MIN(field) min_posts|
         """
-        return Function("MIN", val, alias=alias, **kwargs)
+        return Function("min", val, alias=alias, **kwargs)
 
     @staticmethod
     def avg(val, alias=None, **kwargs):
@@ -1606,11 +1616,11 @@ class Functions(WindowFunctions):
             ..
                 model.select(model.field.avg('avg_posts'))
                 # or
-                model.select(Functions.avg(model.field, 'avg_posts'))
+                model.select(F.avg(model.field, 'avg_posts'))
             ..
             |AVG(field) avg_posts|
         """
-        return Function("AVG", val, alias=alias, **kwargs)
+        return Function("avg", val, alias=alias, **kwargs)
 
     @staticmethod
     def sum(val, alias=None, **kwargs):
@@ -1623,11 +1633,11 @@ class Functions(WindowFunctions):
             ..
                 model.select(model.field.sum('sum_posts'))
                 # or
-                model.select(Functions.sum(model.field, 'sum_posts'))
+                model.select(F.sum(model.field, 'sum_posts'))
             ..
             |SUM(field) sum_posts|
         """
-        return Function("SUM", val, alias=alias, **kwargs)
+        return Function("sum", val, alias=alias, **kwargs)
 
     @staticmethod
     def abs(val, alias=None, **kwargs):
@@ -1640,11 +1650,11 @@ class Functions(WindowFunctions):
             ..
                 model.where(model.field.abs() == 1)
                 # or
-                model.where(Functions.abs(model.field)) == 1)
+                model.where(F.abs(model.field)) == 1)
             ..
             |WHERE ABS(field) = 1|
         """
-        return Function("ABS", val, alias=alias, **kwargs)
+        return Function("abs", val, alias=alias, **kwargs)
 
     @staticmethod
     def pi():
@@ -1802,7 +1812,7 @@ class Functions(WindowFunctions):
 
             ``Usage Example``
             ..
-                condition = Functions.nullif('some value')
+                condition = F.nullif('some value')
             ..
         """
         return Function(operators.NULLIF, *args, **kwargs)
@@ -1821,7 +1831,7 @@ class Functions(WindowFunctions):
             ..
             |COUNT(field)|
         """
-        return Function("COUNT", val, alias=alias, **kwargs)
+        return Function("count", val, alias=alias, **kwargs)
 
     @staticmethod
     def distinct(val, alias=None, **kwargs):
@@ -1834,12 +1844,12 @@ class Functions(WindowFunctions):
             ..
                 condition = model.field.distinct().count()
                 # or
-                condition = Functions.distinct(model.field).count()
+                condition = F.distinct(model.field).count()
                 model.where(condition > 1)
             ..
             |COUNT(DISTINCT(field))|
         """
-        return Function("DISTINCT", val, alias=alias, **kwargs)
+        return Function("distinct", val, alias=alias, **kwargs)
 
     @staticmethod
     def distinct_on(val, alias=None, **kwargs):
@@ -1852,7 +1862,7 @@ class Functions(WindowFunctions):
             ..
                 condition = model.field.distinct_on().count()
                 # or
-                condition = Functions.distinct_on(model.field).count()
+                condition = F.distinct_on(model.field).count()
                 model.where(condition > 1)
             ..
             |COUNT(DISTINCT ON(field))|
@@ -1870,7 +1880,7 @@ class Functions(WindowFunctions):
             ..
                 condition = model.field.age()
                 # or
-                condition = Functions.age(model.field)
+                condition = F.age(model.field)
                 model.where(condition > 86400)
             ..
             |age(field)|
@@ -1913,11 +1923,11 @@ class Functions(WindowFunctions):
             ..
                 model.field.any()
                 # or
-                Functions.any(model.field)
+                F.any(model.field)
             ..
             |ANY(field)|
         """
-        return Function("ANY", val, alias=alias, **kwargs)
+        return Function("any", val, alias=alias, **kwargs)
 
     @staticmethod
     def all(val, alias=None, **kwargs):
@@ -1930,11 +1940,11 @@ class Functions(WindowFunctions):
             ..
                 model.field.all()
                 # or
-                Functions.all(model.field)
+                F.all(model.field)
             ..
             |ALL(field)|
         """
-        return Function("ALL", val, alias=alias, **kwargs)
+        return Function("all", val, alias=alias, **kwargs)
 
     @staticmethod
     def some(val, alias=None, **kwargs):
@@ -1947,11 +1957,11 @@ class Functions(WindowFunctions):
             ..
                 model.field.some()
                 # or
-                Functions.some(model.field)
+                F.some(model.field)
             ..
             |SOME(field)|
         """
-        return Function("SOME", val, alias=alias, **kwargs)
+        return Function("some", val, alias=alias, **kwargs)
 
     @staticmethod
     def using(a, b, **kwargs):
@@ -1982,8 +1992,10 @@ class Functions(WindowFunctions):
             ..
             |substring(field FROM 'o.b')|
         """
-        return Function(
-            'substring', a, Expression(_empty, operators.FROM, b), **kwargs)
+        return Function('substring',
+                        a,
+                        Expression(_empty, operators.FROM, b),
+                        **kwargs)
 
     @staticmethod
     def regexp_replace(string, *args, **kwargs):
@@ -2225,59 +2237,59 @@ class Functions(WindowFunctions):
     @staticmethod
     def array_to_jsonb(*args, **kwargs):
         """ :see::meth:array_to_json """
-        return Functions._json_to_jsonb(
-            Functions.array_to_json(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.array_to_json(*args, **kwargs))
 
     @staticmethod
     def row_to_jsonb(*args, **kwargs):
         """ :see::meth:row_to_json """
-        return Functions._json_to_jsonb(Functions.row_to_json(*args, **kwargs))
+        return F._json_to_jsonb(F.row_to_json(*args, **kwargs))
 
     @staticmethod
     def to_jsonb(*args, **kwargs):
         """ :see::meth:to_json """
-        return Functions._json_to_jsonb(Functions.to_json(*args, **kwargs))
+        return F._json_to_jsonb(F.to_json(*args, **kwargs))
 
     @staticmethod
     def jsonb_array_length(*args, **kwargs):
         """ :see::meth:json_array_length """
-        return Functions._json_to_jsonb(
-            Functions.json_array_length(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.json_array_length(*args, **kwargs))
 
     @staticmethod
     def jsonb_each(*args, **kwargs):
         """ :see::meth:json_each """
-        return Functions._json_to_jsonb(Functions.json_each(*args, **kwargs))
+        return F._json_to_jsonb(F.json_each(*args, **kwargs))
 
     @staticmethod
     def jsonb_each_text(*args, **kwargs):
         """ :see::meth:json_each_text """
-        return Functions._json_to_jsonb(
-            Functions.json_each_text(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.json_each_text(*args, **kwargs))
 
     @staticmethod
     def jsonb_object_keys(*args, **kwargs):
         """ :see::meth:json_object_keys """
-        return Functions._json_to_jsonb(
-            Functions.json_object_keys(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.json_object_keys(*args, **kwargs))
 
     @staticmethod
     def jsonb_populate_record(*args, **kwargs):
         """ :see::meth:populate_record """
-        return Functions._json_to_jsonb(
-            Functions.json_populate_record(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.json_populate_record(*args, **kwargs))
 
     @staticmethod
     def jsobn_populate_recordset(*args, **kwargs):
         """ :see::meth:json_populate_recordset """
-        return Functions._json_to_jsonb(
-            Functions.json_populate_recordset(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.json_populate_recordset(*args, **kwargs))
 
     @staticmethod
     def jsonb_array_elements(*args, **kwargs):
         """ :see::meth:json_array_elements """
-        return Functions._json_to_jsonb(
-            Functions.json_array_elements(*args, **kwargs))
+        return F._json_to_jsonb(
+            F.json_array_elements(*args, **kwargs))
 
     #: Array support functions
 
@@ -2353,57 +2365,66 @@ class Functions(WindowFunctions):
         return Function('unnest', array, **kwargs)
 
     @staticmethod
-    def func(*args, **kwargs):
+    def new(*args, **kwargs):
         """ Use a custom function or one that is not listed
 
             ..
-                f = Function.func('now')
+                f = F.new('now')
             ..
             |now()|
 
             ..
-                f = Function.func('generate_series', 1, 2, 3, 4)
+                f = F.new('generate_series', 1, 2, 3, 4)
             ..
             |generate_series(1, 2, 3, 4)|
         """
         return Function(*args, **kwargs)
 
 
+F = Functions
+
+
 class aliased(NumericLogic, StringLogic):
-    """ For field aliases.
+    """ For field aliases. This object inherits all of the properties of
+        the field passed to it.
 
-        This object can be manipulated with expression :class:BaseLogic
+        ``Usage Example``
+        ..
+            field.table = 'foo'
+            print(field)
+            # foo.field_name
+
+            field.set_alias('foo_alias')
+            print(aliased(field))
+            # foo_alias.field_name
+
+            print(aliased(field).alias('foo_alias_field_name'))
+            # foo_alias.field_name AS foo_alias_field_name
+        ..
     """
-    __slots__ = ('string',)
+    __slots__ = ('string', 'field')
 
-    def __init__(self, name_or_field):
-        try:
-            if name_or_field._alias:
-                self.string = name_or_field._alias
-            else:
-                self.string = name_or_field.name
-        except AttributeError:
-            self.string = name_or_field
+    def __init__(self, field):
+        self.field = field
+        if field._alias is not None:
+            self.string = field._alias
+        else:
+            self.string = field.name
 
-    @prepr('value', _no_keys=True)
+    @prepr('field', 'string', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
         return str(self.string)
 
+    def __getattr__(self, name):
+        try:
+            return self.__getattribute__(name)
+        except AttributeError:
+            return self.field.__getattr__(name)
+
     def alias(self, alias):
-        """ ..
-            field.table = 'foo'
-            print(field)
-            # foo.field_name
-            field.set_alias('foo_alias')
-            print(aliased(field))
-            # foo_alias.field_name
-            print(aliased(field).alias('foo_alias_field_name'))
-            # foo_alias.field_name AS foo_alias_field_name
-            ..
-        """
-        return aliased(str(self) + ' AS ' + alias)
+        return safe(str(self) + ' AS ' + alias)
 
     def compile(self):
         return self.string
@@ -2432,7 +2453,7 @@ class parameterize(BaseExpression, NumericLogic, StringLogic):
             self._parameterize(value),
             alias if alias else "").rstrip()
 
-    @prepr('value', 'string', 'params', _no_keys=True)
+    @prepr('string', 'params', _no_keys=True)
     def __repr__(self): return
 
     def __str__(self):
@@ -2446,7 +2467,7 @@ class safe(NumericLogic, StringLogic):
     """ !! The value of this object will not be parameterized when
            queries are made. !!
 
-        This object cannot be manipulated with expression :class:BaseLogic
+        This object can be manipulated with expression :class:BaseLogic
     """
     __slots__ = ('string', 'params', 'alias')
 

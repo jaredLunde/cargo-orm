@@ -30,11 +30,11 @@ __all__ = (
     'LSeg',
     'Path',
     'Point',
-    'Polygon'
-)
+    'Polygon')
 
 
 class GeometryLogic(object):
+    __slots__ = tuple()
     '''
     Operator	Description	Example
     +	Translation	box '((0,0),(1,1))' + point '(2.0,0)'
@@ -101,15 +101,13 @@ class GeometryLogic(object):
 
 class Point(Field, GeometryLogic):
     OID = POINT
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
             if value is not None:
                 value = PointRecord(*value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     @property
@@ -147,16 +145,14 @@ POINTARRAYTYPE = reg_array_type('POINTARRAYTYPE', POINTARRAY, POINTTYPE)
 
 class Box(Field, GeometryLogic):
     OID = BOX
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
             if value is not None:
                 value = BoxRecord(PointRecord(*value[0]),
                                   PointRecord(*value[1]))
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __getattr__(self, name):
@@ -191,16 +187,14 @@ BOXARRAYTYPE = reg_array_type('BOXARRAYTYPE', BOXARRAY, BOXTYPE)
 
 class Circle(Field, GeometryLogic):
     OID = CIRCLE
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
     def __call__(self, value=Field.empty):
         """ @value: (#tuple) center, radius e.g., |((0, 5), 1)| """
         if value is not Field.empty:
             if value is not None:
                 value = CircleRecord(PointRecord(*value[0]), value[1])
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __getattr__(self, name):
@@ -233,9 +227,7 @@ CIRCLEARRAYTYPE = reg_array_type('CIRCLEARRAYTYPE', CIRCLEARRAY, CIRCLETYPE)
 
 class Line(Field, GeometryLogic):
     OID = LINE
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -246,7 +238,7 @@ class Line(Field, GeometryLogic):
         if value is not Field.empty:
             if value is not None:
                 value = LineRecord(*value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __getattr__(self, name):
@@ -276,9 +268,7 @@ LINEARRAYTYPE = reg_array_type('LINEARRAYTYPE', LINEARRAY, LINETYPE)
 
 class LSeg(Box):
     OID = LSEG
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -290,7 +280,7 @@ class LSeg(Box):
             if value is not None:
                 value = LSegRecord(PointRecord(value[0][0], value[0][1]),
                                    PointRecord(value[1][0], value[1][1]))
-            self._set_value(value)
+            self.value = value
         return self.value
 
     @staticmethod
@@ -308,12 +298,11 @@ LSEGARRAYTYPE = reg_array_type('LSEGARRAYTYPE', LSEGARRAY, LSEGTYPE)
 
 class Path(Field, GeometryLogic):
     OID = PATH
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table',
-        '_closed')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'table',
+                 '_closed')
 
-    def __init__(self, value=Field.empty, closed=None, **kwargs):
+    def __init__(self, closed=None, value=Field.empty, *args, **kwargs):
         """ Lines are represented by the linear equation Ax + By + C = 0,
             where A and B are not both zero.
 
@@ -323,8 +312,8 @@ class Path(Field, GeometryLogic):
             @closed: (#bool) |True| if the beginning and end of the path
                 are connected
         """
-        super().__init__(value, **kwargs)
         self._closed = closed
+        super().__init__(value=value, **kwargs)
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -343,7 +332,7 @@ class Path(Field, GeometryLogic):
                     if closed is None:
                         closed = not isinstance(value, list)
                     value = PathRecord(*value, closed=closed)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __getattr__(self, name):
@@ -352,9 +341,20 @@ class Path(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattr__(name)
 
+    def __getitem__(self, name):
+        return self.value[name]
+
+    def __setitem__(self, name, value):
+        self.value[name] = value
+
+    def __delitem__(self, name):
+        del self.value[name]
+
+    def __iter__(self):
+        return self.value.__iter__()
+
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls._closed = self._closed
+        cls = self._copy(*args, closed=self._closed, **kwargs)
         return cls
 
     __copy__ = copy
@@ -403,9 +403,7 @@ PATHARRAYTYPE = reg_array_type('PATHARRAYTYPE', PATHARRAY, PATHTYPE)
 
 class Polygon(Field, GeometryLogic):
     OID = POLYGON
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'table')
+    __slots__ = Field.__slots__
 
     def __call__(self, value=Field.empty):
         """ Lines are represented by the linear equation Ax + By + C = 0,
@@ -416,7 +414,7 @@ class Polygon(Field, GeometryLogic):
         if value is not Field.empty:
             if value is not None:
                 value = PolygonRecord(value)
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def __getattr__(self, name):

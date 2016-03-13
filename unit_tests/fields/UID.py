@@ -7,7 +7,7 @@ from unit_tests.fields.BigInt import TestBigInt
 from unit_tests import configure
 
 
-class TestUID(configure.IdentifierTestCase, TestBigInt):
+class TestUID(configure.IdentifierTestCase):
     orm = configure.UIDModel()
 
     @property
@@ -22,8 +22,6 @@ class TestUID(configure.IdentifierTestCase, TestBigInt):
         self.assertIsNone(base.index)
         self.assertIsInstance(base.default, Function)
         self.assertIsNone(base.not_null)
-        self.assertEqual(base.minval, 1)
-        self.assertEqual(base.maxval, 9223372036854775807)
 
     def test___call__(self):
         for check in [2223372036854775807, '2223372036854775808']:
@@ -39,7 +37,7 @@ class TestUID(configure.IdentifierTestCase, TestBigInt):
         self.assertIsNone(self.base.value)
 
     def test_insert(self):
-        self.orm.insert(self.base)
+        self.assertTrue(self.orm.insert(self.base).uid.value > 1)
 
     def test_select(self):
         self.orm.insert(self.base)

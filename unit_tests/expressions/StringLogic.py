@@ -12,7 +12,7 @@ from kola import config
 from bloom.expressions import *
 from vital.security import randkey
 from bloom import ORM, Model
-from bloom.fields import Char, Text, Field
+from bloom.fields import Varchar, Text, Field
 
 
 def new_field():
@@ -29,7 +29,7 @@ class TestStringLogic(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.base = Char()
+        self.base = Varchar()
         self.base.field_name = 'test'
         self.base.table = 'tester'
 

@@ -112,7 +112,7 @@ class OrderedDictCursor(_cursor):
         t = next(it)
         yield self._to_od(t)
         while 1:
-            yield self._to_od(t)
+            yield self._to_od(next(it))
 
 
 class ModelCursor(_cursor):
@@ -129,7 +129,7 @@ class ModelCursor(_cursor):
                 model[k] = v
             else:
                 raise KeyError("Field `{}` not in {}".format(
-                    k, model.__name__))
+                    k, model.__class__.__name__))
         return model
 
     def execute(self, query, vars=None):
@@ -144,7 +144,7 @@ class ModelCursor(_cursor):
     def fetchone(self):
         t = super().fetchone()
         if t is not None:
-            return self._fill_model(t, self._bloom_model._new)
+            return self._fill_model(t, new=False)
 
     def fetchmany(self, size=None):
         ts = super().fetchmany(size)

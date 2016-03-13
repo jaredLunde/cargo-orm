@@ -58,8 +58,8 @@ class TestWith(unittest.TestCase):
         super().__init__(*args, **kwargs)
 
     def test_with_union(self):
-        t = aliased('t')
-        n = aliased('n')
+        t = safe('t')
+        n = safe('n')
         with (
           RAW(ORM().values(1), alias=t, recursive=(n,)) +
           SELECT(ORM().use(t), n+1)

@@ -14,6 +14,7 @@ from kola import config
 from vital.security import randkey
 
 from bloom import *
+from bloom import fields
 from bloom.orm import QueryState
 from bloom.statements import Update
 
@@ -22,7 +23,7 @@ config.bind('/home/jared/apps/xfaps/vital.json')
 create_kola_pool()
 
 
-def new_field(type='char', value=None, name=None, table=None):
+def new_field(type='varchar', value=None, name=None, table=None):
     field = getattr(fields, type.title())(value=value)
     field.field_name = name or randkey(24)
     field.table = table or randkey(24)
@@ -55,7 +56,7 @@ def populate(self):
     ]
     self.orm.state.add(*clauses)
     values = [
-        field.real_value
+        field.value
         for field in self.fields
         if field._should_insert() or field.default is not None
     ]
@@ -75,7 +76,7 @@ def populate(self):
         new_field('text', 'bar', name='textfield', table='foo_b'),
         new_field('int', 1234, name='uid', table='foo_b')]
     values = [
-        field.real_value
+        field.value
         for field in fields
         if field._should_insert() or field.default is not None
     ]
@@ -118,7 +119,7 @@ class TestUpdate(unittest.TestCase):
         populate(self)
         self.fields[0].value = 'bar_2'
         self.orm.set(*[
-            field == field.real_value for field in self.fields])
+            field == field.value for field in self.fields])
         self.orm.returning(*self.fields)
         q = Update(self.orm)
         result = q.execute().fetchall()
@@ -127,7 +128,7 @@ class TestUpdate(unittest.TestCase):
 
         self.fields[0].value = 'bar'
         self.orm.set(*[
-            field == field.real_value for field in self.fields])
+            field == field.value for field in self.fields])
         self.orm.returning(*self.fields[:1])
         q = Update(self.orm)
         result = q.execute().fetchall()
@@ -168,7 +169,7 @@ class TestUpdate(unittest.TestCase):
         self.orm.where(self.fields[1] == aliased(field_b))
         self.orm.set(
             self.fields[1] == aliased(field_b),
-            self.fields[0] == self.fields[0].real_value)
+            self.fields[0] == self.fields[0].value)
         self.orm.use(field_b.table, alias='b')
         self.orm.returning(aliased(field_b))
         q = Update(self.orm)
@@ -177,18 +178,18 @@ class TestUpdate(unittest.TestCase):
         self.assertIn('uid', result[0]._fields)
         self.orm.reset()
 
-    def test_pickle(self):
-        field_b = new_field('int', 1234, name='uid', table='foo_b')
+    '''def test_pickle(self):
+        field_b = new_field('int', value=1234, name='uid', table='foo_b')
         field_b.set_alias(table='b')
         self.orm.where(self.fields[1] == aliased(field_b))
         self.orm.set(
             self.fields[1] == aliased(field_b),
-            self.fields[0] == self.fields[0].real_value)
+            self.fields[0] == self.fields[0].value)
         self.orm.use(field_b.table, alias='b')
         self.orm.returning(aliased(field_b))
         q = Update(self.orm)
         b = pickle.loads(pickle.dumps(q))
-        for k in q.__dict__:
+        for k in dir(q):
             if k == '_client':
                 continue
             if isinstance(
@@ -196,7 +197,7 @@ class TestUpdate(unittest.TestCase):
                 self.assertEqual(getattr(q, k), getattr(b, k))
             else:
                 self.assertTrue(
-                    getattr(q, k).__class__ == getattr(b, k).__class__)
+                    getattr(q, k).__class__ == getattr(b, k).__class__)'''
 
 
 if __name__ == '__main__':

@@ -56,7 +56,7 @@ class TestNumericLogic(unittest.TestCase):
 
     def test___lt__(self):
         for val in (160, new_field(), ORM().subquery().where(1).select()):
-            expr = (self.base < val)
+            expr = (self.base.lt(val))
             if hasattr(val, 'params'):
                 values = list(val.params.values())
             elif isinstance(val, Field):
@@ -67,7 +67,7 @@ class TestNumericLogic(unittest.TestCase):
 
     def test___le__(self):
         for val in (160, new_field(), ORM().subquery().where(1).select()):
-            expr = (self.base <= val)
+            expr = (self.base.le(val))
             if hasattr(val, 'params'):
                 values = list(val.params.values())
             elif isinstance(val, Field):
@@ -78,7 +78,7 @@ class TestNumericLogic(unittest.TestCase):
 
     def test___gt__(self):
         for val in (160, new_field(), ORM().subquery().where(1).select()):
-            expr = (self.base > val)
+            expr = (self.base.gt(val))
             if hasattr(val, 'params'):
                 values = list(val.params.values())
             elif isinstance(val, Field):
@@ -89,7 +89,7 @@ class TestNumericLogic(unittest.TestCase):
 
     def test___ge__(self):
         for val in (160, new_field(), ORM().subquery().where(1).select()):
-            expr = (self.base >= val)
+            expr = (self.base.ge(val))
             if hasattr(val, 'params'):
                 values = list(val.params.values())
             elif isinstance(val, Field):
@@ -156,11 +156,11 @@ class TestNumericLogic(unittest.TestCase):
     def test_abs(self):
         self.validate_function(
             self.base.abs(),
-            'ABS',
+            'abs',
             [self.base])
         self.validate_function(
             self.base.abs(alias='foo'),
-            'ABS',
+            'abs',
             [self.base],
             alias='foo')
 
@@ -200,22 +200,22 @@ class TestNumericLogic(unittest.TestCase):
     def test_min(self):
         self.validate_function(
             self.base.min(),
-            'MIN',
+            'min',
             [self.base])
         self.validate_function(
             self.base.min(alias='foo'),
-            'MIN',
+            'min',
             [self.base],
             alias='foo')
 
     def test_avg(self):
         self.validate_function(
             self.base.avg(),
-            'AVG',
+            'avg',
             [self.base])
         self.validate_function(
             self.base.avg(alias='foo'),
-            'AVG',
+            'avg',
             [self.base],
             alias='foo')
 
@@ -348,11 +348,11 @@ class TestNumericLogic(unittest.TestCase):
     def test_sum(self):
         self.validate_function(
             self.base.sum(),
-            'SUM',
+            'sum',
             [self.base])
         self.validate_function(
             self.base.sum(alias='foo'),
-            'SUM',
+            'sum',
             [self.base],
             alias='foo')
 
@@ -456,11 +456,11 @@ class TestNumericLogic(unittest.TestCase):
     def test_max(self):
         self.validate_function(
             self.base.max(),
-            'MAX',
+            'max',
             [self.base])
         self.validate_function(
             self.base.max(alias='foo'),
-            'MAX',
+            'max',
             [self.base],
             alias='foo')
 

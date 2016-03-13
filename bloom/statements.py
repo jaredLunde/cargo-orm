@@ -64,7 +64,7 @@ class BaseQuery(StringLogic, DateTimeLogic):
         various query statement types
     """
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string')
+                 'one', 'string', 'result')
     newline_re = re.compile(r"""\n+""")
 
     def __init__(self, query=None, params=None, orm=None):
@@ -93,8 +93,8 @@ class BaseQuery(StringLogic, DateTimeLogic):
             ===================================================================
             ``Usage Example``
             ..
-                tn = aliased('tn')
-                n = aliased('n')
+                tn = safe('tn')
+                n = safe('n')
                 with (
                   RAW(ORM().values(1), alias=tn, recursive=(n,)) +
                   SELECT(ORM().use(tn), n+1)
@@ -1089,8 +1089,8 @@ class WITH(Query):
         =======================================================================
         ``Usage Examples``
         ..
-            t = aliased('t')
-            n = aliased('n')
+            t = safe('t')
+            n = safe('n')
             q = WITH(
                 self.orm,
                 RAW(ORM().values(1), alias=t, recursive=(n,)) +
@@ -1102,8 +1102,8 @@ class WITH(Query):
         |   {'n': 6}, {'n': 7}, {'n': 8}, {'n': 9}, {'n': 10}]|
 
         ..
-            t = aliased('t')
-            n = aliased('n')
+            t = safe('t')
+            n = safe('n')
             with (
               RAW(ORM().values(1), alias=t, recursive=(n,)) +
               SELECT(ORM().use(t), n+1)

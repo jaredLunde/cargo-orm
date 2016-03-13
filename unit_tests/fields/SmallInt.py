@@ -62,7 +62,8 @@ class TestSmallInt(configure.IntTestCase, TestField):
 
     def test_insert(self):
         self.base(10)
-        self.orm.insert()
+        val = getattr(self.orm.naked().insert(), self.base.field_name)
+        self.assertEqual(val, 10)
 
     def test_select(self):
         self.base(10)

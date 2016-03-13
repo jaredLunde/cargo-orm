@@ -1,38 +1,34 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-import sys
-import unittest
 import datetime
 from dateutil import tz
 
 import arrow
-from docr import Docr
 from bloom import *
 from bloom.fields import Time
 
 from unit_tests.fields.Field import *
+from unit_tests import configure
 
 
-class TestTime(TestField):
-    base = Time()
+class TestTime(configure.DateTimeTestCase, TestField):
+
+    @property
+    def base(self):
+        return self.orm.time
 
     def test___call__(self):
         dts = []
         ars = []
-        for phrase in ['January 26', 'January 27', 'January 28']:
+        for phrase in ['January 26 at 11:16am EST',
+                       'January 27 at 11:16am EST',
+                       'January 28 at 11:16am EST']:
             self.base(phrase)
             self.assertIsInstance(self.base.value, arrow.Arrow)
             self.assertEqual(self.base.day, int(phrase.split(' ')[1]))
             self.assertIsInstance(self.base.value, arrow.Arrow)
             dts.append(self.base.value)
             ars.append(self.base())
-
-        for phrase in [Function('now'), Clause('now')]:
-            self.base(phrase)
-            self.assertIsInstance(self.base.value, phrase.__class__)
-            with self.assertRaises(AttributeError):
-                self.assertEqual(self.base.day, phrase)
-            self.assertIsInstance(self.base.value, phrase.__class__)
 
         for dt in (dts + ars):
             self.base(dt)
@@ -50,17 +46,30 @@ class TestTime(TestField):
         self.assertEqual(self.base.day, 30)
         self.assertEqual(self.base.hour, 11)
 
-    def test_descriptors(self):
-        self.base('October 31, 1984 at 11:17am')
-        d = Docr('bloom.Time')
-        for attr, obj in d.data_descriptors.items():
-            pass
-
-    def test_real_value(self):
-        self.base('October 31, 2014')
+    def test_value(self):
+        self.base('October 31, 2014 at 11:43am')
         self.assertIsInstance(self.base.value, arrow.Arrow)
+
+    def test_insert(self):
+        self.base('October 31, 2014 at 11:43am')
+        val = getattr(self.orm.insert(self.base), self.base.field_name)
+        self.assertEqual(val.value, self.base.value)
+
+    def test_select(self):
+        self.base('11:43am')
+        self.orm.insert(self.base),
+        val = getattr(self.orm.new().desc(self.orm.uid).get(),
+                      self.base.field_name)
+        self.assertEqual(val.value, self.base.value)
+
+
+class TestTimeTZ(TestTime):
+
+    @property
+    def base(self):
+        return self.orm.timetz
 
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestTime, TestTimeTZ, failfast=True, verbosity=2)

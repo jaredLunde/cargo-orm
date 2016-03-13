@@ -9,7 +9,6 @@
 import re
 import copy
 import string
-from multiprocessing import cpu_count
 
 from slugify import slugify as _slugify
 
@@ -17,29 +16,37 @@ import argon2
 from argon2 import PasswordHasher
 from passlib.context import CryptContext
 
-from vital.debug import prepr
+from vital.debug import prepr, Timer, line
 from vital.security import randkey
 from vital.tools import strings as string_tools
 
 from bloom.etc import passwords, usernames
 from bloom.etc.types import *
 from bloom.expressions import *
+from bloom.exceptions import IncorrectPasswordError
 
 from bloom.fields.field import Field
 from bloom.fields.binary import Binary
+from bloom.fields.integer import Int
 from bloom.fields.character import Text
 from bloom.fields.sequence import Array
-from bloom.validators import CharValidator, NullValidator
+from bloom.validators import *
 
 
 __all__ = (
     'Username',
     'Email',
+    'Hasher',
+    'Argon2Hasher',
+    'BcryptHasher',
+    'Bcrypt256Hasher',
+    'PBKDF2Hasher',
+    'SHA512Hasher',
+    'SHA256Hasher',
     'Password',
     'Slug',
     'SlugFactory',
-    'Key',
-    'AuthKey')
+    'Key')
 
 
 class SlugFactory(object):
@@ -57,22 +64,20 @@ class Slug(Text):
     """ =======================================================================
         Field object for the PostgreSQL field type |TEXT|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minlen', 'maxlen', '_factory',
-        'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'minlen', 'maxlen',
+                 '_factory', 'table')
     OID = SLUG
 
-    def __init__(self, value=Field.empty, minlen=0, maxlen=-1,
-                 slug_factory=None, **kwargs):
+    def __init__(self, maxlen=-1, minlen=0, slug_factory=None, **kwargs):
         """ `Slug`
             :see::meth:Field.__init__
-            @minlen: (#int) minimum length of string value
             @maxlen: (#int) minimum length of string value
+            @minlen: (#int) maximum length of string value
             @slug_factory: (:class:SlugFactory)
         """
         self._factory = slug_factory
-        super().__init__(value=value, minlen=minlen, maxlen=maxlen, **kwargs)
+        super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -80,7 +85,7 @@ class Slug(Text):
                 value = None
             else:
                 value = self.slugify(str(value))
-            self._set_value(value)
+            self.value = value
         return self.value
 
     def slugify(self, value):
@@ -90,260 +95,439 @@ class Slug(Text):
             return _slugify(value, max_length=self.maxlen, word_boundary=False)
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minlen = self.minlen
-        cls.maxlen = self.maxlen
-        cls._factory = self._factory
+        cls = self._copy(*args, minlen=self.minlen, maxlen=self.maxlen,
+                         slug_factory=self._factory, **kwargs)
         return cls
 
     __copy__ = copy
 
 
-_pwd_contexts = {}
+def _get_pwd_context():
+    #: sha1 and md5 are included for migration purposes
+    schemes = ('bcrypt', 'bcrypt_sha256', 'pbkdf2_sha512', 'pbkdf2_sha256',
+               'sha512_crypt', 'sha256_crypt', 'sha1_crypt', 'md5_crypt')
+    return CryptContext(
+        schemes=schemes,
+        all__min_rounds=5,
+        bcrypt__ident='2b',
+        pbkdf2_sha512__min_rounds=2500,
+        sha512_crypt__min_rounds=2500,
+        sha256_crypt__min_rounds=2500)
+
+_pwd_context = _get_pwd_context()
 
 
-def get_pwd_context(schemes, rounds, salt_size):
-    context_key = "{}.{}.{}".format(
-        schemes, rounds, salt_size)
-    if not _pwd_contexts.get(context_key):
-        context = CryptContext(
-            # crypt schemes to allow
-            schemes=schemes,
-            default='bcrypt',
-            # vary rounds parameter randomly when creating new hashes...
-            all__vary_rounds=0.12,
-            # set the number of rounds that should be used...
-            # (appropriate values may vary for different schemes,
-            # and the amount of time you wish it to take)
-            all__default_rounds=rounds if rounds > 4 else 5,
-            bcrypt__default_rounds=31 if rounds > 31 else rounds,
-            bcrypt__ident='2b',
-            bcrypt_sha256__default_rounds=31 if rounds > 31 else rounds,
-            pbkdf2_sha512__salt_size=salt_size,
-            pbkdf2_sha256__salt_size=salt_size)
-        _pwd_contexts[context_key] = context
-    return _pwd_contexts[context_key]
+class HashIdentifier(object):
+    __slots__ = tuple()
+    scheme = None
+    schemes = {}
+
+    @classmethod
+    def register_scheme(cls, scheme):
+        """ Registers @scheme for :prop:identify and :prop:find_class
+            @scheme: (:class:Hasher)
+        """
+        cls.schemes[scheme.scheme] = scheme
+
+    @classmethod
+    def is_hash(cls, value):
+        """ Tests whether or not a given @value is already hashed or
+            is plain-text
+        """
+        if value is None or not isinstance(value, (str, bytes)):
+            return False
+        scheme = HashIdentifier.identify(value)
+        return scheme is not None
+
+    @classmethod
+    def find_class(cls, scheme):
+        try:
+            return cls.schemes[scheme]
+        except KeyError:
+            g = globals()
+            for x, c in g.items():
+                if x.startswith('__'):
+                    continue
+                try:
+                    if issubclass(c, Hasher) and scheme == c.scheme and\
+                       c.scheme is not None:
+                        return c
+                except (KeyError, TypeError):
+                    continue
+
+    @classmethod
+    def identify(cls, value, find_class=False):
+        """ Identifies the password hashing scheme used in @value.
+            @find_class: (#bool) True to return the :class:Hasher instead
+                of the name
+            -> (#str) scheme name if @find_class is |False|, otherwise
+                returns the :class:Hasher for the scheme
+        """
+        if value is None or not isinstance(value, (str, bytes)):
+            return None
+        scheme = _pwd_context.identify(value)
+        cls_found = None
+        if scheme is None:
+            try:
+                _null, scheme, *_ = value.split('$')
+                cls_found = cls.find_class(scheme)
+                if cls_found is None:
+                    scheme = None
+            except ValueError:
+                scheme = None
+        if find_class:
+            return cls.find_class(scheme) if cls_found is None else cls_found
+        return scheme
+
+
+class Hasher(HashIdentifier):
+    __slots__ = ('rounds', 'context', 'raises')
+
+    def __init__(self, rounds=None, raises=False, context=None):
+        """ ```Password Hasher```
+            @rounds: (#int) Defines the amount of computation realized and
+                therefore the execution time, given in number of iterations
+                (also known as time cost).
+            @raises: (#bool) |True| to raise an exception when password
+                verification fails
+            @context: password context object with either an
+                |encrypt(passwordh)| or |hash(password)| method and
+                a |verify(password, hash)| method. e.g. :class:CryptContext
+                or :class:PasswordHasher
+        """
+        self.rounds = rounds
+        self.raises = raises
+        self.context = context or _pwd_context
+
+    @prepr('scheme', _no_keys=True)
+    def __repr__(self): return
+
+    def _verify(self, value, hash):
+        return self.context.verify(value, hash)
+
+    @staticmethod
+    def _raise_if(raises):
+        if raises is True:
+            raise IncorrectPasswordError('The given password is incorrect.')
+
+    @property
+    def _hash_opts(self):
+        return {'scheme': self.scheme, 'rounds': self.rounds}
+
+    def hash(self, value):
+        """ Hashes @value
+            -> (#str) hash
+        """
+        try:
+            return self.context.hash(value, **self._hash_opts)
+        except AttributeError:
+            return self.context.encrypt(value, **self._hash_opts)
+
+    def verify(self, value, hash):
+        """ Verifies @value against @hash.
+            -> (#bool) |True| if the given @value is correct, raises
+                IncorrectPasswordError if :prop:raises is set to |True|
+        """
+        if hash is None or value is None:
+            self._raise_if(self.raises)
+            return False
+        try:
+            verify = self._verify(value, hash)
+        except (argon2.exceptions.VerificationError, ValueError):
+            verify = False
+        self._raise_if(self.raises)
+        return verify
+
+    @property
+    def tries_per_second(self):
+        """ Calculates the verification tries per second possibile on this
+            machine with this :class:Hasher
+            ..
+                hasher = Argon2Hasher()
+                hasher.tries_per_second
+                # Loading =‒‒‒‒‒↦                           ☉ (18%)
+            ..
+            |‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒|
+            |Intervals: 10000      |
+            |     Mean: 3.58ms     |
+            |      Min: 3.55ms     |
+            |   Median: 3.58ms     |
+            |      Max: 6.15ms     |
+            | St. Dev.: 73.41µs    |
+            |    Total: 35.8s      |
+            |‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒|
+            |'279 tries per second'|
+        """
+        line('‒')
+        h = self.hash('foobar')
+        t = Timer(self.verify)
+        t.time(1E3, 'foobar', h)
+        line('‒')
+        return '%d tries per second' % (1.0 // t.mean)
+
+
+class Argon2Hasher(Hasher):
+    __slots__ = ('rounds', 'context', 'raises')
+    scheme = 'argon2i'
+
+    def __init__(self, rounds=2, raises=False, salt_size=16, memory_cost=1<<12,
+                 parallelism=2, length=32, encoding='utf8', context=None):
+        """ `Argon2i`
+            :see::meth:Hasher.__init__
+            @salt_size: (#int) Defines the size in bytes for the hash salt.
+            @memory_cost: (#int) Defines the memory usage, given in kibibytes.
+            @parallelism: (#int) Defines the number of parallel threads
+                (changes the resulting hash value).
+            @length: (#int) Length of the hash in bytes.
+            @encoding: (#str) The Argon2 C library expects bytes. So if hash()
+                or verify() are passed a unicode string, it will be encoded
+                using this encoding.
+            @context: (:class:PasswordHasher)
+        """
+        super().__init__(rounds, raises)
+        self.context = context or PasswordHasher(time_cost=self.rounds,
+                                                 memory_cost=memory_cost,
+                                                 parallelism=parallelism,
+                                                 hash_len=length,
+                                                 salt_len=salt_size,
+                                                 encoding=encoding)
+
+    @property
+    def _hash_opts(self):
+        return {}
+
+    def _verify(self, value, hash):
+        return self.context.verify(hash, value)
+
+
+class BcryptHasher(Hasher):
+    __slots__ = Hasher.__slots__
+    scheme = 'bcrypt'
+
+    def __init__(self, rounds=6, raises=False, context=None):
+        """ `Bcrypt`
+            :see::meth:Hasher.__init__
+
+            Salts for this :class:Hasher are automatically generated with
+            the correct size.
+        """
+        super().__init__(rounds, raises, context)
+
+
+class Bcrypt256Hasher(Hasher):
+    __slots__ = Hasher.__slots__
+    scheme = 'bcrypt_sha256'
+
+    def __init__(self, rounds=6, raises=False, context=None):
+        """ `Bcrypt with SHA-256`
+            :see::meth:Hasher.__init__
+
+            Salts for this :class:Hasher are automatically generated with
+            the correct size.
+        """
+        super().__init__(rounds, raises, context)
+
+
+class PBKDF2Hasher(Hasher):
+    __slots__ = Hasher.__slots__
+    scheme = 'pbkdf2_sha512'
+
+    def __init__(self, rounds=6400, raises=False, context=None):
+        """ `PBKDF2-SHA-512`
+            :see::meth:Hasher.__init__
+
+            Salts for this :class:Hasher are automatically generated with
+            the correct size.
+        """
+        super().__init__(rounds, raises, context)
+
+
+class SHA512Hasher(Hasher):
+    __slots__ = Hasher.__slots__
+    scheme = 'sha512_crypt'
+
+    def __init__(self, rounds=9600, raises=False, context=None):
+        """ `Bcrypt with SHA-256`
+            :see::meth:Hasher.__init__
+
+            Salts for this :class:Hasher are automatically generated with
+            the correct size.
+        """
+        super().__init__(rounds, raises, context)
+
+
+class SHA256Hasher(Hasher):
+    __slots__ = Hasher.__slots__
+    scheme = 'sha256_crypt'
+
+    def __init__(self, rounds=12800, raises=False, context=None):
+        """ `Bcrypt with SHA-256`
+            :see::meth:Hasher.__init__
+
+            Salts for this :class:Hasher are automatically generated with
+            the correct size.
+        """
+        super().__init__(rounds, raises, context)
 
 
 class Password(Field, StringLogic):
     """ =======================================================================
-        Field object for PostgreSQL CHAR/TEXT types.
+        Field wrapper for PostgreSQL |TEXT| type.
 
         This object also validates that a password fits given requirements
-        such as 'minlen' and hashes plain text with supplied hash schemes
-        using :class:CryptContext.
+        such as |minlen| and hashes plain text with supplied hash schemes
+        using :class:Hasher
 
         =======================================================================
         ``Usage Example``
         ..
-            password = Password('coolpasswordbrah')
-            print(password)
+            password = Password('somepassword')
+            print(password.value)
         ..
         |$pbkdf2-sha512$19083$VsoZY6y1NmYsZWxtDQEAoBQCoJRSaq01BiAEQMg5JwQg5P...|
 
-        ========================================================================
         ..
-            password.verify('coolpasswordbro')
+            password.verify('somepasswords')
+            # False
+            password.verify('somepassword')
+            # True
         ..
-        |False|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', 'validation_value', '_alias', 'default', 'minlen',
-        'maxlen', 'scheme', 'schemes', 'salt_size', 'strict', 'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', 'validation_value', '_alias', 'default',
+                 'minlen', 'maxlen', 'table', 'hasher', 'blacklist')
     OID = PASSWORD
 
-    def __init__(self, value=Field.empty, minlen=8, maxlen=-1, scheme="argon2",
-                 schemes=None, salt_size=16, rounds=15, strict=True,
-                 validator=CharValidator, **kwargs):
+    def __init__(self, hasher=Argon2Hasher(), minlen=8, maxlen=-1,
+                 validator=PasswordValidator, blacklist=passwords.blacklist,
+                 value=Field.empty, **kwargs):
         """ `Password`
-
             :see::meth:Field.__init__
-            @minlen: (#int) minimum length of string value
-            @maxlen: (#int) minimum length of string value
-            @scheme: (#str) :class:CryptContext scheme to use
-            @schemes: (#list) of :class:CryptContext schemes, not required if
-                scheme is |argon2|
-            @salt_size: (#int) length of chars to salt password with
-            @rounds: (#int) number of rounds to hash the value for
-            @strict: (#bool) True if you wish to blacklist the most commonly
-                used passwords
-
-            TODO: Explicitly state if something is a hash coming in
+            @hasher: (:class:Hasher) the password hasher to use
+            @blacklist: (#set) passwords which cannot be used due to their
+                predictability and popularity, defaults to
+                :attr:bloom.etc.passwords.blacklist
+            @minlen: (#int) minimum length of the password
+            @maxlen: (#int) maximum length of the password
         """
         super().__init__(validator=validator, **kwargs)
-        self.minlen, self.maxlen = minlen, maxlen
-        self.rounds = rounds
-        self.scheme = scheme
-        self.schemes = schemes or [
-            "pbkdf2_sha512", "bcrypt_sha256", "bcrypt", "pbkdf2_sha256"]
-        self.salt_size = salt_size
-        self.strict = strict
-        value_is_hash = self.is_hash(value)
-        self._set_value(
-            self.encrypt(value) if value and not value_is_hash else
-            Field.empty)
-        self.validation_value = str(value) \
-            if value and not value_is_hash else None
-
-    @prepr('name', 'scheme', _no_keys=True)
-    def __repr__(self): return
+        self.hasher = hasher
+        self.minlen = minlen
+        self.maxlen = maxlen
+        self.blacklist = blacklist
+        self.validation_value = Field.empty
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            is_hash = self.is_hash(value)
+            is_hash = self.hasher.is_hash(value)
             if not is_hash and value is not None:
                 self.validation_value = str(value)
-                self._set_value(self.encrypt(str(value)))
+                value = self.hasher.hash(str(value))
             else:
-                self._set_value(value)
+                self.validation_value = None
+                value = value
+            self.value = value
         return self.value
 
-    def is_hash(self, value):
-        """ Tests whether or not a given @value is already hashed or
-            is plain-text
+    def hash(self, value):
+        """ Hashes @value with the local :class:Hasher at :prop:hasher """
+        return self.hasher.hash(value)
+
+    def _get_hasher_for(self, value):
+        """ Gets the correct hasher for a given @value, this is useful for
+            migrating and managing passwords using multiple algorithms.
         """
-        if not value or not isinstance(value, (str, bytes)):
-            return False
+        hasher = HashIdentifier.identify(self.value, find_class=True)
         try:
-            _null, scheme, *_ = value.split('$')
-            return scheme.strip() in {
-                s.replace('_', '-')
-                for s in self.schemes + ['argon2i', 'argon2d']
-            }
-        except:
-            return False
-
-    def argon2_encrypt(self, value, time_cost=0, memory_cost=1024,
-                       parallelism=0,  hash_len=45, salt_len=0,
-                       encoding='utf-8'):
-        """ Hashes @value using the argon2 algorithm.
-
-            @value: value to hash
-            @time_cost: (#int) Defines the amount of computation realized and
-                therefore the execution time, given in number of iterations.
-            @memory_cost: (#int) Defines the memory usage, given in kibibytes.
-            @parallelism: (#int) Defines the number of parallel threads
-                (changes the resulting hash value).
-            @hash_len: (#int) Length of the hash in bytes.
-            @salt_len: (#int) Length of random salt to be generated for each
-                password.
-            @encoding: (#str) The Argon2 C library expects bytes. So if hash()
-                or verify() are passed a unicode string, it will be encoded
-                using this encoding.
-
-            -> (#str) argon2 hash
-        """
-        a2 = PasswordHasher(
-            time_cost=(time_cost or self.rounds), memory_cost=memory_cost,
-            parallelism=(parallelism or cpu_count() * 2), hash_len=hash_len,
-            salt_len=(salt_len or self.salt_size), encoding=encoding)
-        return a2.hash(value)
-
-    def encrypt(self, value, scheme=None):
-        """ Hashes @value with @scheme or the default scheme """
-        scheme = scheme or self.scheme
-        if scheme == 'argon2':
-            return self.argon2_encrypt(value)
-        pwd_context = get_pwd_context(
-            self.schemes, self.rounds, self.salt_size)
-        digest = pwd_context.encrypt(value, scheme=scheme)
-        if scheme != 'bcrypt':
-            return digest
-        else:
-            return "$bcrypt{}".format(digest)
-
-    @staticmethod
-    def generate(size=256):
-        """ Generates a secure and random password of @size in bits
-            of entropy
-        """
-        return AuthKey.generate(size=size)
-    gen = generate
-
-    @property
-    def requirements(self):
-        return "Password must be at least {} characters long.".format(
-            self.minlen)
-
-    @property
-    def mask(self):
-        """ Returns a 'masked' version of the password in
-            :prop:validation_value
-        """
-        if self.validation_value:
-            return "".join("x" for x in range(len(self.validation_value)))
-
-    def argon2_verify(self, value, hash=None, time_cost=0, memory_cost=1024,
-                      parallelism=0, hash_len=45, salt_len=0,
-                      encoding='utf-8'):
-        """ Verifies @value against @hash using the argon2 algorithm.
-
-            @value: value to hash
-            @time_cost: (#int) Defines the amount of computation realized and
-                therefore the execution time, given in number of iterations.
-            @memory_cost: (#int) Defines the memory usage, given in kibibytes.
-            @parallelism: (#int) Defines the number of parallel threads
-                (changes the resulting hash value).
-            @hash_len: (#int) Length of the hash in bytes.
-            @salt_len: (#int) Length of random salt to be generated for each
-                password.
-            @encoding: (#str) The Argon2 C library expects bytes. So if hash()
-                or verify() are passed a unicode string, it will be encoded
-                using this encoding.
-
-            -> (#bool) True if the given @value is correct
-        """
-        hash = hash or self.value
-        if not hash or not value:
-            return False
-        pwd_context = PasswordHasher(
-            time_cost=(time_cost or self.rounds), memory_cost=memory_cost,
-            parallelism=(parallelism or cpu_count() * 2), hash_len=hash_len,
-            salt_len=(salt_len or self.salt_size), encoding=encoding)
-        try:
-            return pwd_context.verify(hash, value)
-        except argon2.exceptions.VerificationError as e:
-            return False
+            return hasher()
+        except TypeError:
+            return self.hasher
 
     def verify(self, value, hash=None):
-        """ Verifies that @value matches the password hash
-            -> #bool True if the given @value is correct
+        """ Verifies @value against the local hash stored in :prop:value, or
+            alternatively @hash.
         """
-        hash = hash or self.value
-        if not hash or not value:
+        hash = hash or (None if self.value_is_null else self.value)
+        if hash is None or value is None:
             return False
-        scheme = hash.split("$")[1]
-        if 'argon2' in scheme:
-            return self.argon2_verify(value, hash)
-        pwd_context = get_pwd_context(
-            self.schemes, self.rounds, self.salt_size)
-        try:
-            return pwd_context.verify(value, hash.replace("$bcrypt$", "$"))
-        except ValueError:
-            return False
+        hasher = self._get_hasher_for(value)
+        return hasher.verify(value, hash)
 
-    def validate(self):
-        """ Validates the field
-            -> #bool True if the :prop:validation_value is valid
+    def verify_and_migrate(self, value):
+        """ Verifies @value against the local hash stored in :prop:value
+            and changes itself to a newly generated hash if @value verifies,
+            migrating from whichever previous hashing algorithm was used to
+            the local :class:Hasher in :prop:hasher. If the local
+            :class:Hasher is the same as the hash in @value, the hash will
+            not be updated.
+
+            !! This will only work with hashers which are included in this
+               package or registered with :meth:Hasher.register !!
+            ..
+                password = Password(BcryptHasher())
+                password('somepassword')
+                # $2b$06$SBHX9IEQ1FzyOVUuBglPE.zLLlicbyiRMc/U9C6IbM34KbkATdeQW
+                password.verify('somepassword')
+                # True
+
+                password.hasher = Argon2Hasher()
+                password.verify_and_update('somepassword2')
+                # False
+                password.verify_and_update('somepassword')
+                # True
+                # $2b$06$yyxzotqz6ToY2aqBoQnd4.7TNH9jXEqlvICIo5ELtio5jti3xPEZe
+            ..
         """
-        universal_validation = self._validate()
-        if not universal_validation:
+        if self.value_is_null or value is None:
             return False
-        if self.strict and self.validation_value in passwords.blacklist:
-            self.validator.error = "The password entered is blacklisted ({})"\
-                .format(repr(self.validation_value))
+        hasher = self._get_hasher_for(value)
+        verified = hasher.verify(value, self.value)
+        if verified and hasher.scheme is not self.hasher.scheme:
+            self.__call__(value)
+        return verified
+
+    def verify_and_refresh(self, value):
+        """ Verifies @value against the local hash stored in :prop:value
+            and changes itself to a newly generated hash if @value verifies.
+            The hash will use the same hashing algorithm it received on its
+            way in.
+
+            Similar to :meth:verify_and_migrate
+        """
+        if self.value_is_null or value is None:
             return False
-        return self.is_hash(self.value)
+        hasher = self._get_hasher_for(value)
+        verified = hasher.verify(value, self.value)
+        if verified:
+            self.__call__(hasher.hash(value))
+        return verified
+
+    @staticmethod
+    def generate(size=256, keyspace=string.ascii_letters+string.digits+'/.#+'):
+        """ Generates a cryptographically secure and random password of
+            @size in bits of entropy
+        """
+        return Key.generate(size=size, keyspace=keyspace)
+
+    def new(self, *args, **kwargs):
+        """ Generates a cryptographically secure and random password of
+            @size in bits of entropy and sets the :prop:value of this field
+            to the generated value
+        """
+        self.validation_value = self.generate(*args, **kwargs)
+        return self.__call__(self.validation_value)
+
+    def clear(self):
+        self.validation_value = self.empty
+        self.value = self.empty
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minlen = self.minlen
-        cls.maxlen = self.maxlen
-        cls.scheme = self.scheme
-        cls.schemes = copy.copy(self.schemes)
-        cls.salt_size = self.salt_size
-        cls.strict = self.strict
+        cls = self._copy(*args,
+                         hasher=self.hasher,
+                         minlen=self.minlen,
+                         maxlen=self.maxlen,
+                         blacklist=self.blacklist,
+                         **kwargs)
         cls.validation_value = self.validation_value
         return cls
 
@@ -364,14 +548,13 @@ class Key(Field, StringLogic):
         ..
         |v+mwqKTshyGNcoChT1HFHnSr.umyotPhAXMZ/pxEJWrFH|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'size', 'keyspace', '_genargs', 'table',
-        'rng')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'size', 'keyspace',
+                 'table', 'rng')
     OID = KEY
 
-    def __init__(self, value=Field.empty, size=256,
-                 keyspace=string.ascii_letters+string.digits+'/.#+',
+    def __init__(self, size=256,
+                 keyspace=string.ascii_letters + string.digits+'/.#+',
                  rng=None, validator=NullValidator, **kwargs):
         """ `Key`
             :see::meth:Field.__init__
@@ -380,22 +563,21 @@ class Key(Field, StringLogic):
             @rng: the random number generator implementation to use.
                 :class:random.SystemRandom by default
         """
-        super().__init__(value=value, validator=NullValidator, **kwargs)
+        super().__init__(validator=validator, **kwargs)
         self.size = size
         self.keyspace = keyspace
         self.rng = rng
-        self._genargs = (self.size, self.keyspace, self.rng)
 
-    @prepr('size', 'name', 'value', _no_keys=True)
+    @prepr('name', 'size', 'value', _no_keys=True)
     def __repr__(self): return
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(str(value) if value is not None else value)
+            self.value = str(value) if value is not None else value
         return self.value
 
     @classmethod
-    def generate(self, size=256,
+    def generate(cls, size=256,
                  keyspace=string.ascii_letters+string.digits+'/.#+',
                  rng=None):
         """ Generates a high-entropy random key. First, a @size pseudo-random
@@ -409,40 +591,23 @@ class Key(Field, StringLogic):
                 :class:random.SystemRandom by default
             -> #str high-entropy key
         """
-        keyspace = keyspace if keyspace or not hasattr(self, 'keyspace') else \
-            self.keyspace
-        size = size if size or not hasattr(self, 'size') else self.size
+        keyspace = keyspace if keyspace or not hasattr(cls, 'keyspace') else \
+            cls.keyspace
+        size = size if size or not hasattr(cls, 'size') else cls.size
         return randkey(size, keyspace, rng=rng)
 
     def new(self, *args, **kwargs):
         """ Creates a new key and sets the value of the field to the key """
         if not args and not kwargs:
-            self._set_value(self.generate(*self._genargs))
+            value = self.generate(self.size, self.keyspace, self.rng)
         else:
-            self._set_value(self.generate(*args, **kwargs))
+            value = self.generate(*args, **kwargs)
+        self.value = value
 
     def copy(self, *args, **kwargs):
-        cls = self.__class__(*args, **kwargs)
-        cls.field_name = self.field_name
-        cls.primary = self.primary
-        cls.unique = self.unique
-        cls.index = self.index
-        cls.not_null = self.not_null
-        if self.value is not None and self.value is not Field.empty:
-            cls.value = copy.copy(self.value)
-        cls._validator = self._validator
-        cls._alias = self._alias
-        cls.table = self.table
-        cls.size = self.size
-        cls.keyspace = self.keyspace
-        cls.rng = self.rng
-        cls._genargs = copy.copy(self._genargs)
-        return cls
+        return self._copy(self.size, self.keyspace, self.rng, *args, **kwargs)
 
     __copy__ = copy
-
-
-AuthKey = Key
 
 
 class Email(Text):
@@ -460,36 +625,23 @@ class Email(Text):
         ..
         |False|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minlen', 'maxlen', 'table')
+    __slots__ = Text.__slots__
     OID = EMAIL
 
-    def __init__(self, value=Field.empty, minlen=6, maxlen=320, **kwargs):
+    def __init__(self, maxlen=320, minlen=6, validator=EmailValidator,
+                 **kwargs):
         """ `Email`
             :see::meth:Field.__init__
             @minlen: (#int) minimum length of string value
             @maxlen: (#int) minimum length of string value
         """
-        super().__init__(value=value, minlen=minlen, maxlen=maxlen, **kwargs)
+        super().__init__(minlen=minlen, maxlen=maxlen, validator=validator,
+                         **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self._set_value(str(value).lower() if value is not None else value)
+            self.value = str(value).lower() if value is not None else value
         return self.value
-
-    def validate(self):
-        universal_validation = self._validate()
-        if not universal_validation:
-            return False
-        if (self.value or self.not_null) and not self.validate_chars():
-            self.validation_error = "{} is not a valid email address".format(
-                repr(self.value))
-            return False
-        return True
-
-    def validate_chars(self):
-        return string_tools.is_email(self.value)
 
 
 class Username(Text):
@@ -509,18 +661,18 @@ class Username(Text):
         |False|
 
         ..
-            print(username.validation_error)
+            print(username.validator.error)
         ..
         |'This is a reserved username.'|
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', 'minlen', 'maxlen', '_re',
-        'reserved_usernames', 'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'minlen', 'maxlen',
+                 '_re', 'reserved_usernames', 'table')
     OID = USERNAME
 
-    def __init__(self, value=Field.empty, minlen=1, maxlen=25,
-                 reserved_usernames=None, re_pattern=None, **kwargs):
+    def __init__(self, maxlen=25, minlen=1,
+                 reserved_usernames=usernames.reserved_usernames,
+                 re_pattern=None, validator=UsernameValidator, **kwargs):
         """ `Username`
             :see::meth:Field.__init__
             @minlen: (#int) minimum length of string value
@@ -530,46 +682,23 @@ class Username(Text):
             @re_pattern: (sre_compile) compiled regex pattern to validate
                 usernames with. Defautls to :var:string_tools.username_re
         """
-        super().__init__(value=value, minlen=minlen, maxlen=maxlen, **kwargs)
+        super().__init__(minlen=minlen, maxlen=maxlen, validator=validator,
+                         **kwargs)
         self._re = re_pattern or string_tools.username_re
         if reserved_usernames is not None:
             self.reserved_usernames = set(u.lower()
                                           for u in reserved_usernames)
-        else:
-            self.reserved_usernames = set(usernames.reserved_usernames)
-
-    def __call__(self, value=Field.empty):
-        if value is not Field.empty:
-            self._set_value(str(value) if value is not None else value)
-        return self.value
 
     def add_reserved_username(self, *usernames):
         for username in usernames:
             self.reserved_usernames.add(username.lower())
 
-    def validate(self):
-        if self.value and \
-           self.value.strip().lower() in self.reserved_usernames:
-            self.validation_error = "This is a reserved username."
-            return False
-        universal_validation = self._validate()
-        if not universal_validation:
-            return False
-        if (self.value or self.not_null) and not self.validate_chars():
-            self.validation_error = "{} is not a valid username".format(
-                repr(self.value))
-            return False
-        return True
-
-    def validate_chars(self):
-        return self._re.match(self.value)
-
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minlen = self.minlen
-        cls.maxlen = self.maxlen
-        cls._re = self._re
-        cls.reserved_usernames = self.reserved_usernames
+        cls = self._copy(maxlen=self.maxlen,
+                         minlen=self.minlen,
+                         re_pattern=self._re,
+                         reserved_usernames=self.reserved_usernames,
+                         **kwargs)
         return cls
 
     __copy__ = copy
@@ -581,7 +710,7 @@ class Username(Text):
             if k not in {'copy', '_re', 'validator'} and \
                not k.startswith('__') and not callable(attr):
                 try:
-                    setattr(cls, k, copy.deepcopy(getattr(self, k)))
+                    setattr(cls, k, copy.deepcopy(getattr(self, k), memo))
                 except AttributeError:
                     pass
                 except TypeError:
@@ -589,3 +718,20 @@ class Username(Text):
             elif k == '_re':
                 setattr(cls, k, getattr(self, k))
         return cls
+
+
+class Duration(Int):
+    # TODO: use datetime.timedelta(seconds=12345)
+    def __init__(self):
+        pass
+
+    def format(fmt):
+        '''strfdelta(datetime.timedelta(seconds=12345),
+                     '{hours}h {minutes}m {seconds}s')
+        '''
+        tdelta = self.delta
+        d = {'days': None, 'months': None, }
+        d = {"days": tdelta.days}
+        d["hours"], rem = divmod(tdelta.seconds, 3600)
+        d["minutes"], d["seconds"] = divmod(rem, 60)
+        return fmt.format(**d)

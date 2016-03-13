@@ -11,7 +11,9 @@ try:
 except ImportError:
     import json
 
-import docr
+from docr import objects
+
+from collections import defaultdict
 
 import psycopg2
 import psycopg2.pool
@@ -41,21 +43,62 @@ __all__ = (
 
 
 class BaseClient(object):
+    __slots__ = tuple()
+    _ext_map = {'hstore': psycopg2.extras.register_hstore,
+                'composite': psycopg2.extras.register_composite}
 
-    @DictProperty('_cache', 'cursor_factory', read_only=True)
+    def register(self, extension, *args, cursor=None, **kwargs):
+        """ Shortcut for registering extensions in :prop:_ext_map to the
+            local connection or cursor, currently only 'composite' and
+            'hstore' are supported.
+
+            @extension: (#str) name of the extension
+            @*args: arguments to pass to the extension function
+            @cursor: (:class:psycopg2.extensions.cursor) apply to the
+                given cursor rather than the local connection
+            @**kwargs: keyword arguments to pass ot hte extension function
+        """
+        conn_or_curs = self.connection if cursor is None else self.cursor
+        self._ext_map[extension](conn_or_curs, *args, **kwargs)
+
+    def _load_from_str(self, name):
+        return objects.Object.import_from(name)
+
+    @DictProperty('_cache', 'cursor_factory', read_only=False)
     def cursor_factory(self):
         if isinstance(self._cursor_factory, str):
-            return Docr.get_obj(self._cursor_factory)
+            self._cursor_factory = self._load_from_str(self._cursor_factory)
         return self._cursor_factory
+
+    def set_cursor_factory(self, cursor_factory):
+        self.cursor_factory = self._load_from_str(cursor_factory)
 
     @property
     def schema(self):
+        """ The default schema to set the cursor search path to """
         opt = self._connection_options
         return opt.get('schema', opt.get('search_path', self._schema))
 
+    def add_search_path(self, *paths):
+        """ Adds a schema to the search path in addition to :prop:schema.
+        """
+        self._search_paths.extend(paths)
+
+    def remove_search_path(self, path):
+        """ Removes a schema to the search path in addition to :prop:schema.
+        """
+        self._search_paths.remove(path)
+
+    def set_schema(self, schema):
+        """ Sets the default schema used by the client. """
+        self._schema = schema
+
     @staticmethod
-    def set_schema(cursor, schema):
-        return cursor.execute('SET search_path TO %s' % schema)
+    def apply_schema(cursor, *schemas):
+        """ Sets @schemas to the cursor search path.
+            @schemas: (#str) one or several schema search paths
+        """
+        return cursor.execute('SET search_path TO %s' % ", ".join(schemas))
 
     @staticmethod
     def to_dsn(opt):
@@ -70,6 +113,45 @@ class BaseClient(object):
                          'host', 'port'})
         except AttributeError:
             return opt
+
+    EVENTS = {'COMMIT', 'ROLLBACK', 'CONNECT', 'CLOSE', 'NEW CURSOR'}
+
+    def before(self, event, task):
+        """ Creates a hook which fires @task before @event. The task callable
+            must accept one argument for this |client| object.
+
+            @event: (#str) name of the event in :prop:_events
+            ..
+            db.client.before('connect',
+                             lambda pg: pg.set_schema('foo'))
+            ..
+        """
+        self._events['BEFORE'][event.upper()] = task
+
+    def after(self, event, task):
+        """ Creates a hook which fires @task after @event. The task callable
+            must accept one argument for this |client| object.
+
+            @event: (#str) name of the event in :prop:_events
+            ..
+                db.client.after('new cursor',
+                                lambda pg, cur:
+                                    cur.set_client_encoding('latin1'))
+            ..
+        """
+        self._events['AFTER'][event.upper()] = task
+
+    def _apply_event(self, when, event, *args, **kwargs):
+        try:
+            self._events[when.upper()][event.upper()](self, *args, **kwargs)
+        except KeyError:
+            pass
+
+    def _apply_before(self, *args, **kwargs):
+        self._apply_event('BEFORE', *args, **kwargs)
+
+    def _apply_after(self, *args, **kwargs):
+        self._apply_event('AFTER', *args, **kwargs)
 
 
 class Postgres(BaseClient):
@@ -90,11 +172,12 @@ class Postgres(BaseClient):
         ..
     """
     __slots__ = ('_dsn', 'autocommit', '_connection', '_connection_options',
-                 '_schema', 'encoding', '_cursor_factory', '_cache')
+                 '_schema', 'encoding', '_cursor_factory', '_cache',
+                 '_search_paths', '_events')
 
     def __init__(self, dsn=None, cursor_factory=CNamedTupleCursor,
                  connection=None, autocommit=False, encoding=None, schema=None,
-                 **connection_options):
+                 search_paths=None, events=None, **connection_options):
         """ `Postgres Client`
 
             This is a thin wrapper for the :mod:psycopg2 connection object
@@ -111,6 +194,22 @@ class Postgres(BaseClient):
             @encoding: (#str) Sets the client encoding for the current session.
                 If None, the default is the encoding defined by the database.
             @schema: (#str) schema to set the postgres search path to
+            @search_paths: (#list) additional search paths to set aside
+                from the default @schema
+            @events: (#dict) |{'[before, after] event_name': action}}|
+                available events are: :see::attr:Postgres.EVENTS
+                ..
+                    from bloom import db
+                    db.bind(events={
+                        "before": {
+                            "commit": do_something
+                        },
+                        "after": {
+                            "new cursor": lambda pg, cur:
+                                cur.set_client_encoding('latin1')
+                        }
+                    })
+                ..
             @**connection_options: |key=value| arguments to pass to
                 :func:psycopg2.connect
         """
@@ -118,10 +217,15 @@ class Postgres(BaseClient):
 
         # Connection options
         self._dsn = dsn
+        self._events = events or defaultdict(dict)
         self.autocommit = autocommit
         self._connection = connection
         self._connection_options = connection_options or {}
         self._schema = schema
+        try:
+            self._search_paths = list(search_paths)
+        except TypeError:
+            self._search_paths = []
         self.encoding = encoding
 
         # Cursor options
@@ -184,20 +288,21 @@ class Postgres(BaseClient):
             pass
         elif self.cursor_factory != self.connection.cursor_factory:
             cursor_factory = self.cursor_factory
+        self._apply_before("new cursor")
         cursor = self.connection.cursor(*args,
                                         cursor_factory=cursor_factory,
                                         **kwargs)
-        cursor._bloom_model = model
+        self._apply_after("new cursor", cursor)
+        try:
+            cursor._bloom_model = model
+        except AttributeError:
+            pass
         schema = schema or self.schema
         if schema:
-            self.set_schema(cursor, schema)
+            paths = [schema]
+            paths.extend(self._search_paths)
+            self.apply_schema(cursor, *paths)
         return cursor
-
-    def _register_extras(self, connection):
-        try:
-            psycopg2.extras.register_hstore(connection)
-        except psycopg2.ProgrammingError:
-            pass
 
     def connect(self, dsn=None, **options):
         """ Opens a :mod:psycopg2 connection with @options combined with
@@ -205,6 +310,7 @@ class Postgres(BaseClient):
 
             -> :mod:psycopg2 connection object
         """
+        self._apply_before('connect')
         if not self._connection or self._connection.closed or dsn or options:
             dsn = dsn or self._dsn
             if not dsn:
@@ -212,6 +318,7 @@ class Postgres(BaseClient):
             self._connection = psycopg2.connect(
                 dsn, cursor_factory=self.cursor_factory)
             self._set_conn_options()
+        self._apply_after('connect')
         return self._connection
 
     def _set_conn_options(self, seen=False):
@@ -220,19 +327,24 @@ class Postgres(BaseClient):
                 self._connection.set_session(autocommit=self.autocommit)
             if self.encoding:
                 self._connection.set_client_encoding(encoding=self.encoding)
-            self._register_extras(self._connection)
 
     def commit(self):
         """ Commits a transaction """
+        self._apply_before('commit')
         self._connection.commit()
+        self._apply_after('commit')
 
     def rollback(self):
         """ Rolls back a transaction """
+        self._apply_before('rollback')
         self._connection.rollback()
+        self._apply_after('rollback')
 
     def close(self):
         """ Closes the psycopg2 cursor and connection """
+        self._apply_before('close')
         self._connection.close()
+        self._apply_after('close')
 
     def get(self, *args, **kwargs):
         """ Dummy method in order to work seamlessly in the ORM with
@@ -274,12 +386,12 @@ class PostgresPoolConnection(Postgres):
 class PostgresPool(BaseClient):
     __slots__ = ('_dsn', 'autocommit',  '_connection_options', '_schema',
                  'encoding', '_cursor_factory', 'minconn', 'maxconn', '_pool',
-                 '_cache')
+                 '_cache', '_search_paths', '_events')
 
     def __init__(self, minconn=1, maxconn=1, dsn=None,
                  cursor_factory=CNamedTupleCursor, pool=None,
                  autocommit=False, encoding=None, schema=None,
-                 **connection_options):
+                 search_paths=None, events=None, **connection_options):
         """ :see::class:Postgres
             @minconn: (#int) minimum number of connections to establish
                 within the pool
@@ -292,8 +404,10 @@ class PostgresPool(BaseClient):
         # Connection options
         self._dsn = dsn
         self.autocommit = autocommit
+        self._events = events or defaultdict(dict)
         self._connection_options = connection_options or {}
         self._schema = schema
+        self._search_paths = search_paths or []
         self.encoding = encoding
         self._pool = pool
         self.minconn = minconn
@@ -363,7 +477,7 @@ class PostgresPool(BaseClient):
 
 
 #: Storage for connection clients/pools
-local_client = local_property()
+#  local_client = local_property()
 local_client = {}
 
 
@@ -399,6 +513,26 @@ class _db(object):
             return self.engine
         return self
 
+    def bind(self, *opt, client=None, **opts):
+        """ Creates a thread-local, global :class:ORM object with the
+            given options.
+
+            @*opt and **opts are passed to :class:Postgres
+        """
+        from bloom.orm import ORM
+        if not client:
+            client = create_client(*opt, **opts)
+        self.engine = ORM(client=client)
+        return self
+
+    connect = bind
+
+    def close(self):
+        try:
+            self.engine.db.close()
+        except AttributeError:
+            pass
+
 
 db = _db()
 
@@ -410,8 +544,9 @@ def create_db(*opt, client=None, **opts):
     """
     from bloom.orm import ORM
     if not client:
-        create_client(*opt, **opts)
-    db.engine = ORM(*opt, client=client, **opts)
+        client = create_client(*opt, **opts)
+    db.engine = ORM(client=client)
+    return db
 
 
 def create_client(*opt, name='db', **opts):

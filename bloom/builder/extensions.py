@@ -77,7 +77,7 @@ class Extension(BaseCreator):
         '''
         self.orm.reset()
         self._add(Clause('CREATE EXTENSION',
-                         self._not_exists,
+                         self._not_exists or _empty,
                          self.name),
                   self.parameters)
         return Raw(self.orm)

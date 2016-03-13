@@ -18,8 +18,6 @@ class TestStrUID(TestUID):
         self.assertIsNone(base.index)
         self.assertIsInstance(base.default, Function)
         self.assertIsNone(base.not_null)
-        self.assertEqual(base.minval, 1)
-        self.assertEqual(base.maxval, 9223372036854775807)
 
     def test___call__(self):
         for check in [2223372036854775807, '2223372036854775808']:

@@ -12,13 +12,6 @@ class TestText(TestVarchar):
     def base(self):
         return self.orm.text
 
-    def test_select(self):
-        self.base('foo')
-        self.orm.insert(self.base)
-        r = getattr(self.orm.new().desc(self.orm.uid).get(self.base),
-                    self.base.field_name)
-        self.assertEqual(r.value, 'foo')
-
 
 if __name__ == '__main__':
     # Unit test

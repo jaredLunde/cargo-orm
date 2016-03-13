@@ -85,11 +85,18 @@ udtype_map = {
 category_map = {
     'A': 'Array',
     'B': 'Bool',
+    'C': 'Field',
     'D': 'Timestamp',
     'E': 'Enum',
-    'I': 'Inet',
+    'G': 'Point',
+    'I': 'Cidr',
     'N': 'Numeric',
-    'S': 'Text'
+    'R': 'IntRange',
+    'S': 'Text',
+    'T': 'Timestamp',
+    'U': 'Field',
+    'V': 'Bit',
+    'X': 'Field'
 }
 
 
@@ -101,11 +108,12 @@ OID_map = {
     IP: 'inet',
     DATE: 'date',
     TIMESTAMP: 'timestamp',
+    TIMESTAMPTZ: 'timestamptz',
     ENUM: 'USER-DEFINED',
     FLOAT: 'real',
     DOUBLE: 'double precision',
     BINARY: 'bytea',
-    DECIMAL: 'decimal',
+    DECIMAL: 'numeric',
     BIGINT: 'bigint',
     SMALLINT: 'smallint',
     TEXT: 'text',
@@ -120,10 +128,10 @@ OID_map = {
     JSONB: 'jsonb',
     UIDTYPE: 'bigint',
     STRUID: 'bigint',
-    USERNAME: 'varchar',
-    EMAIL: 'varchar',
+    USERNAME: 'text',
+    EMAIL: 'text',
     TIME: 'time',
-    NUMERIC: 'numeric',
+    TIMETZ: 'timetz',
     ENCRYPTED: 'text',
     HSTORE: 'hstore',
     INTRANGE: 'int4range',
@@ -141,7 +149,7 @@ OID_map = {
     POINT: 'point',
     POLYGON: 'polygon',
     MACADDR: 'macaddr',
-    CURRENCY: 'decimal',
+    CURRENCY: 'numeric',
     MONEY: 'money'
 }
 
@@ -159,9 +167,5 @@ def translate_from(datatype=None, udtype=None, category=None):
                                                            category))
 
 
-def translate_to(OID, opt=None):
-    realtype = OID_map[OID]
-    if opt:
-        return '{}({})'.format(realtype, opt)
-    else:
-        return realtype
+def translate_to(OID):
+    return OID_map[OID]

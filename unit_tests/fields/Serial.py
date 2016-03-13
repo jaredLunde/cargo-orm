@@ -50,7 +50,9 @@ class TestSerial(configure.IdentifierTestCase, TestInt):
         self.base(1234)
         self.orm.insert(self.base)
         self.base.clear()
-        self.orm.insert(self.base)
+        val1 = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        val2 = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        self.assertTrue(val2 - val1 == 1)
 
     def test_select(self):
         self.orm.insert(self.base)

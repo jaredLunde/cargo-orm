@@ -9,6 +9,8 @@
 import re
 import time
 
+import psycopg2.extensions
+
 from vital.debug import logg
 
 from bloom import Clause, Raw, safe
@@ -19,7 +21,11 @@ from bloom.builder.create_shortcuts import create_sequence, create_schema
 from bloom.builder.utils import *
 
 
-__all__ = ('UIDFunction', 'UUIDExtension', 'HStoreExtension')
+__all__ = (
+    'UIDFunction',
+    'UUIDExtension',
+    'HStoreExtension',
+    'CITextExtension')
 
 
 _uid_tpl = """
@@ -205,7 +211,9 @@ class UUIDExtension(Extension):
     extras_name = 'uuid_ossp'
 
     def __init__(self, orm):
-        super().__init__(orm, safe('"uuid-ossp"'), not_exists=True)
+        schema = orm.schema or orm.db.schema or 'public'
+        super().__init__(orm, safe('"uuid-ossp"'), schema=schema,
+                         not_exists=True)
 
     @staticmethod
     def _get_comment():
@@ -216,7 +224,28 @@ class HStoreExtension(Extension):
     extras_name = 'hstore'
 
     def __init__(self, orm):
-        super().__init__(orm, safe('"hstore"'), not_exists=True)
+        schema = orm.schema or orm.db.schema or 'public'
+        super().__init__(orm, safe('"hstore"'), schema=schema, not_exists=True)
+
+    @staticmethod
+    def _get_comment():
+        return """A keyvalue storage type."""
+
+    def execute(self):
+        try:
+            self.orm.execute(self.query.query, self.query.params)
+        except QueryError as e:
+            logg(e.message).notice()
+        self.orm.db.register('hstore')
+
+
+class CITextExtension(Extension):
+    extras_name = 'citext'
+
+    def __init__(self, orm):
+        schema = orm.schema or orm.db.schema or 'public'
+        super().__init__(orm, safe('citext'), schema=schema,
+                         not_exists=True)
 
     @staticmethod
     def _get_comment():

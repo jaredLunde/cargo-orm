@@ -36,6 +36,8 @@ class TestIP(configure.NetTestCase, TestField):
     def test_insert(self):
         self.base('127.0.0.1')
         self.orm.insert(self.base)
+        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
+        self.assertEqual(val, '127.0.0.1')
 
     def test_select(self):
         self.base('127.0.0.1')

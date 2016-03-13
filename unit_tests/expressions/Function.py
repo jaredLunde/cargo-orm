@@ -19,7 +19,7 @@ from bloom import fields
 # TODO: :class:WindowFunction
 
 
-def new_field(type='char', table=None, name=None):
+def new_field(type='varchar', table=None, name=None):
     field = getattr(fields, type.title())()
     keyspace = 'aeioubcdlhzpwnmp'
     name = name or randkey(24, keyspace)
@@ -43,8 +43,8 @@ def new_function(cast=int, alias=None):
 
 class TestFunction(unittest.TestCase):
     vals = (
-        (1234, '1234', new_field('int'), aliased('frisco')),
-        (new_field('char'), new_expression(int), new_expression(str)),
+        (1234, '1234', new_field('int'), safe('frisco')),
+        (new_field('varchar'), new_expression(int), new_expression(str)),
         (new_expression(bytes),),
         tuple()
     )

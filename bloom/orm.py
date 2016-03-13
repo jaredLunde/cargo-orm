@@ -3,13 +3,12 @@
   `Bloom SQL ORM`
   ``SQL table object modelling classes``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
-   The MIT License (MIT) © 2015 Jared Lunde
+   The MIT License (MIT) © 2016 Jared Lunde
    http://github.com/jaredlunde/bloom-orm
 
 """
 import re
 import copy
-import inspect
 from collections import OrderedDict
 
 try:
@@ -27,7 +26,6 @@ import psycopg2.extras
 from psycopg2.extensions import cursor as _cursor
 
 from vital.cache import cached_property
-from vital.tools.dicts import merge_dict
 from vital.tools.strings import camel_to_underscore
 from vital.debug import prepr, line, logg
 
@@ -42,17 +40,12 @@ from bloom.fields import *
 
 
 __all__ = (
-    "Model",
-    "Joins",
+    "ORM",
     "QueryState",
-    "RestModel",
-    "ORM"
+    "Joins",
+    "Model",
+    "RestModel"
 )
-
-
-#
-#  `` SQL ORM for Postgres ``
-#
 
 
 class ORM(object):
@@ -80,7 +73,6 @@ class ORM(object):
         self._with = False
         self._dry = False
         self._naked = None
-        self._new = None
         self._cursor_factory = cursor_factory
         if not hasattr(self, 'table'):
             self.table = table
@@ -94,6 +86,8 @@ class ORM(object):
     @cached_property
     def db(self):
         return self._client or local_client.get('db') or Postgres()
+
+    client = db
 
     def __enter__(self):
         """ Context manager, connects to :prop:bloom.ORM.db
@@ -240,6 +234,12 @@ class ORM(object):
 
     select = _select
 
+    def get(self, *fields, **kwargs):
+        """ Gets a single record from the database
+            :see::meth:_select
+        """
+        return self.one().select(*fields, **kwargs)
+
     def _update(self, *exps, **kwargs):
         """ Parses the :prop:state as an :class:UPDATE statement. An |UPDATE|
             will be performed on the fields given in @*exps
@@ -363,7 +363,7 @@ class ORM(object):
             if order_by is not None:
                 expressions.append(Clause('ORDER BY', order_by))
         as_ = WrappedClause('AS', *expressions)
-        return self.state.add(Clause('WINDOW', aliased(alias), as_))
+        return self.state.add(Clause('WINDOW', safe(alias), as_))
 
     def join(self, a=None, b=None, on=None, using=None, type="", alias=None):
         """ Sets a |JOIN| clause in the :prop:state of type @type
@@ -843,10 +843,9 @@ class ORM(object):
             fetches all of the results if there are any and :prop:_dry
             is |False|
 
-            @*queries: one or several :class:bloom.Query objects
-            @fetch: #bool True if all query results should be automatically
+            @*queries: (:class:bloom.Query) one or several objects
+            @fetch: (#bool) True if all query results should be automatically
                 fetched with :meth:psycopg2.extensions.cursor.fetchall
-            @conn: (:class:Postgres|:class:PostgresPool)
 
             -> yields results of the query if @fetch is True otherwise
                 yields the cursor from each query
@@ -872,6 +871,7 @@ class ORM(object):
             except QueryError:
                 if not queries:
                     self.queries.remove(q)
+                    self.reset_state()
                 raise
             if fetch:
                 #: Fetches 'all' by default
@@ -1090,11 +1090,6 @@ class ORM(object):
         self._naked = None
         return self
 
-    def reset_new(self):
-        """ Resets the new option """
-        self._new = None
-        return self
-
     def reset_state(self):
         """ Resets the :prop:state object """
         self.state.reset()
@@ -1110,7 +1105,6 @@ class ORM(object):
         self._multi = False
         self.reset_dry()
         self.reset_naked()
-        self.reset_new()
         self.queries = []
         self.reset_state()
         return self
@@ -1125,7 +1119,6 @@ class ORM(object):
             self.queries = []
             self.reset_dry()
             self.reset_naked()
-            self.reset_new()
         if multi:
             self.reset_multi()
         self.reset_state()
@@ -1441,6 +1434,7 @@ class Joins(object):
 
     __call__ = join
 
+
 #
 #  ``Models``
 #
@@ -1625,12 +1619,22 @@ class Model(ORM):
         self._naked = True
         return self
 
-    def new(self):
-        """ Causes the ORM to :class:fill a new model and return it rather than
-            filling the active one when executing a query.
+    def new(self, **kwargs):
+        """ Causes the ORM to create an exact copy of this model and reset
+            this  model. Calling this will NOT add the new record to the
+            database.
+
+            @**kwargs: |field_name=field_value| pairs to optionally create
+                the new model with
+
+            ..
+                new_model = model.new().where(True).get()
+                new_model_b = model.new(foo=bar)
+            ..
         """
-        self._new = True
-        return self
+        cls = self.copy().fill(**kwargs)
+        self.reset(multi=True)
+        return cls
 
     def models(self):
         """ Causes the ORM to return copies of the model rather than
@@ -1651,6 +1655,42 @@ class Model(ORM):
             else:
                 raise KeyError("Field `{}` not in {}".format(k, self.table))
         return self
+
+    def filter(self, *exps, **filters):
+        """ @*exps: (:class:Expression(s))
+            @**filters: |field_name__field_method=value| keyword argument
+                filters tied to the fields within this model.
+                ..
+                    from bloom import Model
+
+                    class Users(Model):
+                        username = Username()
+
+                    User = Users()
+                    User.filter(username__startswith='J')
+                    results = User.get()
+                ..
+                |SELECT * FROM users WHERE username ILIKE 'J%'|
+
+                ..
+                    User.filter(username.not_eq('Jared'),
+                                username='Jared').get()
+                ..
+                |SELECT * FROM users       |
+                | WHERE username <> 'Jared'|
+                |   AND username = 'Jared' |
+        """
+        exps = list(exps)
+        add_exp = exps.append
+        for field, value in filters.items():
+            field_name, *method = field.split("__")
+            field = getattr(self, field_name)
+            if not method:
+                method = field.eq(value)
+            else:
+                method = getattr(field, "".join(method))(value)
+            add_exp(method)
+        return self.where(*exps)
 
     def to_json(self, *args, **kwargs):
         """ Returns a JSON dump'd #str of the state of the current model
@@ -2052,12 +2092,12 @@ class Model(ORM):
 
             -> self
         """
-        if not self.unique_indexes and self.primary_key is not None\
-           and self.primary_key.value in {None, self.primary_key.empty}:
-            raise ORMIndexError("Could not find a unique index in `{}`"
-                                .format(self.table))
         best_index = self.best_unique_index
         if best_index is not None:
+            if not self.unique_indexes and self.primary_key is not None\
+               and self.primary_key.value in {None, self.primary_key.empty}:
+                raise ORMIndexError("Could not find a unique index in `{}`"
+                                    .format(self.table))
             exists = self.copy().reset_dry().naked().where(best_index).get()
             if exists:
                 #: UPDATE
@@ -2082,7 +2122,7 @@ class Model(ORM):
         return self._insert(*fields)
 
     def select(self, *fields, **kwargs):
-        """ Gets a record or records from the DB based on the
+        """ Gets a single record from the DB based on the
             :prop:best_available_index within the current model if no
             |WHERE| clauses is already specified, otherwise obeys the
             |WHERE| clause in the :prop:state.

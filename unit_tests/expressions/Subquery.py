@@ -12,7 +12,7 @@ from vital.security import randkey
 from bloom import *
 
 
-def new_field(type='char'):
+def new_field(type='varchar'):
     field = getattr(fields, type.title())(value=1234)
     keyspace = 'aeioubcdlhzpwnmp'
     name = randkey(24, keyspace)
@@ -37,7 +37,7 @@ def new_function(cast=int):
 class TestSubquery(unittest.TestCase):
 
     def test___init__(self):
-        fields = (new_field('int'), new_field('char'))
+        fields = (new_field('int'), new_field('varchar'))
         q = INSERT(ORM(), *fields)
         base = Subquery(q)
         self.assertIs(base.subquery, q)
@@ -45,14 +45,14 @@ class TestSubquery(unittest.TestCase):
         self.assertIs(base.params, q.params)
 
     def test_alias(self):
-        fields = (new_field('int'), new_field('char'))
+        fields = (new_field('int'), new_field('varchar'))
         q = INSERT(ORM(), *fields)
         base = Subquery(q, alias='subalias')
         self.assertEqual(base.alias, 'subalias')
         self.assertTrue(base.query.endswith('subalias'))
 
     def test_exists(self):
-        fields = (new_field('int'), new_field('char'))
+        fields = (new_field('int'), new_field('varchar'))
         q = SELECT(ORM(), *fields)
         base = Subquery(q)
         func = base.exists()
@@ -66,7 +66,7 @@ class TestSubquery(unittest.TestCase):
         self.assertEqual(func.alias, 'foo')
 
     def test_not_exists(self):
-        fields = (new_field('int'), new_field('char'))
+        fields = (new_field('int'), new_field('varchar'))
         q = SELECT(ORM(), *fields)
         base = Subquery(q)
         func = base.not_exists()

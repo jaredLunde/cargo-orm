@@ -24,6 +24,7 @@ __all__ = ('BinaryLogic', 'Binary',)
 
 
 class BinaryLogic(BaseLogic):
+    __slots__ = tuple()
 
     def _cast_bytes(self, string):
         if isinstance(string, bytes):
@@ -92,51 +93,51 @@ class BinaryLogic(BaseLogic):
             backslashes.
             -> (:class:Function)
         """
-        return Functions.encode(self, format, **kwargs)
+        return F.encode(self, format, **kwargs)
 
     def decode(self, format, **kwargs):
         """ Decode binary data from textual representation in string. Options
             for format are same as in encode.
             -> (:class:Function)
         """
-        return Functions.decode(self, format, **kwargs)
+        return F.decode(self, format, **kwargs)
 
     def get_bit(self, offset, **kwargs):
         """ Extract bit from @string
             -> (:class:Function)
         """
-        return Functions.get_bit(self, offset, **kwargs)
+        return F.get_bit(self, offset, **kwargs)
 
     def get_byte(self, offset, **kwargs):
         """ Extract byte from @string
             -> (:class:Function)
         """
-        return Functions.get_byte(self, offset, **kwargs)
+        return F.get_byte(self, offset, **kwargs)
 
     def set_bit(self, offset, new_value, **kwargs):
         """ Set bit in @string
             -> (:class:Function)
         """
-        return Functions.set_bit(self, offset, new_value, **kwargs)
+        return F.set_bit(self, offset, new_value, **kwargs)
 
     def set_byte(self, offset, new_value, **kwargs):
         """ Set byte in @string
             -> (:class:Function)
         """
-        return Functions.set_byte(self, offset, new_value, **kwargs)
+        return F.set_byte(self, offset, new_value, **kwargs)
 
     def length(self, **kwargs):
         """ Length of binary @string
             -> (:class:Function)
         """
-        return Functions.length(self, **kwargs)
+        return F.length(self, **kwargs)
 
     def md5(self, **kwargs):
         """ Calculates the MD5 hash of @string, returning the result in
             hexadecimal.
             -> (:class:Function)
         """
-        return Functions.md5(self, **kwargs)
+        return F.md5(self, **kwargs)
 
 
 class bloombytes(bytes):
@@ -153,9 +154,7 @@ class bloombytes(bytes):
 
 class Binary(Field, BinaryLogic):
     OID = BINARY
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        'default', '_validator', '_alias', 'table')
+    __slots__ = Field.__slots__
 
     def __init__(self, *args, **kwargs):
         """ `Binary`
@@ -167,7 +166,7 @@ class Binary(Field, BinaryLogic):
         if value is not self.empty:
             if value is not None:
                 value = bloombytes(uniorbytes(value, bytes))
-            self._set_value(value)
+            self.value = value
         return self.value
 
     @staticmethod

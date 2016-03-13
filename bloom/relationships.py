@@ -228,14 +228,14 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             model and the field referenced.
         """
         _class = copy.copy(self.ref.__class__)
-        if _class.OID == SERIAL:
+        '''if _class.OID == SERIAL:
             _class.OID = INT
         elif _class.OID == BIGSERIAL:
             _class.OID = BIGINT
         elif _class.OID == SMALLSERIAL:
             _class.OID = SMALLINT
         elif _class.OID in {STRUID, UIDTYPE}:
-            _class.OID = BIGINT
+            _class.OID = BIGINT'''
         _args, _kwargs = self._args, self._kwargs
         _owner, _owner_attr = self._owner, self._owner_attr
         _relation = self._relation
@@ -249,7 +249,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             __slots__ = _slots
             __doc__ = _class.__doc__
 
-            def __init__(self):
+            def __init__(self, *args, **kwargs):
                 primary = False
                 if 'primary' in _kwargs:
                     primary = _kwargs['primary']
@@ -425,8 +425,8 @@ class Relationship(BaseRelationship):
                 query by
             @*args and @**kwargs get passed to the :meth:Model.select query
         """
-        if self.join_field.value is self.join_field.empty and \
-           self.join_field.real_value is None and not self.state.has('WHERE'):
+        if self.join_field.value is self.join_field.empty or \
+           self.join_field.value is None and not self.state.has('WHERE'):
             raise PullError(('Required field `{}` was empty and no explicit ' +
                              'WHERE clause was specified.')
                             .format(self.join_field.name))
@@ -438,7 +438,7 @@ class Relationship(BaseRelationship):
         if order_field is not None:
             model.order_by(order_field.asc() if not reverse else
                            order_field.desc())
-        model.where(self.foreign_key.eq(self.join_field.real_value))
+        model.where(self.foreign_key.eq(self.join_field.value))
         if dry:
             model.dry()
         results = model._select(*args, **kwargs)

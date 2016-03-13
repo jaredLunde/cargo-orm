@@ -17,7 +17,7 @@ class TestCurrency(TestNumeric):
     default: default value to set the field to
     validation: callable() custom validation plugin, must return True if the
         field validates, and False if it does not
-    digits: int() maximum digit precision
+    decimal_places: int() maximum digit precision
     '''
     @property
     def base(self):
@@ -34,7 +34,7 @@ class TestCurrency(TestNumeric):
         self.assertEqual(base.minval, -92233720368547758.08)
         self.assertEqual(base.maxval, 92233720368547758.07)
         print(9223372036854775808.08)
-        self.assertEqual(base.digits, 2)
+        self.assertEqual(base.decimal_places, 2)
 
     def test_format(self):
         self.base('91,000.0')

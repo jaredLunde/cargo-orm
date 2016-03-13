@@ -24,6 +24,7 @@ __all__ = ('TimeLogic', 'DateLogic', 'DateTimeLogic', 'Time', 'Date',
 
 
 class TimeLogic(BaseNumericLogic):
+    __slots__ = tuple()
 
     def interval(self, length, alias=None):
         return Expression(_empty, 'interval', length, alias=alias)
@@ -34,12 +35,12 @@ class TimeLogic(BaseNumericLogic):
         return Expression(self, operators.GE, right)
 
     def age(self, *args, alias=None):
-        """ :see::meth:Functions.age """
-        return Functions.age(self, *args, alias=alias)
+        """ :see::meth:F.age """
+        return F.age(self, *args, alias=alias)
 
     @staticmethod
     def clock_timestamp(alias=None):
-        return Functions.clock_timestamp(alias=alias)
+        return F.clock_timestamp(alias=alias)
 
     @staticmethod
     def current_time(precision=None, alias=None):
@@ -59,7 +60,7 @@ class TimeLogic(BaseNumericLogic):
 
     @staticmethod
     def transaction_timestamp(alias=None):
-        return Functions.transaction_timestamp(alias=alias)
+        return F.transaction_timestamp(alias=alias)
 
     @staticmethod
     def now(alias=None):
@@ -67,10 +68,11 @@ class TimeLogic(BaseNumericLogic):
 
     def isfinite(self, **kwargs):
         """ isfinite(timestamp '2001-02-16 21:28:30') """
-        return Functions.isfinite(self, **kwargs)
+        return F.isfinite(self, **kwargs)
 
 
 class DateLogic(BaseNumericLogic):
+    __slots__ = tuple()
 
     def interval(self, length, alias=None):
         return Expression(_empty, 'interval', length)
@@ -81,39 +83,39 @@ class DateLogic(BaseNumericLogic):
         return Expression(self, operators.GE, interval)
 
     def age(self, *args, alias=None):
-        """ :see::meth:Functions.age """
-        return Functions.age(self, *args, alias=alias)
+        """ :see::meth:F.age """
+        return F.age(self, *args, alias=alias)
 
     def current_date(self, alias=None):
         return Expression(_empty, 'current_date', _empty, alias=alias)
 
     def date_part(self, text, **kwargs):
-        """ :see::meth:Functions.date_part """
-        return Functions.date_part(text, self, **kwargs)
+        """ :see::meth:F.date_part """
+        return F.date_part(text, self, **kwargs)
 
     def date_trunc(self, text, **kwargs):
-        """ :see::meth:Functions.date_trunc """
-        return Functions.date_trunc(text, self, **kwargs)
+        """ :see::meth:F.date_trunc """
+        return F.date_trunc(text, self, **kwargs)
 
     def extract(self, text, **kwargs):
-        """ :see::meth:Functions.extract """
-        return Functions.extract(text, self, **kwargs)
+        """ :see::meth:F.extract """
+        return F.extract(text, self, **kwargs)
 
     def justify_days(self, *args, **kwargs):
-        """ :see::meth:Functions.justify_days """
-        return Functions.justify_days(self, *args, **kwargs)
+        """ :see::meth:F.justify_days """
+        return F.justify_days(self, *args, **kwargs)
 
     def justify_interval(self, *args, **kwargs):
-        """ :see::meth:Functions.justify_interval """
-        return Functions.justify_interval(self, *args, **kwargs)
+        """ :see::meth:F.justify_interval """
+        return F.justify_interval(self, *args, **kwargs)
 
     def timeofday(self, alias=None):
-        """ :see::meth:Functions.timeofday """
-        return Functions.timeofday(alias=alias)
+        """ :see::meth:F.timeofday """
+        return F.timeofday(alias=alias)
 
 
 class DateTimeLogic(DateLogic, TimeLogic):
-    pass
+    __slots__ = tuple()
 
 
 class _DateFields(Field):
@@ -230,6 +232,10 @@ class _DateFields(Field):
         """ :see::meth:arrow.Arrow.utcoffset """
         return self._arrow.utcoffset(*args, **kwargs)
 
+    def format(self, *args, **kwargs):
+        """ :see::meth:arrow.Arrow.format """
+        return self._arrow.format(*args, **kwargs)
+
 
 class _TimeFields(_DateFields):
     __slots__ = ('_arrow',)
@@ -256,34 +262,43 @@ class _TimeFields(_DateFields):
 
 
 class ArrowTime(arrow.Arrow):
+    __slots__ = tuple()
+
     @staticmethod
     def to_db(val):
-        return adapt(val.time()).getquoted().replace(b'timetz', b'time')
+        return adapt(val.time())
 
 
 class ArrowTimeTZ(ArrowTime):
+    __slots__ = tuple()
+
     @staticmethod
     def to_db(val):
-        return adapt(val.time()).getquoted()
+        return adapt(val.datetime.timetz())
 
 
 class ArrowDate(ArrowTime):
+    __slots__ = tuple()
+
     @staticmethod
     def to_db(val):
-        return adapt(val.date()).getquoted()
+        return adapt(val.date())
 
 
 class ArrowTimestamp(ArrowTime):
+    __slots__ = tuple()
+
     @staticmethod
     def to_db(val):
-        return adapt(val.datetime).getquoted().replace(
-            b'timestamptz', b'timestamp')
+        return adapt(val.naive)
 
 
 class ArrowTimestampTZ(ArrowTime):
+    __slots__ = tuple()
+
     @staticmethod
     def to_db(val):
-        return adapt(val.datetime).getquoted()
+        return adapt(val.datetime)
 
 
 register_adapter(ArrowTime, ArrowTime.to_db)
@@ -294,14 +309,31 @@ register_adapter(ArrowTimestampTZ, ArrowTimestampTZ.to_db)
 
 
 def _get_arrow(typ, value):
-    return typ.fromdatetime(arrow.get(value))
+    try:
+        return typ.fromdatetime(arrow.get(value))
+    except TypeError:
+        year, month, day = 1, 1, 1
+        try:
+            year, month, day = value.year, value.month, value.day
+        except AttributeError:
+            pass
+        return typ(year=year,
+                   month=month,
+                   day=day,
+                   hour=value.hour,
+                   minute=value.minute,
+                   second=value.second,
+                   microsecond=value.microsecond,
+                   tzinfo=value.tzinfo)
 
 
 class Time(_TimeFields, TimeLogic, DateLogic):
-    """ Field object for the PostgreSQL field type |TIME|. """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', '_arrow', 'table')
+    """ =======================================================================
+        Field object for the PostgreSQL field type |TIME|
+        backed by :class:arrow.Arrow
+    """
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', '_arrow', 'table')
     OID = TIME
     _arrow_type = ArrowTime
 
@@ -313,17 +345,15 @@ class Time(_TimeFields, TimeLogic, DateLogic):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            if isinstance(value, (Expression, Function, Clause)):
-                self._arrow = None
-                self._set_value(value)
-                return self.value
-            elif not isinstance(value, arrow.Arrow):
-                if isinstance(value, str):
-                    value = dateparser.parse(value)
+            if not isinstance(value, arrow.Arrow):
+                try:
+                    value = dateparser.parse(str(value))
+                except ValueError:
+                    pass
                 self._arrow = _get_arrow(self._arrow_type, value)
             else:
                 self._arrow = value
-            self._set_value(self._arrow)
+            self.value = self._arrow
         return self.value
 
     def copy(self, *args, **kwargs):
@@ -335,11 +365,11 @@ class Time(_TimeFields, TimeLogic, DateLogic):
 
 
 class TimeTZ(Time):
-    """ Field object for the PostgreSQL field type |TIMETZ|. """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', '_arrow',
-        'table')
+    """ =======================================================================
+        Field object for the PostgreSQL field type |TIMETZ|.
+    """
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', '_arrow', 'table')
     OID = TIMETZ
     _arrow_type = ArrowTimeTZ
 
@@ -351,12 +381,12 @@ class TimeTZ(Time):
 
 
 class Date(_DateFields, DateLogic):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |DATE|.
+    """ =======================================================================
+        Field object for the PostgreSQL field type |DATE|
+        backed by :class:arrow.Arrow
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', '_arrow', 'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', '_arrow', 'table')
     OID = DATE
     _arrow_type = ArrowDate
 
@@ -378,12 +408,12 @@ class Date(_DateFields, DateLogic):
 
 
 class Timestamp(Time):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |TIMESTAMP|.
+    """ =======================================================================
+        Field object for the PostgreSQL field type |TIMESTAMP|
+        backed by :class:arrow.Arrow
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', '_arrow', 'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', '_arrow', 'table')
     OID = TIMESTAMP
     _arrow_type = ArrowTimestamp
 
@@ -395,12 +425,12 @@ class Timestamp(Time):
 
 
 class TimestampTZ(Time):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        Field object for the PostgreSQL field type |TIMESTAMPTZ|.
+    """ =======================================================================
+        Field object for the PostgreSQL field type |TIMESTAMPTZ|
+        backed by :class:arrow.Arrow
     """
-    __slots__ = (
-        'field_name', 'primary', 'unique', 'index', 'not_null', 'value',
-        '_validator', '_alias', 'default', '_arrow', 'table')
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', '_arrow', 'table')
     OID = TIMESTAMPTZ
     _arrow_type = ArrowTimestampTZ
 

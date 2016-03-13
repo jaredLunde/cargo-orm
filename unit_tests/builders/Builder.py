@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for bloom.build.Builder`
+  `Unit tests for bloom.build.Plan`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -45,7 +45,7 @@ class FooComments(Model):
     posted_on = Timestamp(index=True, default=Timestamp.now())
 
 
-class FooUsersBuilder(Builder):
+class FooUsersPlan(Plan):
     ordinal = ('uid', 'username', 'password')
     model = FooUsers(schema='foo_0', debug=False)
 
@@ -53,7 +53,7 @@ class FooUsersBuilder(Builder):
         self.not_exists()
 
 
-class FooPostsBuilder(Builder):
+class FooPostsPlan(Plan):
     model = FooPosts(schema='foo_0', debug=False)
 
     def before(self):
@@ -61,7 +61,7 @@ class FooPostsBuilder(Builder):
         self.not_exists()
 
 
-class FooCommentsBuilder(Builder):
+class FooCommentsPlan(Plan):
     ordinal = ('uid', 'actor', 'target', 'content', 'posted_on')
     model = FooComments(schema='foo_0', debug=False)
 
@@ -89,25 +89,25 @@ class FooCommentsBuilder(Builder):
         self.comment_on(Schema(self.orm, self.schema), 'Shard 0 schema')
 
 
-class TestBuilder(unittest.TestCase):
+class TestPlan(unittest.TestCase):
 
     def test_builder_a(self):
-        b = FooUsersBuilder()
+        b = FooUsersPlan()
         b.debug()
-        b.run()
+        b.execute()
 
     def test_builder_b(self):
-        b = FooPostsBuilder()
-        b.run()
+        b = FooPostsPlan()
+        b.execute()
 
     def test_builder_c(self):
-        b = FooCommentsBuilder()
-        b.run()
+        b = FooCommentsPlan()
+        b.execute()
 
 
 if __name__ == '__main__':
     # Unit test
     # unittest.main()
-    ordinal = FooUsersBuilder(), FooPostsBuilder(), FooCommentsBuilder()
+    ordinal = FooUsersPlan(), FooPostsPlan(), FooCommentsPlan()
     Build(*ordinal).debug().run()
     drop_schema(db, 'foo_0', cascade=True, if_exists=True)

@@ -18,7 +18,7 @@ config.bind('/home/jared/apps/xfaps/vital.json')
 create_kola_client()
 
 
-def new_field(type='char', table=None, name=None):
+def new_field(type='varchar', table=None, name=None):
     field = getattr(fields, type.title())()
     keyspace = 'aeioubcdlhzpwnmp'
     name = name or randkey(24, keyspace)

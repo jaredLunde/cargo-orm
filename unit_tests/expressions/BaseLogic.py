@@ -15,7 +15,7 @@ from bloom import ORM, fields
 from bloom.fields import Field
 
 
-def new_field(type='char', table=None, name=None):
+def new_field(type='varchar', table=None, name=None):
     field = getattr(fields, type.title())()
     keyspace = 'aeioubcdlhzpwnmp'
     name = name or randkey(24, keyspace)
@@ -92,7 +92,7 @@ class TestBaseLogic(unittest.TestCase):
 
     def test_not_null(self):
         self.validate_expression(
-            self.base.not_null(),
+            self.base.is_not_null(),
             self.base,
             'IS NOT NULL',
             _empty,
@@ -146,12 +146,12 @@ class TestBaseLogic(unittest.TestCase):
     def test_distinct(self):
         self.validate_function(
             self.base.distinct(),
-            'DISTINCT',
+            'distinct',
             [self.base]
         )
         self.validate_function(
             self.base.distinct(alias='test'),
-            'DISTINCT',
+            'distinct',
             [self.base],
             alias='test'
         )
@@ -160,12 +160,12 @@ class TestBaseLogic(unittest.TestCase):
         field = new_field()
         self.validate_function(
             self.base.count(),
-            'COUNT',
+            'count',
             [self.base]
         )
         self.validate_function(
             self.base.count(alias='test'),
-            'COUNT',
+            'count',
             [self.base],
             alias='test'
         )

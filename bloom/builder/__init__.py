@@ -1,6 +1,6 @@
 """
 
-  `Bloom SQL Builder`
+  `Bloom SQL Plan`
   ``Creates models from tables and tables from models``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2016 Jared Lunde
@@ -45,7 +45,7 @@ from bloom.builder.drop_shortcuts import *
 
 __all__ = (
     'Modeller',
-    'Builder',
+    'Plan',
     'Build',
     'Column',
     'Table',
@@ -114,7 +114,7 @@ class {clsname}(Model):{comment}
 class Modeller(object):
 
     def __init__(self, orm, *tables, schema=None, banner=None):
-        """`Model Builder`
+        """`Model Plan`
 
             Generates models from Postgres tables.
 
@@ -273,15 +273,15 @@ class Modeller(object):
             self.to_file(results, output_to, write_mode=write_mode)
 
 
-class BuilderItems(object):
-    __slots__ = ('_dict', '_type', 'builder')
+class PlanItems(object):
+    __slots__ = ('_dict', '_type', 'plan')
 
-    def __init__(self, type, items, builder=None):
+    def __init__(self, type, items, plan=None):
         self._dict = OrderedDict()
         self._type = type
         for name, item in items:
             self._dict[name] = copy.copy(item)
-        self.builder = builder
+        self.plan = plan
 
     @prepr('_dict', _no_keys=True)
     def __repr__(self): return
@@ -308,14 +308,14 @@ class BuilderItems(object):
           (not name.startswith('__') and not name.endswith('__')):
             self._dict[name] = value
         else:
-            BuilderItems.__dict__[name].__set__(self, value)
+            PlanItems.__dict__[name].__set__(self, value)
 
     def __delattr__(self, name):
         if name not in self.__slots__ and\
           (not name.startswith('__') and not name.endswith('__')):
             del self._dict[name]
         else:
-            BuilderItems.__dict__[name].__del__(self, name)
+            PlanItems.__dict__[name].__del__(self, name)
 
     def __len__(self):
         return len(self._dict)
@@ -328,7 +328,7 @@ class BuilderItems(object):
         try:
             setattr(self,
                     name,
-                    self._type(self.builder.model, *args, **kwargs))
+                    self._type(self.plan.model, *args, **kwargs))
         except AttributeError:
             setattr(self,
                     name,
@@ -338,13 +338,13 @@ class BuilderItems(object):
         del self[name]
 
 
-class Builder(Table):
+class Plan(Table):
     """ ========================================================================
         ``Basic Usage Example``
         ..
             from bloom import Model
             from bloom.fields import *
-            from bloom.builder import Builder
+            from bloom.builder import Plan
 
             class Users(Model):
                 schema = 'shard_0'
@@ -355,7 +355,7 @@ class Builder(Table):
                 password = Password(minlen=8, not_null=True)
 
 
-            class UsersBuilder(Builder):
+            class UsersPlan(Plan):
                 model = Users()
                 ordinal = ('uid', 'username', 'email', 'password')
 
@@ -370,7 +370,7 @@ class Builder(Table):
                 #: Creates the ORM client connection
                 create_client()
                 #: Builds the model
-                build = UsersBuilder()
+                build = UsersPlan()
                 build.run()
         ..
         |CREATE SCHEMA shard_0;                                               |
@@ -393,7 +393,7 @@ class Builder(Table):
     ordinal = None
 
     def __init__(self, model=None, schema=None):
-        """ `Table Builder`
+        """ `Table Plan`
              Generates tables, indexes, foreign keys and other constraints,
              comments, functions and schemas for given :class:Model(s).
 
@@ -408,7 +408,7 @@ class Builder(Table):
         self.from_fields(*self.columns)
 
     def before(self):
-        """ Executed immediately before the builder runs. This is where
+        """ Executed immediately before the plan runs. This is where
             you'll want to do things like make edits to your :prop:columns
             and :prop:indexes, and add :meth:constraints.
         """
@@ -419,6 +419,8 @@ class Builder(Table):
         pass
 
     def _get_comment_type(self, obj):
+        if isinstance(obj, (Column, Field)):
+            return 'COLUMN'
         return obj.__class__.__name__.upper()
 
     def _get_comment_ident(self, obj):
@@ -443,72 +445,87 @@ class Builder(Table):
 
     _special_fields = {UID: UIDFunction,
                        UUID: UUIDExtension,
-                       HStore: HStoreExtension}
+                       HStore: HStoreExtension,
+                       Username: CITextExtension}
 
     @cached_property
     def comments(self):
-        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
-                comments which are set to be created by the Builder
+        """ -> (:class:PlanItems mutable namedtuple-like object) of the
+                comments which are set to be created by the Plan
                 autonomously.
         """
-        return BuilderItems(lambda *a, **k: self.comment_on(*a, dry=True, **k),
-                            ((field.field_name,
-                             self.comment_on(self.columns[field.field_name],
-                                             f._get_comment(),
-                                             dry=True))
-                             for field in self.model.fields
-                             for t, f in self._special_fields.items()
-                             if isinstance(field, t)))
+        return PlanItems(lambda *a, **k: self.comment_on(*a, dry=True, **k),
+                         ((field.field_name,
+                          self.comment_on(self.columns[field.field_name],
+                                          f._get_comment(),
+                                          dry=True))
+                          for field in self.model.fields
+                          for t, f in self._special_fields.items()
+                          if isinstance(field, t)))
 
     @cached_property
     def functions(self):
-        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
-                functions which are set to be created by the Builder
+        """ -> (:class:PlanItems mutable namedtuple-like object) of the
+                functions which are set to be created by the Plan
                 autonomously.
         """
-        return BuilderItems(CreateFunction,
-                            ((f.extras_name, f(self.model))
-                             for field in self.model.fields
-                             for t, f in self._special_fields.items()
-                             if isinstance(field, t) and
-                                issubclass(f, CreateFunction)))
+        return PlanItems(CreateFunction,
+                         ((f.extras_name, f(self.model))
+                          for field in self.model.fields
+                          for t, f in self._special_fields.items()
+                          if isinstance(field, t) and
+                             issubclass(f, CreateFunction)))
+
+    _special_types = {Enum: EnumType.from_column}
+
+    @cached_property
+    def types(self):
+        """ -> (:class:PlanItems mutable namedtuple-like object) of the
+                types which are set to be created by the Plan autonomously.
+        """
+        return PlanItems(Type,
+                         ((f.extras_name, f(self.model, field))
+                          for col in self.columns
+                          for t, f in self._special_types.items()
+                          if isinstance(col.field, t) and
+                             issubclass(f, Type)))
 
     @cached_property
     def extensions(self):
-        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
-                extensions which are set to be created by the Builder
+        """ -> (:class:PlanItems mutable namedtuple-like object) of the
+                extensions which are set to be created by the Plan
                 autonomously.
         """
-        return BuilderItems(Extension,
-                            ((f.extras_name, f(self.model))
-                             for field in self.model.fields
-                             for t, f in self._special_fields.items()
-                             if isinstance(field, t) and
-                                issubclass(f, Extension)))
+        return PlanItems(Extension,
+                         ((f.extras_name, f(self.model))
+                          for field in self.model.fields
+                          for t, f in self._special_fields.items()
+                          if isinstance(field, t) and
+                             issubclass(f, Extension)))
 
     @cached_property
     def columns(self):
-        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
-                columns which are set to be created by the Builder
+        """ -> (:class:PlanItems mutable namedtuple-like object) of the
+                columns which are set to be created by the Plan
                 autonomously.
         """
         fields = self.model.fields
         if self.ordinal:
             fields = [self.model.__getattribute__(name)
                       for name in self.ordinal]
-        return BuilderItems(Column,
-                            ((field.field_name, Column(field))
-                             for field in fields), builder=self)
+        return PlanItems(find_column,
+                         ((field.field_name, find_column(field))
+                          for field in fields), plan=self)
 
     @cached_property
     def indexes(self):
-        """ -> (:class:BuilderItems mutable namedtuple-like object) of the
-                indexes which are set to be created by the Builder
+        """ -> (:class:PlanItems mutable namedtuple-like object) of the
+                indexes which are set to be created by the Plan
                 autonomously.
         """
-        return BuilderItems(Index,
-                            ((field.field_name, Index(self.model, field))
-                             for field in self.model.indexes), builder=self)
+        return PlanItems(Index,
+                         ((field.field_name, Index(self.model, field))
+                          for field in self.model.indexes), plan=self)
 
     def create_schema(self):
         """ Creates the schema for the model if it doesn't exist """
@@ -529,7 +546,7 @@ class Builder(Table):
         """ Creates all of the functions defined in :prop:functions """
         for extension in self.extensions:
             try:
-                extension.execute()
+                e = extension.execute()
             except QueryError as e:
                 logg(e.message).notice()
 
@@ -573,8 +590,10 @@ class Builder(Table):
         line('—', 'gray')
         return self
 
-    def run(self):
+    def execute(self):
         cn = self.model.__class__.__name__
+        if self.schema != 'public':
+            self.model.db.add_search_path('public')
         logg().log('Building `%s` at `%s.%s`...' %
                    (cn, self.schema, self.name))
         self.before()
@@ -583,7 +602,7 @@ class Builder(Table):
         self.create_extensions()
         self.create_functions()
         try:
-            self.execute()
+            self.query.execute()
         except QueryError as e:
             raise BuildError('Error building `{}`: {}'.format(cn, e.message))
         self.create_indexes()
@@ -599,14 +618,14 @@ class Build(object):
     """ ========================================================================
         ``Usage Example``
         ..
-            from bloom.builder import Builder, Build, create_tables
+            from bloom.builder import Plan, Build, create_tables
 
 
-            class UsersBuilder(Builder):
+            class UsersPlan(Plan):
                 model = Users()
 
 
-            class PostsBuilder(Builder):
+            class PostsPlan(Plan):
                 model = Posts()
 
 
@@ -616,54 +635,53 @@ class Build(object):
                 # is the same as
                 Build.main()
                 # in this case is the same as
-                app_build_alt = Build(PostsBuilder(),
-                                      UsersBuilder())
+                app_build_alt = Build(PostsPlan(),
+                                      UsersPlan())
                 app_build_alt.run()
                 # is the same as
                 create_tables('__main__')
         ..
     """
-    def __init__(self, *builders):
-        """ Finds all of the :class:Builder objects in @path or optionally
-            builds all of the models in @*builders. It is of necessity that
-            the @builders are ordered properly if there are dependencies.
+    def __init__(self, *plans):
+        """ Finds all of the :class:Plan objects in @path or optionally
+            builds all of the models in @*plans. It is of necessity that
+            the @plans are ordered properly if there are dependencies.
 
-            @*builders: (:class:Builder or #str) one or several
-                initialized :class:Builder(s) or a #str importable python
-                path to where one or several :class:Builder(s) are located,
-                e.g. |cool_app.models.builders.users|. They will be run
+            @*plans: (:class:Plan or #str) one or several
+                initialized :class:Plan(s) or a #str importable python
+                path to where one or several :class:Plan(s) are located,
+                e.g. |cool_app.models.plans.users|. They will be run
                 alphabetically if imported via a string.
         """
-        self.builders = builders
+        self.plans = plans
 
-    def get_builders(self, path):
+    def get_plans(self, path):
         return [obj.obj()
                 for name, obj in docr.Docr(path).classes.items()
-                if issubclass(obj.obj, Builder)]
+                if issubclass(obj.obj, Plan)]
 
-    def _run_builders(self, builders, debug=False):
-        for builder in builders:
-            if isinstance(builder, str):
-                builder = docr.Docr(builder)
-                if builder.type == builder.MODULE:
-                    self._run_builders(self.get_builders(builder.obj),
-                                       debug=debug)
+    def _run_plans(self, plans, debug=False):
+        for plan in plans:
+            if isinstance(plan, str):
+                plan = docr.Docr(plan)
+                if plan.type == plan.MODULE:
+                    self._run_plans(self.get_plans(plan.obj), debug=debug)
             elif debug:
-                builder.debug()
+                plan.debug()
             else:
-                builder.run()
+                plan.execute()
 
     def debug(self):
-        self._run_builders(self.builders, debug=True)
+        self._run_plans(self.plans, debug=True)
         return self
 
     def run(self):
         self.before()
-        self._run_builders(self.builders)
+        self._run_plans(self.plans)
         self.after()
 
     def before(self):
-        """ Executed immediately before the builder runs. This is where
+        """ Executed immediately before the plan runs. This is where
             you'll want to do things like make edits to your :prop:columns
             and :prop:indexes, and add :meth:constraints.
         """
@@ -684,9 +702,9 @@ def create_models(orm, *tables, banner=None, schema='public',
     return modeller.run(output_to=output_to, **kwargs)
 
 
-def create_tables(*builders, dry=False):
+def create_tables(*plans, dry=False):
     """ :see::class:Build """
-    build = Build(*builders)
+    build = Build(*plans)
     if not dry:
         return build.run()
     return build
