@@ -50,6 +50,28 @@ class TestPolygon(configure.GeoTestCase, TestField):
             self.base.value)
         self.assertSequenceEqual(self.orm.naked().get().poly, d)
 
+    def test_array_insert(self):
+        arr = [tuple(RandData(int).tuple(2) for x in range(10)),
+               tuple(RandData(int).tuple(2) for x in range(10))]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [tuple(RandData(int).tuple(2) for x in range(10)),
+               tuple(RandData(int).tuple(2) for x in range(10))]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'polygon')
+        self.assertEqual(self.base_array.type_name, 'polygon[]')
+
 
 if __name__ == '__main__':
     # Unit test

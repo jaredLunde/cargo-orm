@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from bloom.fields import Money
 
-from unit_tests.fields.Currency import TestCurrency
+from unit_tests.fields.Currency import TestCurrency, TestEncCurrency
 from unit_tests import configure
 
 
@@ -23,7 +23,25 @@ class TestMoney(TestCurrency):
     def base(self):
         return self.orm.money
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'money')
+        self.assertEqual(self.base_array.type_name, 'money[]')
+
+
+class TestEncMoney(TestMoney, TestEncCurrency):
+
+    @property
+    def base(self):
+        return self.orm.enc_money
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestMoney, failfast=True, verbosity=2)
+    configure.run_tests(TestMoney, TestEncMoney, failfast=True, verbosity=2)

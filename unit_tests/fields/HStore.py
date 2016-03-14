@@ -32,14 +32,43 @@ class TestHStore(configure.KeyValueTestCase, TestField):
 
     def test_select(self):
         self.base(RandData(str).dict(10))
-        self.orm.naked().save()
+        self.orm.new().save()
         orm = self.orm.new().desc(self.orm.uid)
-        d = orm.get().hstore_field.value
+        d = getattr(orm.get(), self.base.field_name).value
         self.assertDictEqual(d, self.base.value)
         self.assertIsNot(d, self.base.value)
 
+    def test_array_insert(self):
+        arr = [RandData(str).dict(10), RandData(str).dict(10)]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, arr)
+
+    def test_array_select(self):
+        arr = [RandData(str).dict(10), RandData(str).dict(10)]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'hstore')
+        self.assertEqual(self.base_array.type_name, 'hstore[]')
+
+
+class TestEncHStore(TestHStore):
+
+    @property
+    def base(self):
+        return self.orm.enc_hstore
+
+    def test_init(self):
+        pass
 
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestHStore, failfast=True, verbosity=2)
+    configure.run_tests(TestHStore, TestEncHStore, failfast=True, verbosity=2)

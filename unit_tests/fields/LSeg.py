@@ -54,6 +54,26 @@ class TestLSeg(configure.GeoTestCase, TestField):
             tuple(tuple(v) for v in self.orm.naked().get().lseg), tuple(d))
         self.orm.clear()
 
+    def test_array_insert(self):
+        arr = [((3, 4), (1, 2)), ((4, 5), (2, 3))]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [((3, 4), (1, 2)), ((4, 5), (2, 3))]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'lseg')
+        self.assertEqual(self.base_array.type_name, 'lseg[]')
+
 
 if __name__ == '__main__':
     # Unit test

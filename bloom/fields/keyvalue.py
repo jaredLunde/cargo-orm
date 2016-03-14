@@ -6,6 +6,9 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
+import psycopg2
+import warnings
+
 import decimal
 import collections
 import psycopg2.extras
@@ -385,7 +388,9 @@ class _jsontype(object):
 
     @staticmethod
     def to_db(value):
-        return psycopg2.extensions.QuotedString(json.dumps(value))
+        adapt = psycopg2.extensions.adapt
+        return psycopg2.extensions.AsIs(
+            "%s::json" % adapt(json.dumps(value)).getquoted().decode())
 
     def __str__(self):
         return self.to_db(self).getquoted().decode('ascii', 'replace')
@@ -430,9 +435,10 @@ _jsontypes = (((collections.Mapping, collections.ItemsView, dict), jsondict),
               (collections.Iterable, jsonlist))
 
 
-def _get_json(val):
+def _get_json(val, oid):
     for instance, typ in _jsontypes:
         if isinstance(val, instance):
+            t = typ(val)
             return typ(val)
     raise TypeError('Could not adapt type `%s` to json.' % type(val))
 
@@ -462,7 +468,7 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
             if self.cast:
                 value = self.cast(value)
             if value is not None:
-                value = _get_json(value)
+                value = _get_json(value, self.OID)
             self.value = value
         return self.value
 
@@ -550,6 +556,13 @@ class HStore(Field, KeyValueOps, HStoreLogic):
         if value is not Field.empty:
             self.value = dict(value) if value is not None else None
         return self.value
+
+    @staticmethod
+    def register(db):
+        try:
+            return db.register('hstore')
+        except (ValueError, psycopg2.ProgrammingError):
+            warnings.warn('Type `hstore` was not found in the database.')
 
     '''
     hstore(record)	hstore	construct an hstore from a record or row	hstore(ROW(1,2))	f1=>1,f2=>2

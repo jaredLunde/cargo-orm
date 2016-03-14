@@ -11,7 +11,7 @@ import uuid
 import string
 
 from psycopg2.extensions import adapt, register_adapter, new_type,\
-                                register_type
+                                register_type, AsIs
 
 from vital.security import strkey
 
@@ -62,7 +62,7 @@ class UUID(Field, StringLogic):
 
     @staticmethod
     def adapt(uuid):
-        return adapt(uuid.__str__())
+        return AsIs("%s::uuid" % adapt(str(uuid)).getquoted().decode())
 
 
 register_adapter(uuid.UUID, UUID.adapt)

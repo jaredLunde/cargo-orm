@@ -55,6 +55,26 @@ class TestUUID(configure.IdentifierTestCase, TestField):
         self.base.new()
         self.assertIsNotNone(self.base.value)
 
+    def test_array_insert(self):
+        arr = [self.base.generate(), self.base.generate()]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [self.base.generate(), self.base.generate()]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'uuid')
+        self.assertEqual(self.base_array.type_name, 'uuid[]')
+
 
 if __name__ == '__main__':
     # Unit test

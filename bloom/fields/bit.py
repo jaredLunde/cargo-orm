@@ -10,8 +10,8 @@ from bitstring import BitArray
 from psycopg2.extensions import new_type, register_type, register_adapter,\
                                 adapt, AsIs
 
-
 from bloom.etc.types import *
+from bloom.etc.translator.postgres import OID_map
 from bloom.expressions import *
 from bloom.fields.field import Field
 from bloom.validators import BitValidator, VarbitValidator
@@ -55,6 +55,10 @@ class Bit(Field, BitLogic):
                 value = BitArray(value)
             self.value = value
         return self.value
+
+    @property
+    def type_name(self):
+        return '%s(%s)' % (OID_map[self.OID], self.length)
 
     @staticmethod
     def to_python(value, cur):

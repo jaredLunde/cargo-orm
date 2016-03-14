@@ -370,8 +370,8 @@ class Plan(Table):
                 #: Creates the ORM client connection
                 create_client()
                 #: Builds the model
-                build = UsersPlan()
-                build.run()
+                plan = UsersPlan()
+                plan.execute()
         ..
         |CREATE SCHEMA shard_0;                                               |
         |SET SEARCH PATH shard_0;                                             |
@@ -443,6 +443,16 @@ class Plan(Table):
         ident = self._get_comment_ident(obj)
         return comment_on(self.orm, type, ident, comment, dry=dry)
 
+    def _get_real_col(self, col):
+        try:
+            field = col.field.type
+            field.field_name = col.field.field_name
+            field.table = col.field.table
+            col = find_column(field)
+        except AttributeError:
+            pass
+        return col
+
     _special_fields = {UID: UIDFunction,
                        UUID: UUIDExtension,
                        HStore: HStoreExtension,
@@ -469,12 +479,13 @@ class Plan(Table):
                 functions which are set to be created by the Plan
                 autonomously.
         """
-        return PlanItems(CreateFunction,
-                         ((f.extras_name, f(self.model))
-                          for field in self.model.fields
-                          for t, f in self._special_fields.items()
-                          if isinstance(field, t) and
-                             issubclass(f, CreateFunction)))
+        def get_fn_cols():
+            for col in self.columns:
+                for t, f in self._special_fields.items():
+                    field = self._get_real_col(col).field
+                    if isinstance(field, t) and issubclass(f, CreateFunction):
+                        yield (f.extras_name, f(self.model))
+        return PlanItems(CreateFunction, get_fn_cols())
 
     _special_types = {Enum: EnumType.from_column}
 
@@ -483,12 +494,13 @@ class Plan(Table):
         """ -> (:class:PlanItems mutable namedtuple-like object) of the
                 types which are set to be created by the Plan autonomously.
         """
-        return PlanItems(Type,
-                         ((f.extras_name, f(self.model, field))
-                          for col in self.columns
-                          for t, f in self._special_types.items()
-                          if isinstance(col.field, t) and
-                             issubclass(f, Type)))
+        def get_type_cols():
+            for col in self.columns:
+                for t, f in self._special_types.items():
+                    col = self._get_real_col(col)
+                    if isinstance(col.field, t):
+                        yield ((str(col.datatype), f(self.model, col)))
+        return PlanItems(Type, get_type_cols())
 
     @cached_property
     def extensions(self):
@@ -496,12 +508,13 @@ class Plan(Table):
                 extensions which are set to be created by the Plan
                 autonomously.
         """
-        return PlanItems(Extension,
-                         ((f.extras_name, f(self.model))
-                          for field in self.model.fields
-                          for t, f in self._special_fields.items()
-                          if isinstance(field, t) and
-                             issubclass(f, Extension)))
+        def get_ext_cols():
+            for col in self.columns:
+                for t, f in self._special_fields.items():
+                    field = self._get_real_col(col).field
+                    if isinstance(field, t) and issubclass(f, Extension):
+                        yield (f.extras_name, f(self.model))
+        return PlanItems(Extension, get_ext_cols())
 
     @cached_property
     def columns(self):
@@ -536,6 +549,11 @@ class Plan(Table):
             except QueryError as e:
                 logg(e.message).notice()
             self.model.schema = self.schema
+
+    def create_types(self):
+        """ Creates all of the functions defined in :prop:functions """
+        for type in self.types:
+            type.execute()
 
     def create_functions(self):
         """ Creates all of the functions defined in :prop:functions """
@@ -584,6 +602,8 @@ class Plan(Table):
         line('-', 'gray')
         logg(self.extensions._dict).log('EXTENSIONS', color='blue', force=True)
         line('-', 'gray')
+        logg(self.types._dict).log('TYPES', color='blue', force=True)
+        line('-', 'gray')
         logg(self.functions._dict).log('FUNCTIONS', color='blue', force=True)
         line('-', 'gray')
         logg(self.comments._dict).log('COMMENTS', color='blue', force=True)
@@ -600,6 +620,7 @@ class Plan(Table):
         self.from_fields(*self.columns)
         self.create_schema()
         self.create_extensions()
+        self.create_types()
         self.create_functions()
         try:
             self.query.execute()

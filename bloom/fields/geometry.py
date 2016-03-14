@@ -128,7 +128,7 @@ class Point(Field, GeometryLogic):
     def to_db(point):
         p = b"(%s, %s)" % (adapt(point.x).getquoted(),
                            adapt(point.y).getquoted())
-        return QuotedString(p.decode())
+        return AsIs("%s::point" % adapt(p.decode()).getquoted().decode())
 
     @staticmethod
     def to_python(val, cur):
@@ -170,7 +170,7 @@ class Box(Field, GeometryLogic):
         box = b"((%s, %s), (%s, %s))" % (
             adapt(box.a.x).getquoted(), adapt(box.a.y).getquoted(),
             adapt(box.b.x).getquoted(), adapt(box.b.y).getquoted())
-        return QuotedString(box.decode())
+        return AsIs("%s::box" % adapt(box.decode()).getquoted().decode())
 
     @staticmethod
     def to_python(val, cur):
@@ -178,11 +178,17 @@ class Box(Field, GeometryLogic):
             return val
         return BoxRecord(*(PointRecord(*v) for v in eval(val)))
 
+    @staticmethod
+    def array_to_python(val, cur):
+        if val is None:
+            return val
+        val = val.strip('{}').split(';')
+        return [Box.to_python(v, cur) for v in val]
 
 BoxRecord = namedtuple('BoxRecord', ('a', 'b'))
 register_adapter(BoxRecord, Box.to_db)
 BOXTYPE = reg_type('BOXTYPE', BOX, Box.to_python)
-BOXARRAYTYPE = reg_array_type('BOXARRAYTYPE', BOXARRAY, BOXTYPE)
+BOXARRAYTYPE = reg_type('BOXARRAYTYPE', BOXARRAY, Box.array_to_python)
 
 
 class Circle(Field, GeometryLogic):
@@ -209,7 +215,7 @@ class Circle(Field, GeometryLogic):
             adapt(circle.center.x).getquoted(),
             adapt(circle.center.y).getquoted(),
             adapt(circle.radius).getquoted())
-        return QuotedString(circ.decode())
+        return AsIs("%s::circle" % adapt(circ.decode()).getquoted().decode())
 
     @staticmethod
     def to_python(val, cur):
@@ -249,9 +255,10 @@ class Line(Field, GeometryLogic):
 
     @staticmethod
     def to_db(line):
-        return AsIs("'{%s, %s, %s}'::line" % (adapt(line.a),
-                                              adapt(line.b),
-                                              adapt(line.c)))
+        return AsIs("'{%s, %s, %s}'::line" % (
+            adapt(line.a).getquoted().decode(),
+            adapt(line.b).getquoted().decode(),
+            adapt(line.c).getquoted().decode()))
 
     @staticmethod
     def to_python(val, cur):
@@ -282,6 +289,13 @@ class LSeg(Box):
                                    PointRecord(value[1][0], value[1][1]))
             self.value = value
         return self.value
+
+    @staticmethod
+    def to_db(box):
+        box = b"((%s, %s), (%s, %s))" % (
+            adapt(box.a.x).getquoted(), adapt(box.a.y).getquoted(),
+            adapt(box.b.x).getquoted(), adapt(box.b.y).getquoted())
+        return AsIs("%s::lseg" % adapt(box.decode()).getquoted().decode())
 
     @staticmethod
     def to_python(val, cur):
@@ -368,7 +382,8 @@ class Path(Field, GeometryLogic):
                                  adapt(point.y).getquoted())
                   for point in line[:-1])
         ctype = "(%s)" if line.closed else "[%s]"
-        return QuotedString(ctype % b", ".join(points).decode())
+        ctype = ctype % b", ".join(points).decode()
+        return AsIs("%s::path" % adapt(ctype).getquoted().decode())
 
     @staticmethod
     def to_python(val, cur):
@@ -428,7 +443,8 @@ class Polygon(Field, GeometryLogic):
         points = (b"(%s, %s)" % (adapt(point.x).getquoted(),
                                  adapt(point.y).getquoted())
                   for point in poly)
-        return QuotedString("(%s)" % b", ".join(points).decode())
+        points = "(%s)" % b", ".join(points).decode()
+        return AsIs("%s::path" % adapt(points).getquoted().decode())
 
     @staticmethod
     def to_python(val, cur):

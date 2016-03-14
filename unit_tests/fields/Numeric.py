@@ -60,8 +60,8 @@ class TestNumeric(configure.NumTestCase, TestBigInt):
 
     def test_insert(self):
         self.base(10)
-        val = getattr(self.orm.naked().insert(), self.base.field_name)
-        self.assertEqual(val, 10.0)
+        val = getattr(self.orm.new().insert(), self.base.field_name)
+        self.assertEqual(val.value, 10.0)
 
     def test_select(self):
         self.base(10)
@@ -91,7 +91,44 @@ class TestNumeric(configure.NumTestCase, TestBigInt):
                 self.assertNotEqual(getattr(fielda, k), getattr(fieldb, k))
         self.assertEqual(fielda.table, fieldb.table)
 
+    def test_array_insert(self):
+        arr = [1.0, 2.0, 3.0, 4.0, 5.0]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, arr)
+
+    def test_array_select(self):
+        arr = [1.0, 2.0, 3.0, 4.0, 5.0]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'numeric')
+        self.assertEqual(self.base_array.type_name, 'numeric[]')
+
+
+class TestEncNumeric(TestNumeric):
+
+    @property
+    def base(self):
+        return self.orm.enc_dec
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestNumeric, failfast=True, verbosity=2)
+    configure.run_tests(TestNumeric,
+                        TestEncNumeric,
+                        failfast=True,
+                        verbosity=2)

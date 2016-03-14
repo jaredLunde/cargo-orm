@@ -9,11 +9,12 @@
 import re
 import time
 
-import psycopg2.extensions
+import psycopg2
 
 from vital.debug import logg
 
 from bloom import Clause, Raw, safe
+from bloom.etc import types
 from bloom.exceptions import *
 from bloom.builder.extensions import *
 from bloom.builder.functions import *
@@ -234,9 +235,9 @@ class HStoreExtension(Extension):
     def execute(self):
         try:
             self.orm.execute(self.query.query, self.query.params)
+            self.orm.db.register('hstore')
         except QueryError as e:
             logg(e.message).notice()
-        self.orm.db.register('hstore')
 
 
 class CITextExtension(Extension):
@@ -250,3 +251,12 @@ class CITextExtension(Extension):
     @staticmethod
     def _get_comment():
         return """A keyvalue storage type."""
+
+    def execute(self):
+        try:
+            self.orm.execute(self.query.query, self.query.params)
+            OID, ARRAY_OID = self.orm.db.get_type_OID('citext')
+            types.reg_array_type('CITEXT_ARRAY_TYPE', ARRAY_OID,
+                                 psycopg2.STRING)
+        except QueryError as e:
+            logg(e.message).notice()

@@ -74,12 +74,36 @@ class TestIntRange(configure.RangeTestCase, TestField):
         self.assertEqual(val.upper, 4)
         self.assertIsNone(val.lower)
 
+    def test_array_insert(self):
+        arr = [(1, 3), (2, 4)]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [(1, 3), (2, 4)]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'int4range')
+        self.assertEqual(self.base_array.type_name, 'int4range[]')
+
 
 class TestBigIntRange(TestIntRange):
 
     @property
     def base(self):
         return self.orm.bigint
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'int8range')
+        self.assertEqual(self.base_array.type_name, 'int8range[]')
 
 
 class TestNumericRange(TestIntRange):
@@ -100,6 +124,10 @@ class TestNumericRange(TestIntRange):
         self.assertIsInstance(self.base.upper, decimal.Decimal)
         self.base(None)
         self.assertIsNone(self.base.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'numrange')
+        self.assertEqual(self.base_array.type_name, 'numrange[]')
 
 
 class TestTimestampRange(TestIntRange):
@@ -171,6 +199,26 @@ class TestTimestampRange(TestIntRange):
         self.assertIsInstance(self.base.upper, arrow.Arrow)
         self.assertIsNone(val.lower)
 
+    def test_array_insert(self):
+        arr = [('October 14, 2014 at 11:14p', 'October 31, 2014 at 11:14p')]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [('October 14, 2014 at 11:14p', 'October 31, 2014 at 11:14p')]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'tsrange')
+        self.assertEqual(self.base_array.type_name, 'tsrange[]')
+
 
 class TestTimestampTZRange(TestTimestampRange):
     rtype = DateTimeTZRange
@@ -179,6 +227,10 @@ class TestTimestampTZRange(TestTimestampRange):
     def base(self):
         return self.orm.timestamptz
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'tstzrange')
+        self.assertEqual(self.base_array.type_name, 'tstzrange[]')
+
 
 class TestDateRange(TestTimestampRange):
     rtype = DateRange
@@ -186,6 +238,26 @@ class TestDateRange(TestTimestampRange):
     @property
     def base(self):
         return self.orm.date
+
+    def test_array_insert(self):
+        arr = [('October 14, 2014', 'October 31, 2014')]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [('October 14, 2014', 'October 31, 2014')]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'daterange')
+        self.assertEqual(self.base_array.type_name, 'daterange[]')
 
 
 if __name__ == '__main__':

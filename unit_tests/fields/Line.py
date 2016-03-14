@@ -52,6 +52,26 @@ class TestLine(configure.GeoTestCase, TestField):
         self.assertTupleEqual(
             tuple(self.orm.naked().get().line), tuple(d))
 
+    def test_array_insert(self):
+        arr = [(1, 2, 3), (4, 5, 6)]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [(1, 2, 3), (4, 5, 6)]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'line')
+        self.assertEqual(self.base_array.type_name, 'line[]')
+
 
 if __name__ == '__main__':
     # Unit test

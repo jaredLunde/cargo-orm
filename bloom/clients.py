@@ -23,8 +23,11 @@ from multiprocessing import cpu_count
 
 from vital.cache import DictProperty, local_property
 from vital.tools.dicts import merge_dict
-from bloom.cursors import CNamedTupleCursor, ModelCursor
 from vital.debug import prepr
+
+from bloom.cursors import CNamedTupleCursor, ModelCursor
+from bloom.etc.types import reg_array_type, reg_type
+from bloom.etc.translator.postgres import OID_map
 
 
 __all__ = (
@@ -42,8 +45,33 @@ __all__ = (
 )
 
 
-class BaseClient(object):
+class BasePostgresClient(object):
     __slots__ = tuple()
+
+    def get_type_OID(self, typname):
+        """ -> (#tuple) |(OID, ARRAY_OID)| """
+        q = """SELECT t.oid AS OID, t.typname AS name
+               FROM pg_catalog.pg_type t
+               WHERE t.typname IN(%s, %s)
+               ORDER BY name DESC;"""
+        cur = self.cursor(cursor_factory=CNamedTupleCursor)
+        cur.execute(q, ('_%s' % typname, typname))
+        res = cur.fetchall()
+        return tuple(r.oid for r in res)
+
+    def get_type_name(self, OID):
+        """ -> (#str) type name for @OID """
+        try:
+            return OID_map[OID]
+        except KeyError:
+            q = """SELECT t.oid AS OID, t.typname AS name
+                   FROM pg_catalog.pg_type t
+                   WHERE t.oid = %s;"""
+            cur = self.cursor(cursor_factory=CNamedTupleCursor)
+            cur.execute(q, OID)
+            res = cur.fetchall()
+            return res.oid
+
     _ext_map = {'hstore': psycopg2.extras.register_hstore,
                 'composite': psycopg2.extras.register_composite}
 
@@ -58,8 +86,8 @@ class BaseClient(object):
                 given cursor rather than the local connection
             @**kwargs: keyword arguments to pass ot hte extension function
         """
-        conn_or_curs = self.connection if cursor is None else self.cursor
-        self._ext_map[extension](conn_or_curs, *args, **kwargs)
+        conn_or_curs = self.connection if cursor is None else cursor
+        return self._ext_map[extension](conn_or_curs, *args, **kwargs)
 
     def _load_from_str(self, name):
         return objects.Object.import_from(name)
@@ -154,7 +182,7 @@ class BaseClient(object):
         self._apply_event('AFTER', *args, **kwargs)
 
 
-class Postgres(BaseClient):
+class Postgres(BasePostgresClient):
     """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ``Usage Example``
 
@@ -310,15 +338,16 @@ class Postgres(BaseClient):
 
             -> :mod:psycopg2 connection object
         """
-        self._apply_before('connect')
-        if not self._connection or self._connection.closed or dsn or options:
+        if self._connection is None or self._connection.closed or dsn \
+           or options:
+            self._apply_before('connect')
             dsn = dsn or self._dsn
             if not dsn:
                 dsn = self.to_dsn(self._connection_options)
             self._connection = psycopg2.connect(
                 dsn, cursor_factory=self.cursor_factory)
             self._set_conn_options()
-        self._apply_after('connect')
+            self._apply_after('connect')
         return self._connection
 
     def _set_conn_options(self, seen=False):
@@ -383,7 +412,7 @@ class PostgresPoolConnection(Postgres):
         self.pool.putconn(self._connection, *args, **kwargs)
 
 
-class PostgresPool(BaseClient):
+class PostgresPool(BasePostgresClient):
     __slots__ = ('_dsn', 'autocommit',  '_connection_options', '_schema',
                  'encoding', '_cursor_factory', 'minconn', 'maxconn', '_pool',
                  '_cache', '_search_paths', '_events')

@@ -23,6 +23,10 @@ class TestSmallSerial(TestSerial):
     '''
     orm = configure.SmallSerialModel()
 
+    @property
+    def base(self):
+        return self.orm.serial
+
     def test_init_(self):
         base = SmallSerial()
         self.assertEqual(base.value, base.empty)
@@ -33,6 +37,9 @@ class TestSmallSerial(TestSerial):
         self.assertIsNone(base.not_null)
         self.assertEqual(base.minval, 1)
         self.assertEqual(base.maxval, 32767)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'smallint')
 
 
 if __name__ == '__main__':

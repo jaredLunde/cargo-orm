@@ -1740,6 +1740,12 @@ class Model(ORM):
         for field in self.fields:
             field.set_alias(table=alias)
 
+    def _register_field_type(self, field):
+        if hasattr(field, 'register'):
+            self.db.after('connect', field.register)
+        elif hasattr(field, 'type') and hasattr(field.type, 'register'):
+            self.db.after('connect', field.type.register)
+
     def _add_field(self, **fields):
         """ Adds one or several @fields to the model.
             @**fields: |field_name=<Field>| keyword arguments
@@ -1755,6 +1761,7 @@ class Model(ORM):
             field = field.copy()
             field.table = self.table
             field.field_name = field_name
+            self._register_field_type(field)
             sa(field_name, field)
             add_field(field)
         self._order_fields()

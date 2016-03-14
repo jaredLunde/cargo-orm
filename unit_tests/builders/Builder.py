@@ -24,6 +24,7 @@ class FooUsers(Model):
     uid = UID()
     username = Username(maxlen=25, unique=True, not_null=True)
     password = Password(minlen=8, not_null=True)
+    gender = OneOf('male', 'female', 'transgendered')
 
 
 class FooPosts(Model):
@@ -46,7 +47,7 @@ class FooComments(Model):
 
 
 class FooUsersPlan(Plan):
-    ordinal = ('uid', 'username', 'password')
+    ordinal = ('uid', 'username', 'password', 'gender')
     model = FooUsers(schema='foo_0', debug=False)
 
     def before(self):

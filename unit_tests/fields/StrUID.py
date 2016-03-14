@@ -10,6 +10,10 @@ from unit_tests import configure
 class TestStrUID(TestUID):
     orm = configure.StrUIDModel()
 
+    @property
+    def base(self):
+        return self.orm.uid
+
     def test_init(self):
         base = StrUID()
         self.assertEqual(base.value, base.empty)

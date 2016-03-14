@@ -26,10 +26,11 @@ class BaseDecimal(Field, NumericLogic):
                  'value', 'validator', '_alias', 'default', 'minval', 'maxval',
                  'table', '_context', 'decimal_places', '_quantize', 'locale',
                  'digits')
+    MINVAL = -9223372036854775808.0
+    MAXVAL = 9223372036854775807.0
 
-    def __init__(self, decimal_places=None, digits=-1,
-                 minval=-9223372036854775808.0, maxval=9223372036854775807.0,
-                 context=None, rounding=decimal.ROUND_UP,
+    def __init__(self, decimal_places=None, digits=-1, minval=MINVAL,
+                 maxval=MAXVAL, context=None, rounding=decimal.ROUND_UP,
                  locale=babel.numbers.LC_NUMERIC, validator=NumericValidator,
                  **kwargs):
         prec = decimal.MAX_PREC if digits is None or digits < 0 else digits
@@ -125,7 +126,7 @@ class Decimal(BaseDecimal, BaseDecimalFormat):
     TWOPLACES = decimal.Decimal(10) ** -2
 
     def __init__(self, decimal_places=None, digits=-1,
-                 minval=-9223372036854775808.0, maxval=9223372036854775807.0,
+                 minval=BaseDecimal.MINVAL, maxval=BaseDecimal.MAXVAL,
                  context=None, rounding=decimal.ROUND_UP, **kwargs):
         """ `Decimal`
             :see::meth:SmallInt.__init__
@@ -156,10 +157,12 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
                  'value', 'validator', '_alias', 'default', 'minval', 'maxval',
                  'decimal_places', 'table', 'locale')
     OID = FLOAT
+    MINVAL = BaseDecimal.MINVAL
+    MAXVAL = BaseDecimal.MAXVAL
 
-    def __init__(self, decimal_places=6, minval=-9223372036854775808.0,
-                 maxval=9223372036854775807.0, locale=babel.numbers.LC_NUMERIC,
-                 validator=NumericValidator, **kwargs):
+    def __init__(self, decimal_places=6, minval=MINVAL, maxval=MAXVAL,
+                 locale=babel.numbers.LC_NUMERIC, validator=NumericValidator,
+                 **kwargs):
         """ `Float`
             :see::meth:SmallInt.__init__
             @decimal_places: (#int) number of digits after the decimal point to
@@ -220,10 +223,11 @@ class Currency(BaseDecimal):
                  'table', '_context', 'decimal_places', '_quantize', 'locale',
                  'code')
     OID = CURRENCY
+    MINVAL = -92233720368547758.08
+    MAXVAL = 92233720368547758.07
 
     def __init__(self, decimal_places=2, digits=-1, code='USD',
-                 minval=-92233720368547758.08, maxval=92233720368547758.07,
-                 **kwargs):
+                 minval=MINVAL, maxval=MAXVAL, **kwargs):
         """ `Currency`
             :see::meth:Decimal.__init__
             @code: (#str) the currency code e.g., |BTC| for Bitcoin

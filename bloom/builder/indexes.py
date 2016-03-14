@@ -151,7 +151,10 @@ class Index(BaseCreator):
                 default = 'gin'
             elif self.fields[0].OID in self.gist_types:
                 default = 'gist'
-        return self._type or default
+        type = self._type
+        if isinstance(self.fields[0].index, str):
+            type = self.fields[0].index
+        return type or default
 
     @property
     def options(self):

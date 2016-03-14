@@ -156,15 +156,53 @@ class TestPassword(configure.ExtrasTestCase, TestField):
 
     def test_insert(self):
         self.base('somepassword')
-        self.assertEqual(self.orm.new().insert().password.value,
+        val = self.orm.new().insert()
+        self.assertEqual(getattr(val, self.base.field_name).value,
                          self.base.value)
 
     def test_select(self):
         self.base('somepassword')
         self.orm.insert()
-        orm = self.orm.new().naked()
-        self.assertEqual(orm.desc(self.orm.uid).get().password,
+        val = self.orm.new().desc(self.orm.uid).get()
+        self.assertEqual(getattr(val, self.base.field_name).value,
                          self.base.value)
+
+    def test_array_insert(self):
+        arr = ['somepassword', 'someotherpassword']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, self.base_array.value)
+
+    def test_array_select(self):
+        arr = ['somepassword', 'someotherpassword']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
+
+class TestEncPassword(TestPassword):
+
+    @property
+    def base(self):
+        return self.orm.enc_password
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
+    def test_deepcopy(self):
+        pass
 
 
 if __name__ == '__main__':
@@ -176,5 +214,6 @@ if __name__ == '__main__':
                         TestSHA512Hasher,
                         TestSHA256Hasher,
                         TestPassword,
+                        TestEncPassword,
                         failfast=True,
                         verbosity=2)

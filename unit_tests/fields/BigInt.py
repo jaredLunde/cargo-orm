@@ -3,7 +3,7 @@
 import sys
 from bloom.fields import BigInt
 
-from unit_tests.fields.SmallInt import TestSmallInt
+from unit_tests.fields.SmallInt import TestSmallInt, TestEncSmallInt
 from unit_tests import configure
 
 
@@ -23,7 +23,7 @@ class TestBigInt(TestSmallInt):
     '''
     @property
     def base(self):
-        return self.orm.integer
+        return self.orm.bigint
 
     def test_init_(self):
         base = BigInt()
@@ -38,7 +38,22 @@ class TestBigInt(TestSmallInt):
         self.assertEqual(base.minval, -9223372036854775808)
         self.assertEqual(base.maxval, 9223372036854775807)
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'bigint')
+        self.assertEqual(self.base_array.type_name, 'bigint[]')
+
+
+class TestEncBigInt(TestBigInt, TestEncSmallInt):
+
+    @property
+    def base(self):
+        return self.orm.enc_integer
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestBigInt, verbosity=2, failfast=True)
+    configure.run_tests(TestBigInt, TestEncBigInt, verbosity=2, failfast=True)

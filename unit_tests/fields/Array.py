@@ -3,6 +3,7 @@
 import psycopg2.extras
 import psycopg2.extensions
 
+from bloom import fields
 from bloom.fields import *
 from vital.debug import RandData
 

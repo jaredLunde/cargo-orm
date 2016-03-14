@@ -45,6 +45,9 @@ class TestUID(configure.IdentifierTestCase):
             getattr(self.orm.new().get(), self.base.field_name).value,
             self.base.value)
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'bigint')
+
 
 if __name__ == '__main__':
     # Unit test

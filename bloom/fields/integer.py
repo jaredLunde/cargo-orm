@@ -25,9 +25,12 @@ class SmallInt(Field, NumericLogic):
                  'value', 'validator', '_alias', 'default', 'minval',
                  'maxval', 'table', 'locale')
     OID = SMALLINT
+    MINVAL = -32768
+    MAXVAL = 32767
 
-    def __init__(self, minval=-32768, maxval=32767, validator=IntValidator,
-                 locale=babel.numbers.LC_NUMERIC, **kwargs):
+    def __init__(self, minval=MINVAL, maxval=MAXVAL,
+                 validator=IntValidator, locale=babel.numbers.LC_NUMERIC,
+                 **kwargs):
         """ `SmallInt`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -79,8 +82,10 @@ class Int(SmallInt):
     """
     __slots__ = SmallInt.__slots__
     OID = INT
+    MINVAL = -2147483648
+    MAXVAL = 2147483647
 
-    def __init__(self, minval=-2147483648, maxval=2147483647,  **kwargs):
+    def __init__(self, minval=MINVAL, maxval=MAXVAL,  **kwargs):
         """ `Int`
             :see::meth:Field.__init__
             @minval: (#int) minimum interger value
@@ -97,6 +102,8 @@ class BigInt(SmallInt):
     """
     __slots__ = SmallInt.__slots__
     OID = BIGINT
+    MINVAL = -9223372036854775808
+    MAXVAL = 9223372036854775807
 
     def __init__(self, minval=-9223372036854775808, maxval=9223372036854775807,
                  **kwargs):

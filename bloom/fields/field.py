@@ -8,15 +8,13 @@
 """
 import copy
 
-from psycopg2.extensions import *
-
-from vital.cache import cached_property
 from vital.debug import prepr
 
 from bloom.etc.types import *
+from bloom.etc.translator.postgres import OID_map
 from bloom.exceptions import *
-from bloom.expressions import *
-from bloom.validators import *
+from bloom.expressions import BaseLogic, _empty
+from bloom.validators import NullValidator
 
 
 __all__ = ('Field',)
@@ -50,8 +48,9 @@ class Field(BaseLogic):
             @primary: (#bool) True if this field is the primary key in your
                 table
             @unique: (#bool) True if this field is a unique index in your table
-            @index: (#bool) True if this field is a plain index in your table,
-                that is, not unique or primary
+            @index: (#bool or #str) |True| if this field is an index in your
+                table, you can also pass a #str specific index type
+                e.g. |Text(index='btree')| or |Array(index='gin')|
             @default: default value to set the field to
             @validator: (:class:Validator) validator plugin,
                 :meth:Validator.validate must return True if the field
@@ -84,10 +83,9 @@ class Field(BaseLogic):
     def __repr__(self): return
 
     def __getstate__(self):
-        return dict(
-            (slot, getattr(self, slot))
-            for slot in self.__slots__
-            if hasattr(self, slot))
+        return dict((slot, getattr(self, slot))
+                    for slot in self.__slots__
+                    if hasattr(self, slot))
 
     def __setstate__(self, state):
         for slot, value in state.items():
@@ -127,6 +125,10 @@ class Field(BaseLogic):
         if self.table:
             return "{}.{}".format(self.table, self.field_name)
         return self.field_name
+
+    @property
+    def type_name(self):
+        return OID_map[self.OID]
 
     def set_alias(self, table=None, name=None):
         """ Used for :class:aliased ==when this field is wrapped with

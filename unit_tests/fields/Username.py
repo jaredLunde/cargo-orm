@@ -20,13 +20,13 @@ class TestUsername(configure.ExtrasTestCase, TestChar):
     def test_validate(self):
         base = Username()
         for username in reserved_usernames:
-            base(username)
+            base(username.upper())
             self.assertFalse(base.validate())
 
-        randlist = RandData(str).list(1000)
+        randlist = set(s.lower() for s in RandData(str).list(1000))
         base = Username(reserved_usernames=randlist)
         for username in randlist:
-            base(username)
+            base(username.upper())
             self.assertFalse(base.validate())
 
         base = Username(reserved_usernames=[])
@@ -59,17 +59,58 @@ class TestUsername(configure.ExtrasTestCase, TestChar):
 
     def test_insert(self):
         self.base('jared')
-        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
-        self.assertEqual(val, 'jared')
+        val = getattr(self.orm.new().insert(self.base), self.base.field_name)
+        self.assertEqual(val.value, 'jared')
 
     def test_select(self):
         self.assertIs(self.base.value, self.base.empty)
         self.base('jared')
         self.orm.insert(self.base)
-        self.assertEqual(self.orm.new().desc(self.orm.uid).get().username.value,
+        orm = self.orm.new().desc(self.orm.uid)
+        self.assertEqual(getattr(orm.get(), self.base.field_name).value,
                          self.base.value)
+
+    def test_array_insert(self):
+        arr = ['jared', 'jaredlunde']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, arr)
+
+    def test_array_select(self):
+        arr = ['jared', 'jaredlunde']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'citext')
+        self.assertEqual(self.base_array.type_name, 'citext[]')
+
+
+class TestEncUsername(TestUsername, TestEncChar):
+
+    @property
+    def base(self):
+        return self.orm.enc_username
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
+    def test_deepcopy(self):
+        pass
 
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestUsername, failfast=True, verbosity=2)
+    configure.run_tests(TestUsername,
+                        TestEncUsername,
+                        failfast=True,
+                        verbosity=2)

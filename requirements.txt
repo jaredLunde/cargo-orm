@@ -4,9 +4,11 @@ babel
 bcrypt
 bitstring
 cnamedtuple
+# docr
 python-dateutil
 passlib
 psycopg2
 pycrypto
 slugify
+# vital-tools
 yapf

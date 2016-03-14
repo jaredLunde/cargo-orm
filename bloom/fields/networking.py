@@ -8,6 +8,8 @@
 """
 import copy
 from netaddr import *
+
+import psycopg2
 from psycopg2.extensions import *
 
 from bloom.etc.types import *
@@ -79,7 +81,7 @@ class IP(Field, NetworkingLogic):
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
                  'value', 'validator', '_alias', '_default', 'table',
                  '_request')
-    OID = IP
+    OID = IPTYPE
     current = -1
 
     def __init__(self, request=None, *args, default=None, **kwargs):
@@ -140,7 +142,13 @@ class IP(Field, NetworkingLogic):
 
     @staticmethod
     def to_db(value):
-        return adapt(str(value))
+        return AsIs("%s::inet" % adapt(str(value)).getquoted().decode())
+
+    @staticmethod
+    def to_python(value, cur):
+        if value is None:
+            return value
+        return IPAddress(value)
 
     def copy(self, *args, **kwargs):
         cls = self._copy(self._request, *args, **kwargs)
@@ -152,6 +160,8 @@ class IP(Field, NetworkingLogic):
 
 Inet = IP
 register_adapter(IPAddress, IP.to_db)
+IPTYPE_ = reg_type('IPTYPE', IPTYPE, IP.to_python)
+reg_array_type('IPARRAYTYPE', IPARRAY, IPTYPE_)
 
 
 class Cidr(Field, StringLogic):
@@ -184,10 +194,18 @@ class Cidr(Field, StringLogic):
         return int(self.value)
 
     @staticmethod
+    def to_python(value, cur):
+        if value is None:
+            return value
+        return IPNetwork(value)
+
+    @staticmethod
     def to_db(value):
-        return adapt(str(value))
+        return AsIs("%s::cidr" % adapt(str(value)).getquoted().decode())
 
 register_adapter(IPNetwork, Cidr.to_db)
+CIDRTYPE = reg_type('CIDRTYPE', CIDR, Cidr.to_python)
+reg_array_type('CIDRARRAYTYPE', CIDRARRAY, CIDRTYPE)
 
 
 class MacAddress(Cidr):
@@ -216,6 +234,16 @@ class MacAddress(Cidr):
             self.value = value
         return self.value
 
+    @staticmethod
+    def to_python(value, cur):
+        if value is None:
+            return value
+        return EUI(value)
+
+    @staticmethod
+    def to_db(value):
+        return AsIs("%s::macaddr" % adapt(str(value)).getquoted().decode())
+
     def trunc(self, *args, **kwargs):
         """ Sets last 3 bytes to zero
             -> (:class:Function)
@@ -223,3 +251,5 @@ class MacAddress(Cidr):
         return Function(trunc, self, *args, **kwargs)
 
 register_adapter(EUI, MacAddress.to_db)
+MACADDRTYPE = reg_type('MACADDRTYPE', MACADDR, MacAddress.to_python)
+reg_array_type('MACADDRARRAYTYPE', MACADDRARRAY, MACADDRTYPE)

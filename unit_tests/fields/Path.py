@@ -74,6 +74,28 @@ class TestPath(configure.GeoTestCase, TestField):
             tuple(self.orm.naked().get().path[:-1]), tuple(d))
         self.assertFalse(self.base.closed)
 
+    def test_array_insert(self):
+        arr = [self.base(list(RandData(int).tuple(2) for _ in range(3))),
+               self.base(tuple(RandData(int).tuple(2) for _ in range(3)))]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [self.base(list(RandData(int).tuple(2) for _ in range(3))),
+               self.base(tuple(RandData(int).tuple(2) for _ in range(3)))]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'path')
+        self.assertEqual(self.base_array.type_name, 'path[]')
+
 
 if __name__ == '__main__':
     # Unit test

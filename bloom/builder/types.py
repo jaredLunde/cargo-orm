@@ -115,7 +115,6 @@ class EnumType(BaseCreator):
 
     @staticmethod
     def from_column(orm, col):
-        name = '%s_enum_type' % col.field_name
         return EnumType(orm, col.raw_datatype, *col.field.types)
 
     @property
@@ -124,6 +123,6 @@ class EnumType(BaseCreator):
         types = tuple(self.types)
         clause = Clause('CREATE TYPE',
                         safe(self.name),
-                        Clause("AS", types))
+                        Clause("AS ENUM", types))
         self.orm.state.add(clause)
         return Raw(self.orm)

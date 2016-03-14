@@ -61,6 +61,16 @@ class TestSerial(configure.IdentifierTestCase, TestInt):
                     self.base.field_name).value,
             self.base.value)
 
+    def test_array_insert(self):
+        pass
+
+    def test_array_select(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'integer')
+
+
 if __name__ == '__main__':
     # Unit test
     configure.run_tests(TestSerial, verbosity=2, failfast=True)

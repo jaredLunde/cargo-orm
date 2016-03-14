@@ -30,9 +30,9 @@ __all__ = (
     'Column',
     'ArrayColumn',
     'EnumColumn',
+    'EncryptedColumn',
     'IntColumn',
     'CharColumn',
-    'BitColumn',
     'SerialColumn',
     'NumericColumn')
 
@@ -376,7 +376,10 @@ class Column(BaseCreator):
 
     @property
     def raw_datatype(self):
-        return self._datatype or self.translator.OID_map[self.OID]
+        try:
+            return self._datatype or self.field.type_name
+        except AttributeError:
+            return self.translator.OID_map[self.OID]
 
     @property
     def datatype(self):
@@ -426,28 +429,31 @@ class Column(BaseCreator):
 
 
 class ArrayColumn(Column):
-
     @property
-    def datatype(self):
+    def raw_datatype(self):
+        if self._datatype:
+            return safe(self._datatype)
         field = self.field
         maxlen = field.maxlen
         dims = "[]".format(maxlen if maxlen > 0 else '')
         if field.dimensions > 1:
             maxlen = field.maxlen
             dims = ''.join('[]' for _ in range(field.dimensions))
-        OID = field.type.OID
-        if field.OID == types.ENCRYPTED and OID != types.BINARY:
-            OID = types.TEXT
-        typecast = self.translator.translate_to(OID)
-        return safe("{}{}".format(typecast, dims))
+        tfield = field.type.copy()
+        tfield.field_name = field.field_name
+        tfield.table = field.table
+        col = find_column(tfield)
+        return "{}{}".format(col.datatype, dims)
+
+    @property
+    def datatype(self):
+        return safe(self.raw_datatype)
 
     def _add_constraints(self):
         if self._check is None:
             ftype = Function('array_length', self.field, 1)
-            _ops = lambda x: ftype.ge(x),\
-                   lambda x: ftype.le(x)
-            _validate = lambda x: x > 1,\
-                        lambda x: x > -1
+            _ops = lambda x: ftype.ge(x), lambda x: ftype.le(x)
+            _validate = lambda x: x > 1, lambda x: x > 0
             ops = self._get_constraint_ops(('minlen', 'maxlen'),
                                            _ops,
                                            _validate)
@@ -456,24 +462,27 @@ class ArrayColumn(Column):
 
 
 class EnumColumn(Column):
-    ''' CREATE TYPE IF NOT EXISTS... '''
-
     @property
     def raw_datatype(self):
-        return '%s_enum_type' % self.field.field_name
+        if self._datatype:
+            return self._datatype
+        return self.field.type_name
 
     @property
     def datatype(self):
         return safe(self.raw_datatype)
 
 
-class TextColumn(Column):
+class EncryptedColumn(Column):
+    pass
+
+
+class CharColumn(Column):
 
     def _add_constraints(self):
         if self._check is None:
             ftype = Function('char_length', self.field)
-            _ops = lambda x: ftype.ge(x),\
-                   lambda x: ftype.le(x)
+            _ops = lambda x: ftype.ge(x), lambda x: ftype.le(x)
             _validate = lambda x: x > 1,\
                         lambda x: x > -1 and self.field.OID != types.VARCHAR
             ops = None
@@ -484,47 +493,19 @@ class TextColumn(Column):
                 self._check = WrappedClause('CHECK', ops, use_field_name=True)
 
 
-class CharColumn(TextColumn):
-
-    @property
-    def datatype(self):
-        if self.field.maxlen == -1:
-            return safe(self.raw_datatype)
-        return Function(self.raw_datatype, safe(self.field.maxlen))
-
-
-class UsernameColumn(TextColumn):
-
-    @property
-    def datatype(self):
-        return safe('citext')
-
-
 class IntColumn(Column):
 
     def _add_constraints(self):
         if self._check is None:
-            _ops = lambda x: self.field.ge(x),\
-                   lambda x: self.field.le(x)
+            _ops = lambda x: self.field.ge(x), lambda x: self.field.le(x)
             _cast = self.field.__class__()
-            _validate = lambda x: abs(x) != _cast(sys.maxsize) and\
-                                  abs(x) != sys.maxsize / 100,\
-                        lambda x: abs(x) != _cast(sys.maxsize) and\
-                                  abs(x) != sys.maxsize / 100
+            _validate = lambda x: x != self.field.MINVAL,\
+                        lambda x: x != self.field.MAXVAL
             ops = self._get_constraint_ops(('minval', 'maxval'),
                                            _ops,
                                            _validate)
             if ops is not None:
                 self._check = WrappedClause('CHECK', ops, use_field_name=True)
-
-
-class BitColumn(Column):
-    @property
-    def datatype(self):
-        if self.field.length == -1:
-            return safe(self.raw_datatype)
-        return Function(self.raw_datatype, safe(self.field.length))
-
 
 class SerialColumn(Column):
     @property
@@ -556,37 +537,16 @@ class NumericColumn(IntColumn):
         return safe('%s%s' % (self.raw_datatype, prec))
 
 
-class EncryptedColumn(Column):
-    @property
-    def raw_datatype(self):
-        if self.field.type.OID == types.BINARY:
-            return 'bytea'
-        return 'text'
-
-    @property
-    def datatype(self):
-        return safe(self.raw_datatype)
-
-
 def find_column(field, translator=postgres):
-    if isinstance(field, Encrypted):
-        # Encrypted
-        return EncryptedColumn(field, translator)
-    elif isinstance(field, (Serial, BigSerial, SmallSerial)):
+    if isinstance(field, (Serial, BigSerial, SmallSerial)):
         # Serial
         return SerialColumn(field, translator)
+    if isinstance(field, (Encrypted)):
+        # Serial
+        return EncryptedColumn(field, translator)
     elif field.OID in types.category.ARRAYS:
         # Array
         return ArrayColumn(field, translator)
-    elif isinstance(field, Username):
-        # Usernames
-        return UsernameColumn(field, translator)
-    elif isinstance(field, (Slug, Password)):
-        # Special types
-        return Column(field, translator)
-    elif field.OID == types.TEXT:
-        # Text
-        return TextColumn(field, translator)
     elif field.OID == types.ENUM:
         # Enum
         return EnumColumn(field, translator)
@@ -599,9 +559,6 @@ def find_column(field, translator=postgres):
     elif field.OID in types.category.NUMERIC:
         # Numeric
         return NumericColumn(field, translator)
-    elif field.OID in types.category.BITS:
-        # Bit
-        return BitColumn(field, translator)
     else:
         # Default
         return Column(field, translator)

@@ -62,8 +62,8 @@ class TestSmallInt(configure.IntTestCase, TestField):
 
     def test_insert(self):
         self.base(10)
-        val = getattr(self.orm.naked().insert(), self.base.field_name)
-        self.assertEqual(val, 10)
+        val = getattr(self.orm.new().insert(), self.base.field_name)
+        self.assertEqual(val.value, 10)
 
     def test_select(self):
         self.base(10)
@@ -72,7 +72,60 @@ class TestSmallInt(configure.IntTestCase, TestField):
             getattr(self.orm.new().get(), self.base.field_name).value,
             self.base.value)
 
+    def test_array_insert(self):
+        arr = [1, 2, 3, 4, 5]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, arr)
+
+    def test_array_select(self):
+        arr = [1, 2, 3, 4, 5]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'smallint')
+        self.assertEqual(self.base_array.type_name, 'smallint[]')
+
+
+class TestEncSmallInt(TestSmallInt):
+
+    @property
+    def base(self):
+        return self.orm.enc_smallint
+
+    def test_init(self):
+        pass
+
+    def test_array_insert(self):
+        arr = [1, 2, 3, 4, 5]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, arr)
+
+    def test_array_select(self):
+        arr = [1, 2, 3, 4, 5]
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestSmallInt, verbosity=2, failfast=True)
+    configure.run_tests(TestSmallInt,
+                        TestEncSmallInt,
+                        verbosity=2,
+                        failfast=True)

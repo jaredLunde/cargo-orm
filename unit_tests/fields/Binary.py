@@ -38,7 +38,9 @@ class TestBinary(configure.BinaryTestCase, TestField):
 
     def test_insert(self):
         self.base(b'foo')
-        self.orm.insert(self.base)
+        val = self.orm.new().insert(self.base)
+        self.assertEqual(self.base.value,
+                         getattr(val, self.base.field_name).value)
 
     def test_select(self):
         import pickle
@@ -52,7 +54,49 @@ class TestBinary(configure.BinaryTestCase, TestField):
         self.assertIsInstance(p_val, enc_val.__class__)
         self.assertEqual(p_val.value, enc_val.value)
 
+    def test_array_insert(self):
+        arr = [b'foo', b'bar']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, arr)
+
+    def test_array_select(self):
+        arr = [b'foo', b'bar']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'bytea')
+        self.assertEqual(self.base_array.type_name, 'bytea[]')
+
+
+class TestEncBinary(TestBinary):
+
+    @property
+    def base(self):
+        return self.orm.enc_binary_field
+
+    def test_init(self, *args, **kwargs):
+        pass
+
+    def test_select(self):
+        self.base('foo')
+        self.orm.insert(self.base)
+        r = self.orm.new().desc(self.orm.uid).get()
+        r_val = getattr(r, self.base.field_name).value
+        self.assertEqual(r_val, self.base.value)
+
+    def test_insert(self):
+        self.base(b'foo')
+        val = self.orm.new().insert(self.base)
+        self.assertEqual(self.base.value, val.enc_binary_field.value)
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestBinary, verbosity=2, failfast=True)
+    configure.run_tests(TestBinary, TestEncBinary, verbosity=2, failfast=True)

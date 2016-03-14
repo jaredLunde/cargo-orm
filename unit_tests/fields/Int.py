@@ -4,7 +4,7 @@ import sys
 from bloom.fields import Int
 
 from unit_tests import configure
-from unit_tests.fields.SmallInt import TestSmallInt
+from unit_tests.fields.SmallInt import TestSmallInt, TestEncSmallInt
 
 
 __all__ = ("TestInt",)
@@ -39,7 +39,22 @@ class TestInt(TestSmallInt):
         self.assertEqual(base.minval, -2147483648)
         self.assertEqual(base.maxval, 2147483647)
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'integer')
+        self.assertEqual(self.base_array.type_name, 'integer[]')
+
+
+class TestEncInt(TestInt, TestEncSmallInt):
+
+    @property
+    def base(self):
+        return self.orm.enc_integer
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestInt, verbosity=2, failfast=True)
+    configure.run_tests(TestInt, TestEncInt, verbosity=2, failfast=True)

@@ -50,6 +50,26 @@ class TestPoint(configure.GeoTestCase, TestField):
             self.base.value)
         self.assertSequenceEqual(self.orm.naked().get().point, d)
 
+    def test_array_insert(self):
+        arr = [RandData(int).tuple(2), RandData(int).tuple(2)]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, self.base_array.value)
+
+    def test_array_select(self):
+        arr = [RandData(int).tuple(2), RandData(int).tuple(2)]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'point')
+        self.assertEqual(self.base_array.type_name, 'point[]')
+
 
 if __name__ == '__main__':
     # Unit test

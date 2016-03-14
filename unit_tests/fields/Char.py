@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 from bloom.fields import Char
+from bloom.etc import types
 
 from unit_tests.fields.Field import TestField, Tc
 from unit_tests import configure
@@ -39,7 +40,7 @@ class TestChar(configure.CharTestCase, TestField):
         self.assertFalse(base.validate())
 
     def test___call__(self):
-        for val in (40, [], dict(), set(), tuple(), 'foo'):
+        for val in (40, [], dict(), set(),  'foo'):
             self.base(val)
             self.assertEqual(self.base.value, str(val))
 
@@ -51,9 +52,8 @@ class TestChar(configure.CharTestCase, TestField):
 
     def test_insert(self):
         self.base('foo')
-        val = getattr(self.orm.naked().insert(self.base), self.base.field_name)
-        self.assertNotEqual(val, 'foo')
-        self.assertEqual(val.strip(), 'foo')
+        val = getattr(self.orm.new().insert(self.base), self.base.field_name)
+        self.assertEqual(val.value.strip(), 'foo')
 
     def test_select(self):
         self.base('foo')
@@ -63,7 +63,61 @@ class TestChar(configure.CharTestCase, TestField):
         self.assertEqual(len(r.value), 200)
         self.assertEqual(r.value.strip(), 'foo')
 
+    def test_array_insert(self):
+        arr = ['bingo', 'bango', 'bongo']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name).value
+        if self.base_array.OID == types.CHAR:
+            self.assertNotEqual(val, arr)
+        self.assertListEqual([v.strip() for v in val], arr)
+
+    def test_array_select(self):
+        arr = ['bingo', 'bango', 'bongo']
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'char(200)')
+        self.assertEqual(self.base_array.type_name, 'char(200)[]')
+
+
+class TestEncChar(TestChar):
+
+    @property
+    def base(self):
+        return self.orm.enc_char
+
+    def test_init(self, *args, **kwargs):
+        pass
+
+    def test_validate(self):
+        pass
+
+    def test_additional_kwargs(self):
+        pass
+
+    def test_insert(self):
+        self.base('foo')
+        val = getattr(self.orm.new().insert(self.base), self.base.field_name)
+        self.assertEqual(val.value.strip(), 'foo')
+
+    def test_select(self):
+        self.base('foo')
+        self.orm.insert(self.base)
+        r = getattr(self.orm.new().desc(self.orm.uid).get(self.base),
+                    self.base.field_name)
+        self.assertEqual(r.value.strip(), 'foo')
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestChar, failfast=True, verbosity=2)
+    configure.run_tests(TestChar, TestEncChar, failfast=True, verbosity=2)

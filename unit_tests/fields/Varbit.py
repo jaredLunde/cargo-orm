@@ -69,6 +69,26 @@ class TestVarbit(configure.BitTestCase, TestField):
             getattr(self.orm.new().get(), self.base.field_name).value,
             self.base.value)
 
+    def test_array_insert(self):
+        arr = ['0b0010', '0b0011']
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, arr)
+
+    def test_array_select(self):
+        arr = ['0b0010', '0b0011']
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'varbit(4)')
+        self.assertEqual(self.base_array.type_name, 'varbit(4)[]')
+
 
 if __name__ == '__main__':
     # Unit test

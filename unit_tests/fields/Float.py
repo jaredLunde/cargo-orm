@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from bloom.fields import Float
 
-from unit_tests.fields.Numeric import TestNumeric
+from unit_tests.fields.Numeric import TestNumeric, TestEncNumeric
 from unit_tests import configure
 
 
@@ -35,7 +35,28 @@ class TestFloat(TestNumeric):
         self.assertEqual(base.maxval, 9223372036854775807.0)
         self.assertEqual(base.decimal_places, 6)
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'real')
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'real')
+        self.assertEqual(self.base_array.type_name, 'real[]')
+
+
+class TestEncFloat(TestFloat, TestEncNumeric):
+
+    @property
+    def base(self):
+        return self.orm.enc_float4
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestFloat, failfast=True, verbosity=2)
+    configure.run_tests(TestFloat, TestEncFloat, failfast=True, verbosity=2)

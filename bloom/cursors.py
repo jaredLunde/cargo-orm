@@ -123,10 +123,11 @@ class ModelCursor(_cursor):
         else:
             model = self._bloom_model
         field_names = set(model.field_names)
+        ga = model.__getattribute__
         for k, v in zip(self.description, tup):
             k = k[0]
             if k in field_names:
-                model[k] = v
+                ga(k)(v)
             else:
                 raise KeyError("Field `{}` not in {}".format(
                     k, model.__class__.__name__))

@@ -60,6 +60,26 @@ class TestBool(configure.BooleanTestCase, TestField):
         self.assertEqual(self.orm.new().desc(self.orm.uid).get().boolean.value,
                          None)
 
+    def test_array_insert(self):
+        arr = [True, True, False]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, arr)
+
+    def test_array_select(self):
+        arr = [True, True, False]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'boolean')
+        self.assertEqual(self.base_array.type_name, 'boolean[]')
+
 
 if __name__ == '__main__':
     # Unit test

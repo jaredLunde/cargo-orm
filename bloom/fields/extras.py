@@ -9,6 +9,9 @@
 import re
 import copy
 import string
+import warnings
+
+import psycopg2
 
 from slugify import slugify as _slugify
 
@@ -69,15 +72,14 @@ class Slug(Text):
                  '_factory', 'table')
     OID = SLUG
 
-    def __init__(self, maxlen=-1, minlen=0, slug_factory=None, **kwargs):
+    def __init__(self, maxlen=-1, slug_factory=None, **kwargs):
         """ `Slug`
             :see::meth:Field.__init__
-            @maxlen: (#int) minimum length of string value
-            @minlen: (#int) maximum length of string value
+            @maxlen: (#int) maximum length of the slug
             @slug_factory: (:class:SlugFactory)
         """
         self._factory = slug_factory
-        super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
+        super().__init__(minlen=1, maxlen=maxlen, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -95,8 +97,8 @@ class Slug(Text):
             return _slugify(value, max_length=self.maxlen, word_boundary=False)
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, minlen=self.minlen, maxlen=self.maxlen,
-                         slug_factory=self._factory, **kwargs)
+        cls = self._copy(*args, maxlen=self.maxlen, slug_factory=self._factory,
+                         **kwargs)
         return cls
 
     __copy__ = copy
@@ -400,7 +402,7 @@ class Password(Field, StringLogic):
 
     def __init__(self, hasher=Argon2Hasher(), minlen=8, maxlen=-1,
                  validator=PasswordValidator, blacklist=passwords.blacklist,
-                 value=Field.empty, **kwargs):
+                 **kwargs):
         """ `Password`
             :see::meth:Field.__init__
             @hasher: (:class:Hasher) the password hasher to use
@@ -410,8 +412,8 @@ class Password(Field, StringLogic):
             @minlen: (#int) minimum length of the password
             @maxlen: (#int) maximum length of the password
         """
-        super().__init__(validator=validator, **kwargs)
         self.hasher = hasher
+        super().__init__(validator=validator, **kwargs)
         self.minlen = minlen
         self.maxlen = maxlen
         self.blacklist = blacklist
@@ -602,7 +604,7 @@ class Key(Field, StringLogic):
             value = self.generate(self.size, self.keyspace, self.rng)
         else:
             value = self.generate(*args, **kwargs)
-        self.value = value
+        self.__call__(value)
 
     def copy(self, *args, **kwargs):
         return self._copy(self.size, self.keyspace, self.rng, *args, **kwargs)
@@ -677,8 +679,8 @@ class Username(Text):
             :see::meth:Field.__init__
             @minlen: (#int) minimum length of string value
             @maxlen: (#int) minimum length of string value
-            @reserved_usernames: (#list) of usernames to prevent from being
-                created
+            @reserved_usernames: (#list) lowercase list of usernames to prevent
+                from being created
             @re_pattern: (sre_compile) compiled regex pattern to validate
                 usernames with. Defautls to :var:string_tools.username_re
         """
@@ -686,20 +688,32 @@ class Username(Text):
                          **kwargs)
         self._re = re_pattern or string_tools.username_re
         if reserved_usernames is not None:
-            self.reserved_usernames = set(u.lower()
-                                          for u in reserved_usernames)
+            self.reserved_usernames = set(reserved_usernames)
 
     def add_reserved_username(self, *usernames):
         for username in usernames:
             self.reserved_usernames.add(username.lower())
 
+    @property
+    def type_name(self):
+        return 'citext'
+
+    @staticmethod
+    def register(db):
+        try:
+            OID, ARRAY_OID = db.get_type_OID('citext')
+            return reg_array_type('CITEXTARRAYTYPE',
+                                  ARRAY_OID,
+                                  psycopg2.STRING)
+        except ValueError:
+            warnings.warn('Type `citext` was not found in the database.')
+
     def copy(self, *args, **kwargs):
-        cls = self._copy(maxlen=self.maxlen,
-                         minlen=self.minlen,
-                         re_pattern=self._re,
-                         reserved_usernames=self.reserved_usernames,
-                         **kwargs)
-        return cls
+        return self._copy(maxlen=self.maxlen,
+                          minlen=self.minlen,
+                          re_pattern=self._re,
+                          reserved_usernames=self.reserved_usernames,
+                          **kwargs)
 
     __copy__ = copy
 

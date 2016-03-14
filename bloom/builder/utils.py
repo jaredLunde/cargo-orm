@@ -56,7 +56,8 @@ class BaseCreator(object):
             return "<{}:`{}`>".format(self.__class__.__name__,
                                       self.query.mogrified)
         except AttributeError:
-            return "<{}:`{}`>".format(self.__class__.__name__, self.query)
+            return "<{}:`{}`:{}>".format(self.__class__.__name__, self.query,
+                                         self.query.params)
 
     def _add(self, *clauses):
         for clause in clauses:

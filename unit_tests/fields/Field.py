@@ -32,6 +32,10 @@ class TestField(unittest.TestCase):
     def base(self):
         return self.orm.field
 
+    @property
+    def base_array(self):
+        return getattr(self.orm, 'array_' + self.base.field_name)
+        
     def test_init(self, *args, **kwargs):
         base = self.base.__class__()
         self.assertEqual(base.value, base.empty)

@@ -7,6 +7,7 @@
 
 """
 from bloom.etc.types import *
+from bloom.etc.translator.postgres import OID_map
 from bloom.expressions import *
 from bloom.fields.field import Field
 from bloom.validators import CharValidator
@@ -42,6 +43,10 @@ class Char(Field, StringLogic):
             self.value = str(value) if value is not None else None
         return self.value
 
+    @property
+    def type_name(self):
+        return '%s(%s)' % (OID_map[self.OID], self.maxlen)
+
     def copy(self, *args, **kwargs):
         cls = self._copy(maxlen=self.maxlen, minlen=self.minlen, *args,
                          **kwargs)
@@ -67,6 +72,13 @@ class Varchar(Char):
         """
         super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
 
+    @property
+    def type_name(self):
+        if self.maxlen > 0:
+            return 'varchar(%s)' % self.maxlen
+        else:
+            return 'varchar'
+
 
 class Text(Char):
     """ =======================================================================
@@ -84,3 +96,7 @@ class Text(Char):
             @minlen: (#int) minimum length of string value
         """
         super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
+
+    @property
+    def type_name(self):
+        return 'text'

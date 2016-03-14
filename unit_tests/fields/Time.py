@@ -62,6 +62,39 @@ class TestTime(configure.DateTimeTestCase, TestField):
                       self.base.field_name)
         self.assertEqual(val.value, self.base.value)
 
+    def test_array_insert(self):
+        arr = ['11:43am', '10:49pm']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val.value, self.base_array.value)
+
+    def test_array_select(self):
+        arr = ['11:43am', '10:49pm']
+        self.base_array(arr)
+        val = getattr(self.orm.new().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.new().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val.value, val_b.value)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'time')
+        self.assertEqual(self.base_array.type_name, 'time[]')
+
+
+class TestEncTime(TestTime):
+    @property
+    def base(self):
+        return self.orm.enc_time
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
 
 class TestTimeTZ(TestTime):
 
@@ -69,7 +102,15 @@ class TestTimeTZ(TestTime):
     def base(self):
         return self.orm.timetz
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'timetz')
+        self.assertEqual(self.base_array.type_name, 'timetz[]')
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestTime, TestTimeTZ, failfast=True, verbosity=2)
+    configure.run_tests(TestTime,
+                        TestEncTime,
+                        TestTimeTZ,
+                        failfast=True,
+                        verbosity=2)

@@ -55,6 +55,32 @@ class TestCircle(configure.GeoTestCase, TestField):
             self.base.value)
         self.assertSequenceEqual(self.orm.naked().get().circle, d)
 
+    def test_array_insert(self):
+        d = [RandData(int).tuple(2)]
+        d.append(RandData().randint)
+        d = tuple(d)
+        arr = [d, d]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        self.assertListEqual(val, self.base_array.value)
+
+    def test_array_select(self):
+        d = [RandData(int).tuple(2)]
+        d.append(RandData().randint)
+        d = tuple(d)
+        arr = [d, d]
+        self.base_array(arr)
+        val = getattr(self.orm.naked().insert(self.base_array),
+                      self.base_array.field_name)
+        val_b = getattr(self.orm.naked().desc(self.orm.uid).get(),
+                        self.base_array.field_name)
+        self.assertListEqual(val, val_b)
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'circle')
+        self.assertEqual(self.base_array.type_name, 'circle[]')
+
 
 if __name__ == '__main__':
     # Unit test

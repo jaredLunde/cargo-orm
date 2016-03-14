@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from bloom.fields import Currency
 
-from unit_tests.fields.Numeric import TestNumeric
+from unit_tests.fields.Numeric import TestNumeric, TestEncNumeric
 from unit_tests import configure
 
 
@@ -33,12 +33,33 @@ class TestCurrency(TestNumeric):
         self.assertIsNone(base.not_null)
         self.assertEqual(base.minval, -92233720368547758.08)
         self.assertEqual(base.maxval, 92233720368547758.07)
-        print(9223372036854775808.08)
         self.assertEqual(base.decimal_places, 2)
 
     def test_format(self):
         self.base('91,000.0')
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'numeric')
+        self.assertEqual(self.base_array.type_name, 'numeric[]')
+
+
+class TestEncCurrency(TestCurrency, TestEncNumeric):
+
+    @property
+    def base(self):
+        return self.orm.enc_currency
+
+    def test_init(self):
+        pass
+
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'text')
+        self.assertEqual(self.base_array.type_name, 'text[]')
+
+
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestCurrency, failfast=True, verbosity=2)
+    configure.run_tests(TestCurrency,
+                        TestEncCurrency,
+                        failfast=True,
+                        verbosity=2)

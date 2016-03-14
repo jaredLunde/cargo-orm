@@ -16,7 +16,21 @@ class TestJsonB(TestJson):
     def base(self):
         return self.orm.jsonb_field
 
+    def test_type_name(self):
+        self.assertEqual(self.base.type_name, 'jsonb')
+        self.assertEqual(self.base_array.type_name, 'jsonb[]')
+
+
+class TestEncJsonB(TestJsonB):
+
+    @property
+    def base(self):
+        return self.orm.enc_jsonb
+
+    def test_init(self):
+        pass
+
 
 if __name__ == '__main__':
     # Unit test
-    configure.run_tests(TestJsonB, failfast=True, verbosity=2)
+    configure.run_tests(TestJsonB, TestEncJsonB, failfast=True, verbosity=2)

@@ -10,15 +10,18 @@ import string
 import decimal
 import arrow
 import collections
+from netaddr import *
 
 from psycopg2.extensions import *
 
 from vital.cache import high_pickle
 from vital.debug import prepr
+from vital.tools.encoding import uniorbytes
 from vital.security import aes_b64_encrypt, aes_b64_decrypt,\
                            aes_encrypt, aes_decrypt, randstr
 
 from bloom.etc.types import *
+from bloom.etc.translator.postgres import OID_map
 from bloom.expressions import *
 
 from bloom.fields.field import Field
@@ -35,6 +38,7 @@ class EncryptionFactory(object):
         keyword arguments.
     """
     __slots__ = tuple()
+    OID = TEXT
 
     @staticmethod
     def decrypt(val, secret):
@@ -61,14 +65,16 @@ class AESFactory(EncryptionFactory):
 class AESBytesFactory(EncryptionFactory):
     """ An encryption factory which uses the AES algorithm. """
     __slots__ = tuple()
+    OID = BINARY
 
     @staticmethod
     def decrypt(val, secret):
-        return aes_decrypt(val, secret)
+        return aes_b64_decrypt(val, secret)
 
     @staticmethod
     def encrypt(val, secret):
-        return bloombytes(aes_encrypt(val, secret))
+        return bloombytes(
+            uniorbytes(aes_b64_encrypt(val, secret), bytes))
 
 
 class _EncryptedValue(object):
@@ -150,17 +156,17 @@ class _EncryptedValue(object):
 
     @property
     def encrypted(self):
-        return self.field.encrypted
+        return self.field.encrypt(self)
 
     @staticmethod
     def to_db(val):
-        inherit = {JSON, JSONB}
+        inherit = category.KEYVALUE
         try:
-            if val.field.type.OID in inherit or (
-               val.field.type == ARRAY and val.field.type.type.OID in inherit):
+            if val.field.type.OID in inherit:
                 return adapt(val.field.type(val.encrypted))
         except AttributeError:
-            return adapt(val.encrypted)
+            pass
+        return adapt(val.encrypted)
 
 
 class encstr(str, _EncryptedValue):
@@ -199,6 +205,18 @@ class encset(set, _EncryptedValue):
     pass
 
 
+class encip(IPAddress, _EncryptedValue):
+    pass
+
+
+class encipnet(IPNetwork, _EncryptedValue):
+    pass
+
+
+class enceui(EUI, _EncryptedValue):
+    pass
+
+
 class _EncArrow(arrow.Arrow, _EncryptedValue):
     def __getstate__(self):
         return self.__dict__
@@ -209,6 +227,7 @@ def encarrow(a):
 
 
 register_adapter(encint, encint.to_db)
+register_adapter(encstr, encstr.to_db)
 register_adapter(encfloat, encfloat.to_db)
 register_adapter(encdecimal, encdecimal.to_db)
 register_adapter(encbytes, encbytes.to_db)
@@ -216,6 +235,10 @@ register_adapter(enclist, enclist.to_db)
 register_adapter(encdict, encdict.to_db)
 register_adapter(enctuple, enctuple.to_db)
 register_adapter(encset, encset.to_db)
+register_adapter(_EncArrow, _EncArrow.to_db)
+register_adapter(encip, encip.to_db)
+register_adapter(encipnet, encipnet.to_db)
+register_adapter(enceui, enceui.to_db)
 
 _enctypes = (((collections.Mapping, collections.ItemsView, dict), encdict),
              (str, encstr),
@@ -225,6 +248,9 @@ _enctypes = (((collections.Mapping, collections.ItemsView, dict), encdict),
              (set, encset),
              (tuple, enctuple),
              (decimal.Decimal, encdecimal),
+             (IPAddress, encip),
+             (IPNetwork, encipnet),
+             (EUI, enceui),
              (collections.Iterable, enclist),
              (arrow.Arrow, encarrow))
 
@@ -279,7 +305,7 @@ class Encrypted(Field):
         * :class:Text types: will remain |text|
         * :class:Inet types: will be stored as |text|
         * :mod:datetimes types: will be stored as |text|
-        * :mod:identifier, :mod:geometric, :mod:bits, :mod:boolean,
+        * :mod:identifier, :mod:geometry, :mod:bits, :mod:boolean,
             :class:Enum and :mod:range, types are unsupported, as you
             should expect.
 
@@ -343,7 +369,9 @@ class Encrypted(Field):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            self.type.value = self.type.__call__(self.decrypt(value))
+            self.type.__call__(self.decrypt(value))
+            if self._labeled(self.type.value):
+                self.type.__call__(self.decrypt(self.type.value))
         return self.value
 
     def __getattr__(self, name):
@@ -366,6 +394,12 @@ class Encrypted(Field):
 
     def __delitem__(self, name):
         self.type.__delitem__(name)
+
+    @property
+    def type_name(self):
+        if self.type.OID not in category.KEYVALUE:
+            return OID_map[self.factory.OID]
+        return self.type.type_name
 
     @property
     def value(self):
@@ -461,6 +495,7 @@ class Encrypted(Field):
 
     def _decrypt_list(self, val):
         decrypt = self.decrypt
+        val = list(val)
         for x, v in enumerate(val.copy()):
             val[x] = decrypt(v)
         return val
@@ -550,5 +585,8 @@ class Encrypted(Field):
                               type=self.type.copy(),
                               factory=self.factory,
                               **kwargs)
+
+    def clear(self):
+        self.type.clear()
 
     __copy__ = copy

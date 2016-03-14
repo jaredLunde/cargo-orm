@@ -6,13 +6,14 @@
    http://github.com/jaredlunde/bloom-orm
 
 """
-import arrow
 import decimal
 
-from psycopg2.extensions import adapt, register_adapter
-from psycopg2.extras import Range, DateRange, DateTimeRange, DateTimeTZRange,\
-                            NumericRange, Range
+from psycopg2.extensions import register_adapter, AsIs, adapt
+from psycopg2.extras import Range, DateRange as _DateRange, DateTimeRange,\
+                            DateTimeTZRange, NumericRange as _NumericRange,\
+                            RangeAdapter
 
+from bloom.etc.translator.postgres import OID_map
 from bloom.etc.types import *
 from bloom.expressions import *
 from bloom.fields import Field, Date, Timestamp, TimestampTZ
@@ -69,10 +70,44 @@ class RangeLogic(BaseLogic):
         upper_inf('(,)'::daterange)	true
     '''
 
+
+class _RangeAdapter(RangeAdapter):
+    name = "__bloom__"
+
+    def getquoted(self):
+        r = self.adapted
+        if r.isempty:
+            return b("'empty'::" + self.name)
+
+        if r.lower is not None:
+            a = adapt(r.lower)
+            if hasattr(a, 'prepare'):
+                a.prepare(self._conn)
+            lower = a.getquoted()
+        else:
+            lower = b'NULL'
+
+        if r.upper is not None:
+            a = adapt(r.upper)
+            if hasattr(a, 'prepare'):
+                a.prepare(self._conn)
+            upper = a.getquoted()
+        else:
+            upper = b'NULL'
+        try:
+            name = r.typname
+            return name.encode() + b'(' + lower + b', ' + upper +\
+                (", '%s')" % r._bounds).encode()
+        except AttributeError:
+            return b"%s%s, %s%s" % (r._bounds[0].encode(), lower, upper,
+                                    r._bounds[1].encode())
+
+
+
 class IntRange(Field, RangeLogic):
     OID = INTRANGE
     __slots__ = Field.__slots__
-    _range_cls = NumericRange
+    _range_cls = _NumericRange
     _cast = int
 
     def __init__(self, *args, **kwargs):
@@ -104,6 +139,7 @@ class IntRange(Field, RangeLogic):
                                         % self.__class__.__name__)
                     value = self._range_cls(lower=self.cast(value.lower),
                                             upper=self.cast(value.upper))
+                value.typname = OID_map[self.OID]
             self.value = value
         return self.value
 
@@ -140,6 +176,10 @@ class IntRange(Field, RangeLogic):
             self.__call__(self._range_cls(lower=lower))
         return
 
+    @staticmethod
+    def to_db(value):
+        return _RangeAdapter(value)
+
 
 class BigIntRange(IntRange):
     OID = BIGINTRANGE
@@ -170,4 +210,10 @@ class DateRange(IntRange):
     OID = DATERANGE
     __slots__ = Field.__slots__
     _cast = Date().__call__
-    _range_cls = DateRange
+    _range_cls = _DateRange
+
+
+_adapters = (_NumericRange, _DateRange, DateTimeRange, DateTimeTZRange)
+_adapter_classes = (IntRange, DateRange, TimestampRange, TimestampTZRange)
+for r, c in zip(_adapters, _adapter_classes):
+    register_adapter(r, getattr(c, 'to_db'))
