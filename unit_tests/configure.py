@@ -94,9 +94,9 @@ class IntModel(Model):
     enc_integer = Encrypted(Encrypted.generate_secret(), Int())
     enc_bigint = Encrypted(Encrypted.generate_secret(), BigInt())
     enc_smallint = Encrypted(Encrypted.generate_secret(), SmallInt())
-    array_enc_integer = Array(enc_integer.copy())
-    array_enc_bigint = Array(enc_bigint.copy())
-    array_enc_smallint = Array(enc_smallint.copy())
+    array_enc_integer = Array(enc_integer)
+    array_enc_bigint = Array(enc_bigint)
+    array_enc_smallint = Array(enc_smallint)
 
 
 class IntPlan(Plan):
@@ -123,9 +123,9 @@ class CharModel(Model):
     enc_char = Encrypted(Encrypted.generate_secret(), Char(maxlen=200))
     enc_varchar = Encrypted(Encrypted.generate_secret(), Varchar(maxlen=200))
     enc_text = Encrypted(Encrypted.generate_secret(), Text())
-    array_enc_char = Array(enc_char.copy())
-    array_enc_varchar = Array(enc_varchar.copy())
-    array_enc_text = Array(enc_text.copy())
+    array_enc_char = Array(enc_char)
+    array_enc_varchar = Array(enc_varchar)
+    array_enc_text = Array(enc_text)
 
 
 class CharPlan(Plan):
@@ -152,9 +152,9 @@ class NetModel(Model):
     enc_ip = Encrypted(Encrypted.generate_secret(), IP())
     enc_cidr = Encrypted(Encrypted.generate_secret(), Cidr())
     enc_mac = Encrypted(Encrypted.generate_secret(), MacAddress())
-    array_enc_ip = Array(enc_ip.copy())
-    array_enc_cidr = Array(enc_cidr.copy())
-    array_enc_mac = Array(enc_mac.copy())
+    array_enc_ip = Array(enc_ip)
+    array_enc_cidr = Array(enc_cidr)
+    array_enc_mac = Array(enc_mac)
 
 
 class NetPlan(Plan):
@@ -194,11 +194,11 @@ class NumModel(Model):
     enc_float8 = Encrypted(Encrypted.generate_secret(), Double())
     enc_currency = Encrypted(Encrypted.generate_secret(), Currency())
     enc_money = Encrypted(Encrypted.generate_secret(), Money())
-    array_enc_dec = Array(enc_dec.copy())
-    array_enc_float4 = Array(enc_float4.copy())
-    array_enc_float8 = Array(enc_float8.copy())
-    array_enc_currency = Array(enc_currency.copy())
-    array_enc_money = Array(enc_money.copy())
+    array_enc_dec = Array(enc_dec)
+    array_enc_float4 = Array(enc_float4)
+    array_enc_float8 = Array(enc_float8)
+    array_enc_currency = Array(enc_currency)
+    array_enc_money = Array(enc_money)
 
 
 class NumPlan(Plan):
@@ -221,22 +221,30 @@ class ExtrasModel(Model):
     password = Password()
     slug = Slug()
     key = Key()
+    phone = PhoneNumber()
+    duration = Duration()
     array_username = Array(Username())
     array_email = Array(Email())
     array_password = Array(Password())
     array_slug = Array(Slug())
     array_key = Array(Key())
+    array_phone = Array(PhoneNumber())
+    array_duration = Array(Duration())
     enc_username = Encrypted(Encrypted.generate_secret(),
                              Username(not_null=False))
     enc_email = Encrypted(Encrypted.generate_secret(), Email())
     enc_password = Encrypted(Encrypted.generate_secret(), Password())
     enc_slug = Encrypted(Encrypted.generate_secret(), Slug())
     enc_key = Encrypted(Encrypted.generate_secret(), Key())
-    array_enc_username = Array(enc_username.copy())
-    array_enc_email = Array(enc_email.copy())
-    array_enc_password = Array(enc_password.copy())
-    array_enc_slug = Array(enc_slug.copy())
-    array_enc_key = Array(enc_key.copy())
+    enc_phone = Encrypted(Encrypted.generate_secret(), PhoneNumber())
+    enc_duration = Encrypted(Encrypted.generate_secret(), Duration())
+    array_enc_username = Array(enc_username)
+    array_enc_email = Array(enc_email)
+    array_enc_password = Array(enc_password)
+    array_enc_slug = Array(enc_slug)
+    array_enc_key = Array(enc_key)
+    array_enc_phone = Array(enc_phone)
+    array_enc_duration = Array(enc_duration)
 
 
 class ExtrasPlan(Plan):
@@ -259,7 +267,7 @@ class BinaryModel(Model):
     binary_field = Binary()
     array_binary_field = Array(Binary())
     enc_binary_field = Encrypted(Encrypted.generate_secret(), Binary())
-    array_enc_binary_field = Array(enc_binary_field.copy())
+    array_enc_binary_field = Array(enc_binary_field)
 
 
 class BinaryPlan(Plan):
@@ -344,9 +352,9 @@ class DateTimeModel(Model):
     enc_time = Encrypted(Encrypted.generate_secret(), Time())
     enc_date = Encrypted(Encrypted.generate_secret(), Date())
     enc_ts = Encrypted(Encrypted.generate_secret(), Timestamp())
-    array_enc_time = Array(enc_time.copy())
-    array_enc_date = Array(enc_date.copy())
-    array_enc_ts = Array(enc_ts.copy())
+    array_enc_time = Array(enc_time)
+    array_enc_date = Array(enc_date)
+    array_enc_ts = Array(enc_ts)
 
 
 class DateTimePlan(Plan):
@@ -418,9 +426,9 @@ class KeyValueModel(Model):
     enc_json = Encrypted(Encrypted.generate_secret(), Json())
     enc_jsonb = Encrypted(Encrypted.generate_secret(), JsonB())
     enc_hstore = Encrypted(Encrypted.generate_secret(), HStore())
-    array_enc_json = Array(enc_json.copy())
-    array_enc_jsonb = Array(enc_jsonb.copy())
-    array_enc_hstore = Array(enc_hstore.copy())
+    array_enc_json = Array(enc_json)
+    array_enc_jsonb = Array(enc_jsonb)
+    array_enc_hstore = Array(enc_hstore)
 
 
 class KeyValuePlan(Plan):
@@ -485,8 +493,8 @@ class SequencePlan(Plan):
     def after(self):
         import psycopg2
         from bloom.etc.types import reg_type, reg_array_type
-        self.model.enum.register(self.model.db)
-        self.model.array_enum.type.register(self.model.db)
+        self.model.enum.register_type(self.model.db)
+        self.model.array_enum.type.register_type(self.model.db)
 
 
 class SequenceTestCase(BaseTestCase):

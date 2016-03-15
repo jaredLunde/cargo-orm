@@ -5,8 +5,10 @@ bcrypt
 bitstring
 cnamedtuple
 # docr
+humanize
 python-dateutil
 passlib
+phonenumbers
 psycopg2
 pycrypto
 slugify

@@ -558,7 +558,7 @@ class HStore(Field, KeyValueOps, HStoreLogic):
         return self.value
 
     @staticmethod
-    def register(db):
+    def register_type(db):
         try:
             return db.register('hstore')
         except (ValueError, psycopg2.ProgrammingError):

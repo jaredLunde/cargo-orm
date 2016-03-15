@@ -7,11 +7,20 @@
 
 """
 import re
+import sys
 import copy
 import string
 import warnings
+import datetime
+import phonenumbers
+
+try:
+    from cnamedtuple import namedtuple
+except ImportError:
+    from collections import namedtuple
 
 import psycopg2
+from psycopg2.extensions import register_adapter, adapt
 
 from slugify import slugify as _slugify
 
@@ -29,10 +38,9 @@ from bloom.expressions import *
 from bloom.exceptions import IncorrectPasswordError
 
 from bloom.fields.field import Field
-from bloom.fields.binary import Binary
 from bloom.fields.integer import Int
 from bloom.fields.character import Text
-from bloom.fields.sequence import Array
+from bloom.fields.numeric import Double
 from bloom.validators import *
 
 
@@ -49,7 +57,9 @@ __all__ = (
     'Password',
     'Slug',
     'SlugFactory',
-    'Key')
+    'Key',
+    'Duration',
+    'PhoneNumber')
 
 
 class SlugFactory(object):
@@ -272,8 +282,9 @@ class Argon2Hasher(Hasher):
     __slots__ = ('rounds', 'context', 'raises')
     scheme = 'argon2i'
 
-    def __init__(self, rounds=2, raises=False, salt_size=16, memory_cost=1<<12,
-                 parallelism=2, length=32, encoding='utf8', context=None):
+    def __init__(self, rounds=2, raises=False, salt_size=16,
+                 memory_cost=1 << 12, parallelism=2, length=32,
+                 encoding='utf8', context=None):
         """ `Argon2i`
             :see::meth:Hasher.__init__
             @salt_size: (#int) Defines the size in bytes for the hash salt.
@@ -734,18 +745,273 @@ class Username(Text):
         return cls
 
 
-class Duration(Int):
-    # TODO: use datetime.timedelta(seconds=12345)
-    def __init__(self):
-        pass
+class _DurationTemplate(string.Formatter):
 
-    def format(fmt):
-        '''strfdelta(datetime.timedelta(seconds=12345),
-                     '{hours}h {minutes}m {seconds}s')
-        '''
-        tdelta = self.delta
-        d = {'days': None, 'months': None, }
-        d = {"days": tdelta.days}
-        d["hours"], rem = divmod(tdelta.seconds, 3600)
-        d["minutes"], d["seconds"] = divmod(rem, 60)
-        return fmt.format(**d)
+    def format_field(self, value, spec):
+        ''' "{hours:02d} {mins:(m)} {secs:(sec,secs)}" '''
+        sing, plural = None, None
+        if '(' in spec:
+            spec, cases = spec.split('(')
+            sing, *plural = cases.strip(')').split(',')
+            plural = "".join(plural)
+        value = super(_DurationTemplate, self).format_field(value, spec)
+        if sing or plural:
+            if value == '1' or value.lstrip('0') == '1' or not plural:
+                value = value + sing
+            else:
+                value = value + plural
+        return value
+
+
+class _DurationDelta(datetime.timedelta):
+    _nt = namedtuple('Duration', ('years', 'months', 'days', 'hours', 'mins',
+                                  'secs', 'msecs'))
+
+    @property
+    def namedtuple(self):
+        try:
+            dt = self._cache.get(self.total_seconds())
+        except AttributeError:
+            self._cache = {}
+            dt = None
+        if dt is not None:
+            return dt
+        else:
+            dt = self
+        years, days = divmod(dt.days, 365.242199)
+        months, days = divmod(days, 30.416667)
+        hours, rem = divmod(dt.seconds, 3600)
+        mins, secs = divmod(rem, 60)
+        msecs = dt.microseconds
+        nt = self._nt(years=int(years),
+                      months=int(months),
+                      days=int(days),
+                      hours=int(hours),
+                      mins=int(mins),
+                      secs=int(secs),
+                      msecs=int(msecs))
+        self._cache[self.total_seconds()] = nt
+        return nt
+
+    @staticmethod
+    def to_db(value):
+        return adapt(value.total_seconds())
+
+
+class Duration(Double):
+    __slots__ = Double.__slots__
+
+    def __init__(self, *args, validator=NullValidator, **kwargs):
+        """`Duration`
+            :see::meth:Field.__init__
+        """
+        super().__init__(*args, validator=validator, **kwargs)
+
+    def __call__(self, value=Field.empty):
+        """ @value: (#int or #float) duration in seconds or
+                :class:datetime.timedelta
+        """
+        if value is not self.empty:
+            try:
+                value = float(value)
+                if value < 1:
+                    value = _DurationDelta(microseconds=value * 1000000)
+                else:
+                    value = _DurationDelta(seconds=value)
+            except TypeError as e:
+                if value is not None:
+                    value = _DurationDelta(seconds=value.total_seconds())
+            self.value = value
+        return self.value
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(_DurationDelta, _DurationDelta.to_db)
+
+    _std_fmts = {'years': ('year', 'years'),
+                 'months': ('month', 'months'),
+                 'days': ('day', 'days'),
+                 'hours': ('hour', 'hours'),
+                 'mins': ('minute', 'minutes'),
+                 'secs': ('second', 'seconds'),
+                 'msecs': ('µs', 'µs')}
+
+    @property
+    def total_years(self):
+        """ -> (#float) """
+        return self.total_days / 365.242199
+
+    @property
+    def total_months(self):
+        """ -> (#float) """
+        return self.total_days / 30.416667
+
+    @property
+    def total_days(self):
+        """ -> (#float) """
+        return self.value.total_seconds() / 86400
+
+    @property
+    def total_hours(self):
+        """ -> (#float) """
+        return self.value.total_seconds() / 3600
+
+    @property
+    def total_mins(self):
+        """ -> (#float) """
+        return self.value.total_seconds() / 60
+
+    @property
+    def total_secs(self):
+        """ -> (#float) """
+        return self.value.total_seconds()
+
+    @property
+    def total_msecs(self):
+        """ -> (#float) """
+        return self.value.total_seconds() * 1E6
+
+    @property
+    def years(self):
+        return self.value.namedtuple.years
+
+    @property
+    def months(self):
+        return self.value.namedtuple.months
+
+    @property
+    def days(self):
+        return self.value.namedtuple.days
+
+    @property
+    def hours(self):
+        return self.value.namedtuple.hours
+
+    @property
+    def mins(self):
+        return self.value.namedtuple.mins
+
+    @property
+    def secs(self):
+        return self.value.namedtuple.secs
+
+    @property
+    def msecs(self):
+        return self.value.namedtuple.msecs
+
+    def to_namedtuple(self):
+        return self.value.namedtuple
+
+    def to_dict(self):
+        return self.to_namedtuple()._asdict()
+
+    def clock(self):
+        """ -> (#str) time delta formatted like |mm:ss|, |hh:mm:ss|, etc.
+                depending on how long the time delta is
+        """
+        dt = self.to_namedtuple()
+        started = False
+        out = []
+        add_out = out.append
+        l = len(dt._fields)
+        for x, t in enumerate(dt._fields[:-1]):
+            val = getattr(dt, t)
+            if (val > 0 or started or l - x < 4):
+                started = True
+                add_out('{:02d}'.format(val))
+        return ':'.join(out)
+
+    def _std_format(self, dt, separator=", "):
+        fmts = self._std_fmts
+        out = []
+        add_out = out.append
+        for f in dt._fields:
+            val = getattr(dt, f)
+            if val > 0:
+                add_out(string_tools.to_plural(val, *fmts[f]))
+        return separator.join(out)
+
+    def format(self, fmt=None):
+        """ @fmt: (#str) string for formatting in Python 3 style |str.format|
+                with optional singular and plural formats included.
+                e.g. |format("{hours:02d} {mins:(m)} {secs:(sec,secs)}")|
+                ```Available formats```
+                * years
+                * months
+                * days
+                * hours
+                * mins
+                * secs
+                * msecs
+            >>> d = Duration()
+            >>> d(7253)
+            >>> d.format()
+            '2 hours, 53 seconds'
+            >>> duration.format("{hours:02d}:{mins:02d}:{secs:02d}")
+            '02:00:53'
+            >>> d.format("{hours:(h)} {mins:(m)} {secs:(sec,secs)}")
+            '2h 0m 53secs'
+            >>> d.format("{hours:02d(h)} {mins:02(m)} {secs:(s)}")
+            '02h 00m 53s'
+        """
+        dt = self.to_namedtuple()
+        if fmt is None:
+            return self._std_format(dt)
+        return _DurationTemplate().format(fmt, **dt._asdict()).strip()
+
+
+class PhoneNumber(Field, StringLogic):
+    OID = TEXT
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'table',
+                 'region')
+    INTERNATIONAL = phonenumbers.PhoneNumberFormat.INTERNATIONAL
+    NATIONAL = phonenumbers.PhoneNumberFormat.NATIONAL
+    RFC3966 = phonenumbers.PhoneNumberFormat.RFC3966
+    E164 = phonenumbers.PhoneNumberFormat.E164
+
+    def __init__(self, region='US', *args, validator=PhoneNumberValidator,
+                 **kwargs):
+        """`Phone Number`
+            @region: (#str) 2-letter uppercase ISO 3166-1 country
+                code (e.g. "GB")
+            :see::meth:Field.__init__
+        """
+        self.region = region
+        super().__init__(*args, validator=validator, **kwargs)
+
+    def __call__(self, value):
+        """ @value: (#str) phone number-like string or
+                :class:phonenumbers.PhoneNumber
+        """
+        if value is not self.empty:
+            if value is not None:
+                value = phonenumbers.parse(str(value), self.region)
+                value.__str__ = value.__unicode__ = self.to_std
+            self.value = value
+        return self.value
+
+    def format(self, format=NATIONAL):
+        return phonenumbers.format_number(self.value, format)
+
+    def to_html(self):
+        return phonenumbers.format_number(self.value, self.RFC3966)
+
+    def to_std(self):
+        return phonenumbers.format_number(self.value, self.E164)
+
+    def from_text(self, text):
+        for m in phonenumbers.PhoneNumberMatcher(text, self.region):
+            return self.__call__(m.raw_string)
+
+    _db_re = re.compile(r"""[\-\s\.]+""")
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(phonenumbers.phonenumber.PhoneNumber,
+                         PhoneNumber.to_db)
+
+    @staticmethod
+    def to_db(value):
+        return adapt(PhoneNumber._db_re.sub("", phonenumbers.format_number(
+            value, PhoneNumber.INTERNATIONAL)).replace('ext', 'x'))

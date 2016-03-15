@@ -322,9 +322,12 @@ class Encrypted(Field):
 
         ``Example with :class:Binary field``
         ..
-            e = Encrypted(os.urandom(32),
-                          type=Binary(),
-                          factory=AESBinaryFactory)
+            e = Encrypted(Encrypted.generate_secret(),
+                          type=BigInt(),
+                          factory=AESFactory)
+            array_e = Array(Encrypted(Encrypted.generate_secret(),
+                                      type=BigInt(),
+                                      factory=AESFactory))
         ..
     """
     OID = ENCRYPTED

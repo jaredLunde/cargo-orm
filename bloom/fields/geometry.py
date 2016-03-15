@@ -136,11 +136,14 @@ class Point(Field, GeometryLogic):
             return val
         return PointRecord(*eval(val))
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(PointRecord, Point.to_db)
+        POINTTYPE = reg_type('POINTTYPE', POINT, Point.to_python)
+        reg_array_type('POINTARRAYTYPE', POINTARRAY, POINTTYPE)
+
 
 PointRecord = namedtuple('PointRecord', ('x', 'y'))
-register_adapter(PointRecord, Point.to_db)
-POINTTYPE = reg_type('POINTTYPE', POINT, Point.to_python)
-POINTARRAYTYPE = reg_array_type('POINTARRAYTYPE', POINTARRAY, POINTTYPE)
 
 
 class Box(Field, GeometryLogic):
@@ -185,10 +188,14 @@ class Box(Field, GeometryLogic):
         val = val.strip('{}').split(';')
         return [Box.to_python(v, cur) for v in val]
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(BoxRecord, Box.to_db)
+        BOXTYPE = reg_type('BOXTYPE', BOX, Box.to_python)
+        reg_type('BOXARRAYTYPE', BOXARRAY, Box.array_to_python)
+
+
 BoxRecord = namedtuple('BoxRecord', ('a', 'b'))
-register_adapter(BoxRecord, Box.to_db)
-BOXTYPE = reg_type('BOXTYPE', BOX, Box.to_python)
-BOXARRAYTYPE = reg_type('BOXARRAYTYPE', BOXARRAY, Box.array_to_python)
 
 
 class Circle(Field, GeometryLogic):
@@ -224,11 +231,14 @@ class Circle(Field, GeometryLogic):
         circ = eval(val.strip('<>'))
         return CircleRecord(PointRecord(*circ[0]), circ[1])
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(CircleRecord, Circle.to_db)
+        CIRCLETYPE = reg_type('CIRCLETYPE', CIRCLE, Circle.to_python)
+        reg_array_type('CIRCLEARRAYTYPE', CIRCLEARRAY, CIRCLETYPE)
+
 
 CircleRecord = namedtuple('CircleRecord', ('center', 'radius'))
-register_adapter(CircleRecord, Circle.to_db)
-CIRCLETYPE = reg_type('CIRCLETYPE', CIRCLE, Circle.to_python)
-CIRCLEARRAYTYPE = reg_array_type('CIRCLEARRAYTYPE', CIRCLEARRAY, CIRCLETYPE)
 
 
 class Line(Field, GeometryLogic):
@@ -266,11 +276,14 @@ class Line(Field, GeometryLogic):
             return val
         return LineRecord(*eval(val))
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(LineRecord, Line.to_db)
+        LINETYPE = reg_type('LINETYPE', LINE, Line.to_python)
+        reg_array_type('LINEARRAYTYPE', LINEARRAY, LINETYPE)
+
 
 LineRecord = namedtuple('LineRecord', ('a', 'b', 'c'))
-register_adapter(LineRecord, Line.to_db)
-LINETYPE = reg_type('LINETYPE', LINE, Line.to_python)
-LINEARRAYTYPE = reg_array_type('LINEARRAYTYPE', LINEARRAY, LINETYPE)
 
 
 class LSeg(Box):
@@ -303,11 +316,14 @@ class LSeg(Box):
             return val
         return LSegRecord(*eval(val))
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(LSegRecord, LSeg.to_db)
+        LSEGTYPE = reg_type('LSEGTYPE', LSEG, LSeg.to_python)
+        reg_array_type('LSEGARRAYTYPE', LSEGARRAY, LSEGTYPE)
+
 
 LSegRecord = namedtuple('LSegRecord', ('a', 'b'))
-register_adapter(LSegRecord, LSeg.to_db)
-LSEGTYPE = reg_type('LSEGTYPE', LSEG, LSeg.to_python)
-LSEGARRAYTYPE = reg_array_type('LSEGARRAYTYPE', LSEGARRAY, LSEGTYPE)
 
 
 class Path(Field, GeometryLogic):
@@ -392,6 +408,12 @@ class Path(Field, GeometryLogic):
         closed = not val.startswith('[')
         return PathRecord(*eval(val), closed=closed)
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(PathRecord, Path.to_db)
+        PATHTYPE = reg_type('PATHTYPE', PATH, Path.to_python)
+        reg_array_type('PATHARRAYTYPE', PATHARRAY, PATHTYPE)
+
 
 class PathRecord(UserList):
     __slots__ = ('data',)
@@ -409,11 +431,6 @@ class PathRecord(UserList):
             return self.__getattribute__(name)
         except AttributeError:
             return self.data.__getattribute__(name)
-
-
-register_adapter(PathRecord, Path.to_db)
-PATHTYPE = reg_type('PATHTYPE', PATH, Path.to_python)
-PATHARRAYTYPE = reg_array_type('PATHARRAYTYPE', PATHARRAY, PATHTYPE)
 
 
 class Polygon(Field, GeometryLogic):
@@ -452,6 +469,14 @@ class Polygon(Field, GeometryLogic):
             return val
         return PolygonRecord(eval(val))
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(PolygonRecord, Polygon.to_db)
+        POLYGONTYPE = reg_type('POLYGONTYPE', POLYGON, Polygon.to_python)
+        POLYGONARRAYTYPE = reg_array_type('POLYGONARRAYTYPE',
+                                          POLYGONARRAY,
+                                          POLYGONTYPE)
+
 
 class PolygonRecord(UserList):
     __slots__ = ('data',)
@@ -465,10 +490,3 @@ class PolygonRecord(UserList):
             return self.__getattribute__(name)
         except AttributeError:
             return self.data.__getattribute__(name)
-
-
-register_adapter(PolygonRecord, Polygon.to_db)
-POLYGONTYPE = reg_type('POLYGONTYPE', POLYGON, Polygon.to_python)
-POLYGONARRAYTYPE = reg_array_type('POLYGONARRAYTYPE',
-                                  POLYGONARRAY,
-                                  POLYGONTYPE)

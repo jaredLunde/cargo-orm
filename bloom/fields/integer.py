@@ -7,6 +7,7 @@
 
 """
 import babel.numbers
+import humanize
 
 from bloom.etc.types import *
 from bloom.expressions import *
@@ -65,6 +66,12 @@ class SmallInt(Field, NumericLogic):
         return babel.numbers.format_scientific(self.value,
                                                format=format,
                                                locale=locale or self.locale)
+
+    def to_word(self):
+        return humanize.intword(self.value)
+
+    def to_apnumber(self):
+        return humanize.to_apnumber(self.value)
 
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, **kwargs)

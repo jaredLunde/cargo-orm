@@ -125,7 +125,7 @@ class _DateFields(Field):
         self._arrow = None
         super().__init__(*args, **kwargs)
 
-    def humanize(self, *args, **kwargs):
+    def to_natural(self, *args, **kwargs):
         """ :see::meth:arrow.Arrow.humanize """
         return self._arrow.humanize(*args, **kwargs)
 

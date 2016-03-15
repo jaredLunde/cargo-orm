@@ -216,7 +216,7 @@ class OneOf(Field, NumericLogic, StringLogic):
                 raise ValueError("`{}` not in {}".format(value, self.types))
         return self.value
 
-    def register(self, db):
+    def register_type(self, db):
         try:
             typ, atyp = db.get_type_OID(self.type_name)
             ENUMTYPE = reg_type(self.type_name.upper(), typ, psycopg2.STRING)
@@ -404,7 +404,7 @@ class Array(Field, ArrayLogic):
 
     def _to_fields(self, value):
         return [self.type.copy(value=val)
-                if not isinstance(value, list)
+                if not isinstance(val, list)
                 else self._to_fields(val)
                 for val in value]
 
@@ -415,6 +415,18 @@ class Array(Field, ArrayLogic):
     def clear(self):
         self.value = self.empty
         self.type.clear()
+
+    def register_adapter(self):
+        try:
+            self.type.register_adapter()
+        except AttributeError:
+            pass
+
+    def register_type(self, db):
+        try:
+            self.type.register_type(db)
+        except AttributeError:
+            pass
 
     def copy(self, *args, **kwargs):
         return self._copy(*args,
