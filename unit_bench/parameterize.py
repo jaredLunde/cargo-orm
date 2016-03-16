@@ -1,4 +1,4 @@
-from bloom.expressions import _empty, parameterize, Expression, Function,\
+from cargo.expressions import _empty, parameterize, Expression, Function,\
                               Clause
 from vital.debug import Compare, Timer, RandData
 

@@ -6,8 +6,8 @@ import copy
 
 from docr import Docr
 
-from bloom import aliased, Model
-from bloom.fields import Field
+from cargo import aliased, Model
+from cargo.fields import Field
 
 from unit_tests import configure
 

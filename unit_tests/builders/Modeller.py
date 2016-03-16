@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.builder.Modeller`
+    `Unit tests for cargo.builder.Modeller`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -10,8 +10,8 @@ import unittest
 import psycopg2
 
 from kola import config
-from bloom import ORM, create_kola_client
-from bloom.builder import Modeller, create_models
+from cargo import ORM, create_kola_client
+from cargo.builder import Modeller, create_models
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
@@ -25,11 +25,11 @@ banner = '''
 # -*- coding: utf-8 -*-
 """
 
-  `Bloom SQL Builder`
+  `Cargo SQL Builder`
   ``Creates models from tables and tables from models``
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    The MIT License (MIT) © 2015 Jared Lunde
-   http://github.com/jaredlunde/Bloom ORM
+   http://github.com/jaredlunde/Cargo ORM
 
 """'''
 

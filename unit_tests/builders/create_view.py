@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.builder.create_view`
+    `Unit tests for cargo.builder.create_view`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -10,8 +10,8 @@ import unittest
 import psycopg2
 
 from kola import config
-from bloom import ORM, db, create_kola_db
-from bloom.builder import create_view
+from cargo import ORM, db, create_kola_db
+from cargo.builder import create_view
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'

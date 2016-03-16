@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 import uuid
 
-from bloom import safe
-from bloom.fields import UUID
+from cargo import safe
+from cargo.fields import UUID
 
 from unit_tests.fields.Field import *
 from unit_tests import configure

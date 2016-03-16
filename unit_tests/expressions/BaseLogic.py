@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for bloom.expressions.BaseLogic`
+  `Unit tests for cargo.expressions.BaseLogic`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,10 +9,10 @@
 import unittest
 from kola import config
 
-from bloom.expressions import *
+from cargo.expressions import *
 from vital.security import randkey
-from bloom import ORM, fields
-from bloom.fields import Field
+from cargo import ORM, fields
+from cargo.fields import Field
 
 
 def new_field(type='varchar', table=None, name=None):

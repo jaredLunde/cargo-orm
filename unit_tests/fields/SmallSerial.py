@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom import safe
-from bloom.fields import SmallSerial
+from cargo import safe
+from cargo.fields import SmallSerial
 
 from unit_tests.fields.Serial import TestSerial
 from unit_tests import configure

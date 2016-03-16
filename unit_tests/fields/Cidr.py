@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 import netaddr
-from bloom.fields import Cidr
+from cargo.fields import Cidr
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

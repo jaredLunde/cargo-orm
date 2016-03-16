@@ -18,7 +18,7 @@ install_reqs = parse_requirements(
     session=uuid.uuid1())
 
 
-pkg = 'bloom'
+pkg = 'cargo'
 pkg_dir = "{}/{}".format(pathname, pkg)
 
 
@@ -32,12 +32,12 @@ def find_packages(prefix=""):
 
 
 setup(
-    name='bloom-orm',
+    name='cargo-orm',
     version='0.0.1b4',
     description='A friendly, feature-rich Postgres ORM for Python.',
     author='Jared Lunde',
     author_email='jared.lunde@gmail.com',
-    url='https://github.com/jaredlunde/bloom-orm',
+    url='https://github.com/jaredlunde/cargo-orm',
     license="MIT",
     install_requires=[str(ir.req) for ir in install_reqs],
     package_dir={pkg: pkg_dir},

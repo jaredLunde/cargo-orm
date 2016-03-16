@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.statements.Update`
+    `Unit tests for cargo.statements.Update`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -13,10 +13,10 @@ from kola import config
 
 from vital.security import randkey
 
-from bloom import *
-from bloom import fields
-from bloom.orm import QueryState
-from bloom.statements import Update
+from cargo import *
+from cargo import fields
+from cargo.orm import QueryState
+from cargo.statements import Update
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')

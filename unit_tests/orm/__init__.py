@@ -3,8 +3,8 @@
 import os
 import sys
 import unittest
-path = os.path.dirname(os.path.abspath(__file__)).split('bloom-orm')[0] + \
-    'bloom-orm'
+path = os.path.dirname(os.path.abspath(__file__)).split('cargo-orm')[0] + \
+    'cargo-orm'
 sys.path.insert(0, path)
 
 from unit_tests.orm.Model import *

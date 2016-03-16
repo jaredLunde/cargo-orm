@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  `Unit tests for bloom.expressions.alias`
+  `Unit tests for cargo.expressions.alias`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -11,7 +11,7 @@
 import unittest
 
 from vital.debug import RandData
-from bloom.expressions import aliased
+from cargo.expressions import aliased
 
 
 class Testaliased(unittest.TestCase):

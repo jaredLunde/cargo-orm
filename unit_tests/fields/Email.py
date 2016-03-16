@@ -3,7 +3,7 @@
 import re
 import string
 
-from bloom.fields import Email
+from cargo.fields import Email
 from vital.debug import RandData, gen_rand_str
 
 from unit_tests.fields.Char import *

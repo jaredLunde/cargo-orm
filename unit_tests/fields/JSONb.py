@@ -3,8 +3,8 @@
 import decimal
 from vital.debug import RandData
 
-from bloom.fields import JsonB
-from bloom.fields.keyvalue import _jsontype
+from cargo.fields import JsonB
+from cargo.fields.keyvalue import _jsontype
 
 from unit_tests.fields.JSON import TestJson
 from unit_tests import configure

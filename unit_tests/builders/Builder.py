@@ -1,20 +1,17 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for bloom.build.Plan`
+  `Unit tests for cargo.build.Plan`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
-import psycopg2
 
-from vital.debug import logg
-
-from bloom import db, Model, ForeignKey, create_db
-from bloom.fields import *
-from bloom.builder import *
-from bloom.builder.schemas import Schema
+from cargo import db, Model, ForeignKey, create_db
+from cargo.fields import *
+from cargo.builder import *
+from cargo.builder.schemas import Schema
 
 
 create_db()

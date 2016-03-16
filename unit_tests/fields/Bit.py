@@ -3,8 +3,8 @@
 import psycopg2.extensions
 from bitstring import BitArray
 
-from bloom.fields import Bit
-from bloom.validators import VarbitValidator
+from cargo.fields import Bit
+from cargo.validators import VarbitValidator
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

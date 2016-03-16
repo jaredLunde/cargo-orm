@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.builder.create_user`
+    `Unit tests for cargo.builder.create_user`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -12,9 +12,9 @@ import psycopg2
 from kola import config
 from vital.security import randkey
 
-from bloom import ORM, db, create_kola_db, fields, safe, Function
-from bloom.builder import create_rule
-from bloom.builder.extras import UIDFunction
+from cargo import ORM, db, create_kola_db, fields, safe, Function
+from cargo.builder import create_rule
+from cargo.builder.extras import UIDFunction
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'
@@ -38,7 +38,7 @@ class TestCreateUIDFunction(unittest.TestCase):
             uf = UIDFunction(orm)
             # print(uf.query)
             uf.execute()
-            funcs.append(Function('foo_%s.bloom_uid' % x, alias='uid%s' % x))
+            funcs.append(Function('foo_%s.cargo_uid' % x, alias='uid%s' % x))
         print(orm.select(*funcs))
 
 

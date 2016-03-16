@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.relationships.BaseRelationship`
+    `Unit tests for cargo.relationships.BaseRelationship`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,7 +9,7 @@
 import unittest
 from kola import config
 
-from bloom.relationships import BaseRelationship
+from cargo.relationships import BaseRelationship
 
 
 class TestBaseRelationship(unittest.TestCase):

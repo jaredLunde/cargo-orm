@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Enum
+from cargo.fields import Enum
 
 from unit_tests.fields.Field import *
 from unit_tests import configure

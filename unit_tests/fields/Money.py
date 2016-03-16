@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Money
+from cargo.fields import Money
 
 from unit_tests.fields.Currency import TestCurrency, TestEncCurrency
 from unit_tests import configure

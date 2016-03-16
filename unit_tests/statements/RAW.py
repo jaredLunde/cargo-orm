@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.statements.Raw`
+    `Unit tests for cargo.statements.Raw`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -12,10 +12,10 @@ from kola import config
 
 from vital.security import randkey
 
-from bloom import *
-from bloom.expressions import _empty
-from bloom.orm import QueryState
-from bloom.statements import Raw
+from cargo import *
+from cargo.expressions import _empty
+from cargo.orm import QueryState
+from cargo.statements import Raw
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')

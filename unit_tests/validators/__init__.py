@@ -5,7 +5,7 @@ import sys
 
 
 cd = os.path.dirname(os.path.abspath(__file__))
-path = cd.split('bloom-orm')[0] + 'bloom-orm'
+path = cd.split('cargo-orm')[0] + 'cargo-orm'
 sys.path.insert(0, path)
 
 

@@ -1,8 +1,8 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 import unittest
-from bloom.fields import Field
-from bloom.validators import Validator
+from cargo.fields import Field
+from cargo.validators import Validator
 
 from unit_tests import configure
 

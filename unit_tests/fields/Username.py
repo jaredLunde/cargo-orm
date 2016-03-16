@@ -3,8 +3,8 @@
 import re
 import string
 
-from bloom.etc.usernames import reserved_usernames
-from bloom.fields import Username
+from cargo.etc.usernames import reserved_usernames
+from cargo.fields import Username
 from vital.debug import RandData, gen_rand_str
 
 from unit_tests.fields.Char import *

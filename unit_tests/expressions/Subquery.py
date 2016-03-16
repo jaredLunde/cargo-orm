@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.expressions.Subquery`
+    `Unit tests for cargo.expressions.Subquery`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,7 +9,7 @@
 import unittest
 
 from vital.security import randkey
-from bloom import *
+from cargo import *
 
 
 def new_field(type='varchar'):

@@ -1,17 +1,17 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.expressions.Case`
+    `Unit tests for cargo.expressions.Case`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
 import unittest
 from kola import config
-from bloom import fields, ORM, create_kola_client, safe
+from cargo import fields, ORM, create_kola_client, safe
 from vital.security import randkey
 
-from bloom.expressions import Case
+from cargo.expressions import Case
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')

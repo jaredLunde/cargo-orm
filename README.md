@@ -1,21 +1,21 @@
-# Bloom ORM
+# Cargo ORM
 A fast, friendly, Postgres ORM written in Python.
 
 
 ## Getting started
-`pip install bloom-orm`
+`pip install cargo-orm`
 
 ### or
 
 ```shell
-git clone https://github.com/jaredlunde/bloom-orm
-cd bloom-orm
+git clone https://github.com/jaredlunde/cargo-orm
+cd cargo-orm
 python setup.py install
 ```
 
 ### Hello Model
 ```python
-from bloom import create_db, Model, db
+from cargo import create_db, Model, db
 
 
 class Hello(Model):

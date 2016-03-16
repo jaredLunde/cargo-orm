@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.relationships.Relationship`
+    `Unit tests for cargo.relationships.Relationship`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -11,9 +11,9 @@ import pickle
 import unittest
 from kola import config
 
-from bloom import Model, create_kola_pool, UID, RelationshipImportError,\
+from cargo import Model, create_kola_pool, UID, RelationshipImportError,\
                       Field, PullError
-from bloom.relationships import Relationship, ForeignKey
+from cargo.relationships import Relationship, ForeignKey
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')

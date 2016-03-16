@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.expressions.Clause`
+    `Unit tests for cargo.expressions.Clause`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -12,9 +12,9 @@ import psycopg2
 from vital.security import randkey
 
 from vital.tools.dicts import merge_dict
-from bloom.expressions import *
-from bloom import *
-from bloom import fields
+from cargo.expressions import *
+from cargo import *
+from cargo import fields
 
 
 def new_field(type='varchar'):

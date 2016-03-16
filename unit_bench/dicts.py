@@ -1,5 +1,5 @@
 import dis
-from bloom.expressions import _empty
+from cargo.expressions import _empty
 from vital.debug import Compare, Timer, RandData
 
 

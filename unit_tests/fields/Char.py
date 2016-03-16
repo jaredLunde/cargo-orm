@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Char
-from bloom.etc import types
+from cargo.fields import Char
+from cargo.etc import types
 
 from unit_tests.fields.Field import TestField, Tc
 from unit_tests import configure

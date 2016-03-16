@@ -1,6 +1,6 @@
-from bloom.expressions import *
-from bloom.statements import *
-from bloom.orm import ORM
+from cargo.expressions import *
+from cargo.statements import *
+from cargo.orm import ORM
 from vital.debug import Compare, Timer, RandData
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 import sys
-from bloom.fields import Int
+from cargo.fields import Int
 
 from unit_tests import configure
 from unit_tests.fields.SmallInt import TestSmallInt, TestEncSmallInt

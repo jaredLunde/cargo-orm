@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for bloom.orm.QueryState`
+  `Unit tests for cargo.orm.QueryState`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,7 +9,7 @@
 import unittest
 from kola import config
 
-from bloom.orm import QueryState
+from cargo.orm import QueryState
 
 
 class TestQueryState(unittest.TestCase):

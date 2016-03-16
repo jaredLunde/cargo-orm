@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom import safe
-from bloom.fields import Serial
+from cargo import safe
+from cargo.fields import Serial
 
 from unit_tests.fields.Int import TestInt
 from unit_tests import configure

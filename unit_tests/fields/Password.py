@@ -1,8 +1,8 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 import unittest
-from bloom.fields.extras import *
-from bloom.exceptions import IncorrectPasswordError
+from cargo.fields.extras import *
+from cargo.exceptions import IncorrectPasswordError
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom import Function
-from bloom.fields import StrUID
+from cargo import Function
+from cargo.fields import StrUID
 
 from unit_tests.fields.UID import TestUID
 from unit_tests import configure

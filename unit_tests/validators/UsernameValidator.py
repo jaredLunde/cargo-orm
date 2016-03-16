@@ -1,8 +1,8 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Username
-from bloom.etc.usernames import reserved_usernames
-from bloom.validators import UsernameValidator
+from cargo.fields import Username
+from cargo.etc.usernames import reserved_usernames
+from cargo.validators import UsernameValidator
 
 from unit_tests import configure
 from unit_tests.validators.Validator import TestValidator

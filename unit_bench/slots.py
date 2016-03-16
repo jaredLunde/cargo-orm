@@ -1,7 +1,7 @@
-from bloom import *
-from bloom.validators import *
-from bloom.etc.types import *
-from bloom.expressions import _empty
+from cargo import *
+from cargo.validators import *
+from cargo.etc.types import *
+from cargo.expressions import _empty
 
 from vital.debug import Compare, prepr
 

@@ -1,9 +1,9 @@
 import os
 import unittest
 
-from bloom import create_db, db, Model as _Model
-from bloom.fields import *
-from bloom.builder import *
+from cargo import create_db, db, Model as _Model
+from cargo.fields import *
+from cargo.builder import *
 
 
 create_db()
@@ -31,16 +31,16 @@ def run_discovered(path=None):
 
 
 def setup():
-    drop_schema(db, 'bloom_tests', cascade=True, if_exists=True)
-    create_schema(db, 'bloom_tests')
+    drop_schema(db, 'cargo_tests', cascade=True, if_exists=True)
+    create_schema(db, 'cargo_tests')
 
 
 def cleanup():
-    drop_schema(db, 'bloom_tests', cascade=True, if_exists=True)
+    drop_schema(db, 'cargo_tests', cascade=True, if_exists=True)
 
 
 class Model(_Model):
-    schema = 'bloom_tests'
+    schema = 'cargo_tests'
     uid = UID()
 
 

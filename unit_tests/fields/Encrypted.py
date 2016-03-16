@@ -9,7 +9,7 @@ import psycopg2.extensions
 from kola import config
 from vital.debug import RandData, logg
 
-from bloom.fields import *
+from cargo.fields import *
 
 from unit_tests.fields.Field import *
 

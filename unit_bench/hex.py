@@ -2,7 +2,7 @@ import dis
 import uuid
 import time
 from sys import intern
-from bloom.expressions import _empty
+from cargo.expressions import _empty
 from vital.debug import Compare, Timer, RandData
 from random import randint
 

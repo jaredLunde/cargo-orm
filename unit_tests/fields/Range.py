@@ -3,7 +3,7 @@
 import arrow
 import datetime
 import decimal
-from bloom.fields.ranges import *
+from cargo.fields.ranges import *
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for bloom.orm.Model`
+  `Unit tests for cargo.orm.Model`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -18,8 +18,8 @@ from vital.debug import Timer
 from vital.security import randkey
 from kola import config, local, logg
 
-from bloom import *
-from bloom.orm import ORM, QueryState
+from cargo import *
+from cargo.orm import ORM, QueryState
 
 
 config.bind('/home/jared/apps/xfaps/vital.json')

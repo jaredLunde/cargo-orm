@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.builder.create_user`
+    `Unit tests for cargo.builder.create_user`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -9,9 +9,9 @@
 import unittest
 import random
 
-from bloom import fields
-from bloom.builder import create_cast
-from bloom.builder.fields import Column, find_column
+from cargo import fields
+from cargo.builder import create_cast
+from cargo.builder.fields import Column, find_column
 
 from vital.debug import line
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Email
-from bloom.validators import EmailValidator
+from cargo.fields import Email
+from cargo.validators import EmailValidator
 
 from vital.debug import RandData
 

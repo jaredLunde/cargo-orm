@@ -1,9 +1,9 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.etc import passwords
-from bloom.fields import Password
-from bloom.fields.extras import *
-from bloom.validators import PasswordValidator
+from cargo.etc import passwords
+from cargo.fields import Password
+from cargo.fields.extras import *
+from cargo.validators import PasswordValidator
 
 from unit_tests import configure
 from unit_tests.validators.Validator import TestValidator

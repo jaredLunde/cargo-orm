@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Enum
-from bloom.validators import EnumValidator
+from cargo.fields import Enum
+from cargo.validators import EnumValidator
 
 from unit_tests import configure
 from unit_tests.validators.Validator import TestValidator

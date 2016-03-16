@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Float
+from cargo.fields import Float
 
 from unit_tests.fields.Numeric import TestNumeric, TestEncNumeric
 from unit_tests import configure

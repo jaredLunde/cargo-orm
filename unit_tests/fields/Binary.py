@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import psycopg2.extensions
 
-from bloom.fields import Binary
+from cargo.fields import Binary
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

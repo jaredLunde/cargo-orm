@@ -4,8 +4,8 @@ import unittest
 import string
 from math import ceil
 
-from bloom.fields.extras import *
-from bloom.exceptions import IncorrectPasswordError
+from cargo.fields.extras import *
+from cargo.exceptions import IncorrectPasswordError
 
 from vital.security import chars_in, bits_in
 

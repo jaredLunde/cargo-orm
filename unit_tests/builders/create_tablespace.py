@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.builder.create_user`
+    `Unit tests for cargo.builder.create_user`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -12,9 +12,9 @@ import psycopg2
 from kola import config
 from vital.security import randkey
 
-from bloom import ORM, db, create_kola_db, fields
-from bloom.builder import create_tablespace
-from bloom.builder.tablespaces import Tablespace
+from cargo import ORM, db, create_kola_db, fields
+from cargo.builder import create_tablespace
+from cargo.builder.tablespaces import Tablespace
 
 
 cfile = '/home/jared/apps/xfaps/vital.json'

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import decimal
-from bloom.fields import Decimal
+from cargo.fields import Decimal
 
 from unit_tests.fields.BigInt import TestBigInt
 from unit_tests import configure

@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Bool
+from cargo.fields import Bool
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

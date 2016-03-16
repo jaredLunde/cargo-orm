@@ -4,8 +4,8 @@ import datetime
 from dateutil import tz
 
 import arrow
-from bloom import *
-from bloom.fields import Time
+from cargo import *
+from cargo.fields import Time
 
 from unit_tests.fields.Field import *
 from unit_tests import configure

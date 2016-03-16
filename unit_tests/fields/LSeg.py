@@ -3,10 +3,10 @@
 from vital.debug import RandData
 from collections import namedtuple
 
-from bloom import Function
-from bloom.builder import *
-from bloom.fields import LSeg, UID
-from bloom.fields.geometry import LSegRecord
+from cargo import Function
+from cargo.builder import *
+from cargo.fields import LSeg, UID
+from cargo.fields.geometry import LSegRecord
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

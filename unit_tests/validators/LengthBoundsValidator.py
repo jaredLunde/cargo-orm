@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Char
-from bloom.validators import LengthBoundsValidator
+from cargo.fields import Char
+from cargo.validators import LengthBoundsValidator
 
 from unit_tests import configure
 from unit_tests.validators.Validator import TestValidator

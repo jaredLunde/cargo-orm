@@ -3,8 +3,8 @@
 import psycopg2.extras
 import psycopg2.extensions
 
-from bloom import fields
-from bloom.fields import *
+from cargo import fields
+from cargo.fields import *
 from vital.debug import RandData
 
 from unit_tests.fields.Field import *

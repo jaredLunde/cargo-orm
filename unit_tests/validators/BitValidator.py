@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Bit
-from bloom.validators import BitValidator
+from cargo.fields import Bit
+from cargo.validators import BitValidator
 
 from unit_tests import configure
 from unit_tests.validators.Validator import TestValidator

@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Varchar
+from cargo.fields import Varchar
 
 from unit_tests.fields.Char import TestChar, TestEncChar
 from unit_tests import configure

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 import netaddr
-from bloom.fields import IP
+from cargo.fields import IP
 
 from unit_tests.fields.Field import TestField
 from unit_tests import configure

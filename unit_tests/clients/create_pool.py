@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.clients.create_pool`
+    `Unit tests for cargo.clients.create_pool`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -11,7 +11,7 @@ import unittest
 from multiprocessing import cpu_count
 
 from kola import config
-from bloom.clients import create_pool, create_kola_pool, local_client,\
+from cargo.clients import create_pool, create_kola_pool, local_client,\
                               PostgresPool
 
 

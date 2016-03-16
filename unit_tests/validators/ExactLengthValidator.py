@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import Bit
-from bloom.validators import ExactLengthValidator
+from cargo.fields import Bit
+from cargo.validators import ExactLengthValidator
 
 from unit_tests import configure
 from unit_tests.validators.Validator import TestValidator

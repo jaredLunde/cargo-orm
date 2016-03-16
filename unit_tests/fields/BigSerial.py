@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
-from bloom.fields import BigSerial
+from cargo.fields import BigSerial
 from unit_tests.fields.Serial import TestSerial
 from unit_tests import configure
 

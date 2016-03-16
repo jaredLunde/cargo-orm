@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-    `Unit tests for bloom.clients.create_client`
+    `Unit tests for cargo.clients.create_client`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -10,7 +10,7 @@ import json
 import unittest
 from kola import config
 
-from bloom.clients import create_client, create_kola_client, local_client,\
+from cargo.clients import create_client, create_kola_client, local_client,\
                               Postgres
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -S
 # -*- coding: utf-8 -*-
 """
-  `Unit tests for bloom.expressions.Expression`
+  `Unit tests for cargo.expressions.Expression`
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
@@ -13,9 +13,9 @@ import psycopg2
 from kola import config
 from vital.security import randkey
 
-from bloom.expressions import *
-from bloom import *
-from bloom import fields
+from cargo.expressions import *
+from cargo import *
+from cargo import fields
 
 
 def new_field(type='varchar'):
