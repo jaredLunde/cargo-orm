@@ -1,11 +1,11 @@
 # Bloom ORM
-A fast, friendly, Postgre ORM written in Python.
+A fast, friendly, Postgres ORM written in Python.
 
 
 ## Getting started
 `pip install bloom-orm`
 
-### or 
+### or
 
 ```shell
 git clone https://github.com/jaredlunde/bloom-orm
