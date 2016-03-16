@@ -61,13 +61,14 @@ class UUID(Field, StringLogic):
             return uuid_
 
     @staticmethod
+    def register_adapter():
+        register_adapter(uuid.UUID, UUID.adapt)
+        UUIDTYPE_ = reg_type('UUIDTYPE', UUIDTYPE, UUID.to_python)
+        UUIDARRAYTYPE = reg_array_type('UUIDARRAYTYPE', UUIDARRAY, UUIDTYPE_)
+
+    @staticmethod
     def adapt(uuid):
         return AsIs("%s::uuid" % adapt(str(uuid)).getquoted().decode())
-
-
-register_adapter(uuid.UUID, UUID.adapt)
-UUIDTYPE_ = reg_type('UUIDTYPE', UUIDTYPE, UUID.to_python)
-UUIDARRAYTYPE = reg_array_type('UUIDARRAYTYPE', UUIDARRAY, UUIDTYPE_)
 
 
 class SmallSerial(SmallInt):
@@ -234,8 +235,6 @@ class strint(int):
     def to_db(val):
         return adapt(int(val))
 
-register_adapter(strint, strint.to_db)
-
 
 class StrUID(UID):
     """ =======================================================================
@@ -333,3 +332,7 @@ class StrUID(UID):
         if self.value is not None:
             return len(self.value)
         return 0
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(strint, strint.to_db)

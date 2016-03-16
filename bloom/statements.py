@@ -151,10 +151,7 @@ class BaseQuery(StringLogic, DateTimeLogic):
         else:
             query = self.query
             params = self.params
-        if not self.orm._many:
-            return self.orm.execute(query, params)
-        else:
-            return self.orm.run_many(fetchall=False)
+        return self.orm.execute(query, params)
 
     def debug(self):
         """ Prints the query string with its parameters """
@@ -752,40 +749,13 @@ class INSERT(Query):
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
                  'one', 'string', 'fields')
 
-    def __init__(self, orm, *fields, **kwargs):
+    def __init__(self, orm, **kwargs):
         """ `INSERT`
             ``Query Statement``
             @orm: :class:ORM object
-            @fields: :class:Field fields to include in the |INSERT|
-                with |VALUES|. If none are given, all of @orm.fields are used.
         """
         super().__init__(orm=orm, **kwargs)
-        self.fields = list(fields)
-        if not orm.state.has('VALUES') or self.orm._many:
-            self.set_values()
         self.compile()
-
-    def set_values(self):
-        """ Prepares the model :class:Field values for insertion into the DB
-        """
-        if not self.fields:
-            try:
-                self.fields = self.orm.fields
-            except AttributeError:
-                pass
-        vals = self.orm.values(*self.fields)
-        if self.orm._many == 'BEGIN':
-            self.orm.add_query(self)
-            self.orm._many = True
-
-    def _add_into(self):
-        """ Adds an |INTO| clause if one doesn exist in the :prop:orm """
-        if not self.orm.state.has('INTO'):
-            if self.orm.table:
-                table = self.orm.table
-            elif self.fields:
-                table = self.fields[0].table
-            self.orm.into(table)
 
     clauses = ('INTO', '_FIELDS', 'VALUES', 'RETURNING', 'ON')
 
@@ -799,17 +769,16 @@ class INSERT(Query):
             else:
                 query_clauses[self.clauses.index(state.clause)] = state.string
         # Insert fields
-        insert_fields = ", ".join(f.field_name for f in self.fields)
-        query_clauses[1] = "({})".format(insert_fields)
+        query_clauses[1] = "(%s)" % ", ".join(f.field_name
+                                              for f in self.orm.state.fields)
         # Insert VALUES
-        vals = (val.string.replace("VALUES ", "", 1) for val in vals)
-        query_clauses[2] = "VALUES {}".format(", ".join(vals))
+        query_clauses[2] = "VALUES %s" % ", ".join(
+            val.string.replace("VALUES ", "", 1) for val in vals)
         self.params.update(self.orm.state.params)
         return self._filter_empty(query_clauses)
 
     def compile(self):
         """ :see::meth:SELECT.compile """
-        self._add_into()
         self.string = "INSERT %s" % " ".join(self.evaluate_state())
         return self.string
 
@@ -865,16 +834,15 @@ class SELECT(SetOperations):
     """
     __querytype__ = "SELECT"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct', '_fields')
+                 'one', 'string', 'operations', 'all', 'distinct')
 
-    def __init__(self, orm, *fields, **kwargs):
+    def __init__(self, orm, **kwargs):
         """ `SELECT`
             ``Query Statement``
             @orm: :class:ORM object
             @fields: :class:Field fields to SELECT from the table
         """
         super().__init__(orm=orm, **kwargs)
-        self._fields = fields
         self.compile()
 
     @property
@@ -883,7 +851,7 @@ class SELECT(SetOperations):
             |self.params|
         """
         update_params = self.params.update
-        for field in self._fields:
+        for field in self.orm.state.fields:
             if isinstance(field, Field):
                 yield field.name
             elif isinstance(field, BaseLogic):
@@ -905,9 +873,9 @@ class SELECT(SetOperations):
         query_clauses = [_empty] * len(self.clauses)
         joins = []
         for state in self.orm.state:
-            if hasattr(state, 'string'):
+            try:
                 query_clauses[self.clauses.index(state.clause)] = state.string
-            elif isinstance(state, list):
+            except (ValueError, AttributeError):
                 joins = (c.string for c in state)
 
         self.params.update(self.orm.state.params)
@@ -917,12 +885,9 @@ class SELECT(SetOperations):
 
     def compile(self):
         """ Compiles a query string from the :class:QueryState """
-        if self._fields:
-            fields = ", ".join(self.fields)
-        else:
-            fields = "*"
         self.string = (
-            "SELECT %s %s" % (fields, " ".join(self.evaluate_state()))).strip()
+            "SELECT %s %s" % (", ".join(self.fields) or "*",
+                              " ".join(self.evaluate_state()))).strip()
         return self.string
 
 
@@ -960,42 +925,15 @@ class UPDATE(Query):
     """
     __querytype__ = "UPDATE"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'fields')
+                 'one', 'string')
 
-    def __init__(self, orm, *fields, **kwargs):
+    def __init__(self, orm, **kwargs):
         """ `UPDATE`
             ``Query Statement``
-            @orm: :class:ORM object
+            @orm: :class:ORM objects
         """
         super().__init__(orm=orm, **kwargs)
-        self.fields = []
-        if not self.orm.state.has('SET'):
-            self.set(*fields)
         self.compile()
-
-    def set(self, *fields):
-        """ Formats the @fields received, merges their :prop:params with
-            |self.params|
-        """
-        if len(fields):
-            self.fields = fields
-        else:
-            try:
-                self.fields = self.orm.fields
-            except AttributeError:
-                pass
-        self.orm.set(*self.fields)
-
-    def _get_table(self):
-        if self.orm.table:
-            return self.orm.table
-        table = None
-        #: Sets the UPDATE table
-        for field in self.fields:
-            try:
-                return field.table
-            except AttributeError:
-                continue
 
     clauses = ('SET', 'FROM', 'WHERE', 'RETURNING')
 
@@ -1011,7 +949,7 @@ class UPDATE(Query):
     def compile(self):
         """ :see::meth:SELECT.compile """
         self.string = (
-            "UPDATE %s %s" % (self._get_table(),
+            "UPDATE %s %s" % (self.orm.state.get('INTO', self.orm.table),
                               " ".join(self.evaluate_state()))
         ).strip()
         return self.string
@@ -1058,10 +996,6 @@ class DELETE(Query):
         super().__init__(orm=orm, **kwargs)
         self.compile()
 
-    def set_from(self):
-        if not self.orm.state.has('FROM'):
-            self.orm.from_()
-
     clauses = ('FROM', 'USING', 'WHERE', 'RETURNING')
 
     def evaluate_state(self):
@@ -1075,7 +1009,6 @@ class DELETE(Query):
 
     def compile(self):
         """ :see::meth:SELECT.compile """
-        self.set_from()
         self.string = "DELETE %s" % (" ".join(self.evaluate_state()).strip())
         return self.string
 

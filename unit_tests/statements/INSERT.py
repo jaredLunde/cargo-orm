@@ -56,14 +56,15 @@ class TestInsert(unittest.TestCase):
         self.orm.set_table('foo')
 
     def test___init__(self):
-        q = Insert(self.orm, *self.fields)
+        self.orm.payload(*self.fields)
+        q = Insert(self.orm)
         self.assertIs(q.orm, self.orm)
-        self.assertListEqual(q.fields, self.fields)
         self.orm.reset()
 
     def test_execute(self):
         self.orm.returning("*")
-        q = Insert(self.orm, *self.fields)
+        self.orm.payload(*self.fields)
+        q = Insert(self.orm)
         cur = q.execute()
         item = q.orm.state.get('VALUES')
         self.assertIsNotNone(cur.fetchall()[0])
@@ -75,7 +76,8 @@ class TestInsert(unittest.TestCase):
             new_clause('RETURNING', safe('textfield'))
         ]
         self.orm.state.add(*clauses)
-        q = Insert(self.orm, *self.fields)
+        self.orm.payload(*self.fields)
+        q = Insert(self.orm)
         self.assertIn(clauses[0].string, q.query)
         self.assertIn(clauses[1].string, q.query)
         self.assertIn(self.fields[0].field_name, q.query)
@@ -94,12 +96,13 @@ class TestInsert(unittest.TestCase):
         ]
         self.orm.values(*values)
         self.orm.values(*values)
-        q = Insert(self.orm, *self.fields)
+        self.orm.payload(*self.fields)
+        q = Insert(self.orm)
         self.assertIn(clauses[0].string, q.query)
         self.assertIn(clauses[1].string, q.query)
         self.assertIn(self.fields[0].field_name, q.query)
         self.assertIn(self.fields[1].field_name, q.query)
-        self.assertEqual(len(q.execute().fetchall()), 2)
+        self.assertEqual(len(q.execute().fetchall()), 3)
 
     '''def test_pickle(self):
         values = [

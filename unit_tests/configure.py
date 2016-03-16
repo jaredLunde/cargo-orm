@@ -6,6 +6,9 @@ from bloom.fields import *
 from bloom.builder import *
 
 
+create_db()
+
+
 def run_tests(*tests, **opts):
     suite = unittest.TestSuite()
     for test_class in tests:
@@ -28,7 +31,6 @@ def run_discovered(path=None):
 
 
 def setup():
-    create_db()
     drop_schema(db, 'bloom_tests', cascade=True, if_exists=True)
     create_schema(db, 'bloom_tests')
 
@@ -258,8 +260,6 @@ class ExtrasTestCase(BaseTestCase):
     def setUpClass(cls):
         setup()
         ExtrasPlan().execute()
-        # cls.orm.client.close()
-        # cls.orm = ExtrasModel()
 
 
 #: Binary setup
@@ -445,7 +445,6 @@ class KeyValueTestCase(BaseTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.orm.db.close()
         cleanup()
 
     def setUp(self):
@@ -491,10 +490,8 @@ class SequencePlan(Plan):
     model = SequenceModel()
 
     def after(self):
-        import psycopg2
-        from bloom.etc.types import reg_type, reg_array_type
-        self.model.enum.register_type(self.model.db)
-        self.model.array_enum.type.register_type(self.model.db)
+        self.model.array_enum.register_type(db.client)
+        self.model.enum.register_type(db.client)
 
 
 class SequenceTestCase(BaseTestCase):

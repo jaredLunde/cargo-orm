@@ -55,16 +55,15 @@ def populate(self):
     ]
     self.orm.state.add(*clauses)
     values = [
-        field.value
+        field.copy()
         for field in self.fields
         if field._should_insert() or field.default is not None
     ]
     self.orm.values(*values)
     self.orm.values(*values)
     self.orm.values(*values)
-    q = INSERT(self.orm, *self.fields)
-    q.execute().fetchall()
-
+    q = Insert(self.orm)
+    q.execute()
     clauses = [
         new_clause('INTO', safe('foo_b')),
         new_clause('RETURNING', safe('textfield'))
@@ -75,15 +74,15 @@ def populate(self):
         new_field('text', 'bar', name='textfield', table='foo_b'),
         new_field('int', 1234, name='uid', table='foo_b')]
     values = [
-        field.value
+        field.copy()
         for field in fields
         if field._should_insert() or field.default is not None
     ]
     self.orm.values(*values)
     self.orm.values(*values)
     self.orm.values(*values)
-    q = INSERT(self.orm, *fields)
-    q.execute().fetchall()
+    q = Insert(self.orm)
+    q.execute()
     self.orm.reset()
 
 
@@ -101,15 +100,17 @@ class TestSelect(unittest.TestCase):
 
     def test___init__(self):
         func = F.new('id_generator', alias="id")
-        q = Select(self.orm, func)
+        self.orm.state.fields = [func]
+        q = Select(self.orm)
         self.assertIs(q.orm, self.orm)
-        self.assertListEqual(list(q._fields), [func])
+        self.assertListEqual(list(q.fields), [func])
 
     def test__set_fields(self):
         func = F.new('id_generator', alias="id")
         fields = [func, 'fish', 1234]
         fields.extend(self.fields)
-        q = Select(self.orm, *fields)
+        self.orm.state.fields = fields
+        q = Select(self.orm)
         q.compile()
         compiled = q.query % q.params
         make_str = lambda x: x.name if hasattr(x, 'name') else str(x)
@@ -128,7 +129,8 @@ class TestSelect(unittest.TestCase):
         self.orm.from_('foo')
         self.orm.where(fields[-1] == fields[-1]())
         self.orm.limit(1, 2)
-        q = Select(self.orm, *fields)
+        self.orm.state.fields = fields
+        q = Select(self.orm)
         q.compile()
         compiled = q.query % q.params
         for v in fields:
@@ -188,7 +190,8 @@ class TestSelect(unittest.TestCase):
         random.shuffle(shuffled_clauses)
 
         self.orm.state.add(*shuffled_clauses)
-        q = Select(self.orm, self.fields[1])
+        self.orm.state.fields = [self.fields[1]]
+        q = Select(self.orm)
         result = q.execute().fetchall()[0]
         self.assertDictEqual(result._asdict(), {'uid': 1234})
         self.orm.reset()
@@ -208,14 +211,16 @@ class TestSelect(unittest.TestCase):
         random.shuffle(shuffled_clauses)
 
         self.orm.state.add(*shuffled_clauses)
-        q = Select(self.orm, self.fields[1])
+        self.orm.state.fields = [self.fields[1]]
+        q = Select(self.orm)
         result = q.execute().fetchall()[0]
         self.assertDictEqual(result._asdict(), {'uid': 1234})
         self.orm.reset()
 
     '''def test_pickle(self):
         self.orm.where(safe('true') & True)
-        q = Select(self.orm, self.fields[1])
+        self.orm.state.fields = [self.fields[1]]
+        q = Select(self.orm)
         b = pickle.loads(pickle.dumps(q))
         for k in dir(q):
             if k == '_client':

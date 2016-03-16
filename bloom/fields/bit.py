@@ -69,16 +69,17 @@ class Bit(Field, BitLogic):
     def to_db(value):
         return AsIs("B%s" % adapt(value.bin).getquoted().decode())
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(BitArray, Bit.to_db)
+        BITTYPE = reg_type("BITTYPE", (BIT, VARBIT), Bit.to_python)
+        reg_array_type('BITARRAYTYPE', (VARBITARRAY, BITARRAY), BITTYPE)
+
     def copy(self, *args, **kwargs):
         cls = self._copy(self.length, *args, **kwargs)
         return cls
 
     __copy__ = copy
-
-
-register_adapter(BitArray, Bit.to_db)
-BITTYPE = reg_type("BITTYPE", (BIT, VARBIT), Bit.to_python)
-BITARRAYTYPE = reg_array_type('BITARRAYTYPE', (VARBITARRAY, BITARRAY), BITTYPE)
 
 
 class Varbit(Bit):

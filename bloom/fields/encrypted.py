@@ -226,20 +226,6 @@ def encarrow(a):
     return _EncArrow.fromdatetime(a.datetime)
 
 
-register_adapter(encint, encint.to_db)
-register_adapter(encstr, encstr.to_db)
-register_adapter(encfloat, encfloat.to_db)
-register_adapter(encdecimal, encdecimal.to_db)
-register_adapter(encbytes, encbytes.to_db)
-register_adapter(enclist, enclist.to_db)
-register_adapter(encdict, encdict.to_db)
-register_adapter(enctuple, enctuple.to_db)
-register_adapter(encset, encset.to_db)
-register_adapter(_EncArrow, _EncArrow.to_db)
-register_adapter(encip, encip.to_db)
-register_adapter(encipnet, encipnet.to_db)
-register_adapter(enceui, enceui.to_db)
-
 _enctypes = (((collections.Mapping, collections.ItemsView, dict), encdict),
              (str, encstr),
              (bytes, encbytes),
@@ -581,6 +567,22 @@ class Encrypted(Field):
 
     def validate(self):
         return self.type.validate()
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(encint, encint.to_db)
+        register_adapter(encstr, encstr.to_db)
+        register_adapter(encfloat, encfloat.to_db)
+        register_adapter(encdecimal, encdecimal.to_db)
+        register_adapter(encbytes, encbytes.to_db)
+        register_adapter(enclist, enclist.to_db)
+        register_adapter(encdict, encdict.to_db)
+        register_adapter(enctuple, enctuple.to_db)
+        register_adapter(encset, encset.to_db)
+        register_adapter(_EncArrow, _EncArrow.to_db)
+        register_adapter(encip, encip.to_db)
+        register_adapter(encipnet, encipnet.to_db)
+        register_adapter(enceui, enceui.to_db)
 
     def copy(self, *args, **kwargs):
         return self.__class__(self._secret,

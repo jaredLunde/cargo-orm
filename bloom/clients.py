@@ -154,7 +154,7 @@ class BasePostgresClient(object):
                              lambda pg: pg.set_schema('foo'))
             ..
         """
-        self._events['BEFORE'][event.upper()] = task
+        self._attach_event('BEFORE', event, task)
 
     def after(self, event, task):
         """ Creates a hook which fires @task after @event. The task callable
@@ -167,11 +167,22 @@ class BasePostgresClient(object):
                                     cur.set_client_encoding('latin1'))
             ..
         """
-        self._events['AFTER'][event.upper()] = task
+        self._attach_event('AFTER', event, task)
+
+    def _attach_event(self, when, event, task):
+        event = event.upper()
+        try:
+            if task not in self._events[when][event]:
+                self._events[when][event].append(task)
+        except KeyError:
+            self._events[when][event] = []
+            self._events[when][event].append(task)
 
     def _apply_event(self, when, event, *args, **kwargs):
         try:
-            self._events[when.upper()][event.upper()](self, *args, **kwargs)
+            event = event.upper()
+            for event_cb in self._events[when][event]:
+                event_cb(self, *args, **kwargs)
         except KeyError:
             pass
 
@@ -372,7 +383,10 @@ class Postgres(BasePostgresClient):
     def close(self):
         """ Closes the psycopg2 cursor and connection """
         self._apply_before('close')
-        self._connection.close()
+        try:
+            self._connection.close()
+        except AttributeError:
+            pass
         self._apply_after('close')
 
     def get(self, *args, **kwargs):
@@ -502,7 +516,10 @@ class PostgresPool(BasePostgresClient):
 
     def close(self):
         """ Closes all the psycopg2 cursors and connections """
-        self.pool.closeall()
+        try:
+            self.pool.closeall()
+        except AttributeError:
+            pass
 
 
 #: Storage for connection clients/pools

@@ -18,3 +18,8 @@ find ./ -type f -exec sed -i -e 's/#!\/usr\/bin\/python3 \-S//g' {} \;;
 find ./ -type f -exec sed -i -e 's/# \-\*==coding\: utf\-8 \-\*\-//g' {} \;;
 find ./ -type f -exec sed -i -e 's/# \-\*\- coding\: utf\-8 \-\*\-//g' {} \;;
 find ./ -type f -exec sed -i -e '/./,$!d' {} \;;
+
+
+find ./ -type f -exec sed -i -e 's/Bloom/Cargo ORM/g' {} \;;
+find ./ -type f -exec sed -i -e 's/bloom/cargo/g' {} \;;
+find ./ -type f -exec sed -i -e 's/\/bloom-orm/\/cargo-orm/g' {} \;;

@@ -5,8 +5,6 @@ from vital.debug import Compare, Timer, RandData
 
 
 orm = ORM()
-orm.state.add(Clause('FROM', safe('foo')),
-              Clause('WHERE', Expression('foo', '<>', 'bar')))
 
 
 def raw(orm=None, iorm=None):
@@ -18,7 +16,8 @@ def select(orm=None, iorm=None):
 
 
 def pselect(orm=None, iorm=None):
-    Select(orm, 1, 2, 3, 4, 5)
+    orm.state.fields = 1, 2, 3, 4, 5
+    Select(orm)
 
 
 def update(orm=None, iorm=None):
@@ -28,6 +27,11 @@ def update(orm=None, iorm=None):
 def delete(orm=None, iorm=None):
     Delete(orm)
 
+
+orm.state.add(Clause('FROM', safe('foo')),
+              Clause('WHERE', Expression('foo', '<>', 'bar')))
+
+
 iorm = ORM()
 iorm.state.add(Clause('INTO', safe('foo')),
                Clause('VALUES', safe(1), safe(2), wrap=True, join_with=', '))
@@ -35,7 +39,6 @@ iorm.state.add(Clause('INTO', safe('foo')),
 
 def insert(orm=None, iorm=None):
     Insert(iorm)
-
 
 c = Compare(select, pselect, raw, update, delete, insert)
 c.time(100000, orm=orm, iorm=iorm)

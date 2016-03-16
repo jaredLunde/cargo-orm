@@ -54,15 +54,14 @@ def populate(self):
     ]
     self.orm.state.add(*clauses)
     values = [
-        field.value
+        field
         for field in self.fields
         if field._should_insert() or field.default is not None
     ]
     self.orm.values(*values)
     self.orm.values(*values)
     self.orm.values(*values)
-    self.orm.values(*values)
-    q = INSERT(self.orm, *self.fields)
+    q = Insert(self.orm)
     q.execute().fetchall()
 
     clauses = [
@@ -82,8 +81,7 @@ def populate(self):
     self.orm.values(*values)
     self.orm.values(*values)
     self.orm.values(*values)
-    self.orm.values(*values)
-    q = INSERT(self.orm, *fields)
+    q = Insert(self.orm)
     q.execute().fetchall()
     self.orm.reset()
 

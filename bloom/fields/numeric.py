@@ -252,7 +252,7 @@ class Currency(BaseDecimal):
         return babel.numbers.get_currency_symbol(self.code, self.locale)
 
     def format(self, currency=None, format=None, locale=None,
-               currency_decimal_places=True, format_type="standard"):
+               currency_digits=True, format_type="standard"):
         """ :see::func:babel.numbers.format_currency """
         if self.value is None or self.value is self.empty:
             return ''
@@ -306,8 +306,7 @@ class Money(Currency):
             return value
         return Money._to_dec(value)
 
-
-MONEYTYPE = reg_type('MONEYTYPE', MONEY, Money.to_python)
-MONEYARRAYTYPE = reg_array_type('MONEYARRAYTYPE',
-                                MONEYARRAY,
-                                MONEYTYPE)
+    @staticmethod
+    def register_adapter():
+        MONEYTYPE = reg_type('MONEYTYPE', MONEY, Money.to_python)
+        reg_array_type('MONEYARRAYTYPE', MONEYARRAY, MONEYTYPE)

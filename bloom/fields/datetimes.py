@@ -301,13 +301,6 @@ class ArrowTimestampTZ(ArrowTime):
         return adapt(val.datetime)
 
 
-register_adapter(ArrowTime, ArrowTime.to_db)
-register_adapter(ArrowTimeTZ, ArrowTimeTZ.to_db)
-register_adapter(ArrowDate, ArrowDate.to_db)
-register_adapter(ArrowTimestamp, ArrowTimestamp.to_db)
-register_adapter(ArrowTimestampTZ, ArrowTimestampTZ.to_db)
-
-
 def _get_arrow(typ, value):
     try:
         return typ.fromdatetime(arrow.get(value))
@@ -356,6 +349,10 @@ class Time(_TimeFields, TimeLogic, DateLogic):
             self.value = self._arrow
         return self.value
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(ArrowTime, ArrowTime.to_db)
+
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, **kwargs)
         cls._arrow = copy.copy(self._arrow)
@@ -379,6 +376,10 @@ class TimeTZ(Time):
         """
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(ArrowTimeTZ, ArrowTimeTZ.to_db)
+
 
 class Date(_DateFields, DateLogic):
     """ =======================================================================
@@ -398,6 +399,10 @@ class Date(_DateFields, DateLogic):
         super().__init__(value=value, **kwargs)
 
     __call__ = Time.__call__
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(ArrowDate, ArrowDate.to_db)
 
     def copy(self, *args, **kwargs):
         cls = self._copy(*args, **kwargs)
@@ -423,6 +428,10 @@ class Timestamp(Time):
         """
         super().__init__(value=value, **kwargs)
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(ArrowTimestamp, ArrowTimestamp.to_db)
+
 
 class TimestampTZ(Time):
     """ =======================================================================
@@ -439,3 +448,7 @@ class TimestampTZ(Time):
             :see::meth:Field.__init__
         """
         super().__init__(value=value, **kwargs)
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(ArrowTimestampTZ, ArrowTimestampTZ.to_db)

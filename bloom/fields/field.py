@@ -41,7 +41,7 @@ class Field(BaseLogic):
     def __init__(self, value=empty, not_null=None, primary=None,
                  unique=None, index=None, default=None,
                  validator=NullValidator):
-        """ ``SQL Field``
+        """``SQL Field``
 
             @value: value to populate the field with
             @not_null: (#bool) True if the field cannot be |Null|
@@ -50,7 +50,7 @@ class Field(BaseLogic):
             @unique: (#bool) True if this field is a unique index in your table
             @index: (#bool or #str) |True| if this field is an index in your
                 table, you can also pass a #str specific index type
-                e.g. |Text(index='btree')| or |Array(index='gin')|
+                e.g. |Text(index='btree')| or |Array(Text(), index='gin')|
             @default: default value to set the field to
             @validator: (:class:Validator) validator plugin,
                 :meth:Validator.validate must return True if the field

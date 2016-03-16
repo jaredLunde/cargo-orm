@@ -27,6 +27,7 @@ from psycopg2.extensions import cursor as _cursor
 
 from vital.cache import cached_property
 from vital.tools.strings import camel_to_underscore
+from vital.tools.lists import grouped
 from vital.debug import prepr, line, logg
 
 from bloom.clients import *
@@ -69,7 +70,6 @@ class ORM(object):
         self.schema = schema
         self._state = QueryState(self)
         self._multi = False
-        self._many = False
         self._with = False
         self._dry = False
         self._naked = None
@@ -188,8 +188,6 @@ class ORM(object):
             self.reset_state()
             self.reset_dry()
             return q
-        elif self._many:
-            return self
         elif self._multi:
             self.add_query(q)
             self.reset()
@@ -202,35 +200,46 @@ class ORM(object):
             return self.run()
 
     def _insert(self, *fields, **kwargs):
-        """ Parses the :prop:state as an :class:INSERT statement
+        """ Interprets the :prop:state as an :class:Insert statement
 
-            @*fields: :class:Field(s) to set VALUES for, if None are given,
-                all fields in a given model will be evaluated
-            @**kwargs: keyword arguments to pass to :class:INSERT
+            @*fields: (:class:Field) fields to set VALUES for, if |None| are
+                given, all fields in a given model will be evaluated, unless
+                fields were provided in a :prop:payload
+            @**kwargs: keyword arguments to pass to :class:Insert
 
-            -> result of :class:INSERT query
+            -> result of :class:Insert query
         """
-        return self._cast_query(Insert(self, *fields, **kwargs))
+        if not self.state.has('VALUES'):
+            self.orm.values(*fields)
+        if not self.state.has('RETURNING'):
+            self.returning(*fields)
+        if fields and all(isinstance(f, Field) for f in fields):
+            self.state.fields = list(fields)
+        if not self._multi:
+            self.one()
+        self._set_into_if_empty(fields)
+        return self._cast_query(Insert(self, **kwargs))
 
     insert = _insert
 
     def _select(self, *fields, **kwargs):
-        """ Parses the :prop:state as a :class:SELECT statement. If a table
+        """ Interprets the :prop:state as a :class:Select statement. If a table
             is specified within the model and a |FROM| clause hasn't been
             added to the state, a |FROM| clause will automatically be added
             using |self.table|
 
             @*fields: :class:Field(s) or :mod:bloom.expressions
                 to retrieve values for
-            @**kwargs: keyword arguments to pass to :class:SELECT
+            @**kwargs: keyword arguments to pass to :class:Select
 
-            -> result of :class:SELECT query, :class:Subquery object if this
+            -> result of :class:Select query, :class:Subquery object if this
                 :prop:state is a subquery, or :class:Query if :prop:_dry
                 is True
         """
         if not self.state.has('FROM'):
             self.from_()
-        return self._cast_query(Select(self, *fields, **kwargs))
+        self.state.fields = list(fields)
+        return self._cast_query(Select(self, **kwargs))
 
     select = _select
 
@@ -240,35 +249,46 @@ class ORM(object):
         """
         return self.one().select(*fields, **kwargs)
 
-    def _update(self, *exps, **kwargs):
-        """ Parses the :prop:state as an :class:UPDATE statement. An |UPDATE|
-            will be performed on the fields given in @*exps
+    def _update(self, *fields, **kwargs):
+        """ Interprets the :prop:state as an :class:Update statement. An |UPDATE|
+            will be performed on the fields given in @*fields
 
-            @*fields: :class:bloom.Field or :mod:bloom.expressions
-                objects
-            @**kwargs: keyword arguments to pass to :class:SELECT
+            @*fields: (:class:bloom.Field or :mod:bloom.expressions)
+            @**kwargs: keyword arguments to pass to :class:Select
 
-            -> result of :class:UPDATE query, :class:Subquery object if this
+            -> result of :class:Update query, :class:Subquery object if this
                 :prop:state is a subquery, or the :class:Query if :prop:_dry
                 is |True|
+
+            ..
+                model.update(model.field_a, model.field_b.eq(2001))
+            ..
         """
-        return self._cast_query(Update(self, *exps, **kwargs))
+        if not fields and not self.state.has('SET'):
+            try:
+                fields = self.fields
+            except AttributeError:
+                pass
+        self._set_into_if_empty(fields)
+        self.set(*fields)
+        return self._cast_query(Update(self, **kwargs))
 
     update = _update
 
     def _delete(self, **kwargs):
-        """ Parses the :prop:state as a :class:DELETE statement. If a table
+        """ Interprets the :prop:state as a :class:Delete statement. If a table
             is specified within the model and a |FROM| clause hasn't been
             added to the state, a |FROM| clause will automatically be added
             using |self.table|
 
-            @**kwargs: keyword arguments to pass to :class:SELECT
+            @**kwargs: keyword arguments to pass to :class:Select
 
-            -> result of :class:DELETE query, :class:Subquery object if this
+            -> result of :class:Delete query, :class:Subquery object if this
                 :prop:state is a subquery, or the :class:Query if :prop:_dry
                 is |True|
         """
-        self.from_()
+        if not self.state.has('FROM'):
+            self.from_()
         return self._cast_query(Delete(self, **kwargs))
 
     delete = _delete
@@ -299,11 +319,11 @@ class ORM(object):
     upsert = _upsert
 
     def _raw(self, *args, **kwargs):
-        """ Parses the :prop:state as a :class:Raw statement. All clauses
+        """ Interprets the :prop:state as a :class:Raw statement. All clauses
             added to the ORM :prop:state will be parsed in the order of
             which they were added.
 
-            @**kwargs: keyword arguments to pass to :class:SELECT
+            @**kwargs: keyword arguments to pass to :class:Select
 
             -> result of :class:Raw query, :class:Subquery object if this
                 :prop:state is a subquery, or the :class:Raw if :prop:_dry
@@ -326,7 +346,7 @@ class ORM(object):
         """
         table = table if table else self.table
         if table:
-            self.state.add(CommaClause("FROM", safe(table), alias=alias))
+            self.state.add(Clause("FROM", safe(table), alias=alias))
         return self
 
     use = from_
@@ -349,7 +369,7 @@ class ORM(object):
                 model = Model()
                 model.window(alias='w',
                              partition_by=model.partition_field,
-                             model.order_field.desc())
+                             order_by=model.order_field.desc())
                 model.select(model.order_field.avg().over('w'))
             ..
             |SELECT avg(foo.order_field) OVER w FROM foo  |
@@ -467,7 +487,7 @@ class ORM(object):
 
     def where(self, *exps, **kwargs):
         """ Sets a |WHERE| :class:Clause in the query :prop:state for
-            :class:SELECT, :class:UPDATE, and :class:DELETE queries
+            :class:Select, :class:Update, and :class:Delete queries
 
             @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
@@ -500,11 +520,11 @@ class ORM(object):
             self.state.add(Clause("WHERE", *exps, join_with=' AND ', **kwargs))
         return self
 
-    filter = where
-
     def into(self, table, alias=None):
         """ Sets an |INTO| :class:Clause in the query :prop:state for
-            :class:INSERT queries.
+            :class:Insert queries. This can also be used for |UPDATE| queries,
+            while an |INTO| clause will not be created, the ORM will update
+            INTO whatever table is specified.
 
             @table: (#str) name of the table to insert into
 
@@ -520,14 +540,30 @@ class ORM(object):
             |INSERT INTO foo_table|
         """
         if table is not None:
-            self.state.add(CommaClause("INTO", safe(table), alias=alias))
+            self.state.add(Clause("INTO", safe(table), alias=alias))
         else:
             raise ValueError("INTO clause cannot be 'None'")
         return self
 
+    def _set_into_if_empty(self, fields=None):
+        if not self.state.has('INTO'):
+            try:
+                fields = fields or self.fields
+            except AttributeError:
+                pass
+            if self.table:
+                table = self.table
+            elif fields:
+                for field in fields:
+                    try:
+                        table = field.table
+                    except AttributeError:
+                        continue
+            self.into(table)
+
     def values(self, *vals):
         """ Sets a |VALUES| :class:Clause in the query :prop:state for
-            :class:INSERT queries.
+            :class:Insert queries.
 
             @*vals: one or several values to set
 
@@ -536,17 +572,15 @@ class ORM(object):
             ===================================================================
             ``Usage Example``
             ..
-                m = Model()
-                m.values(1, 2, 3, 4)
-                m.insert(m.f1, m.f2, m.f3, m.f4)
+                m.payload(m.field1, m.field2, m.field3, m.field4)
+                m.insert()
             ..
             |(f1, f2, f3, f4) VALUES (1, 2, 3, 4)|
 
             ..
-                m = Model()
-                m.values(1, 2, 3, 4)
-                m.values(5, 6, 7, 8)
-                m.insert(m.f1, m.f2, m.f3, m.f4)
+                m.payload(1, 2, 3, 4)
+                m.payload(5, 6, 7, 8)
+                m.insert(m.field1, m.field2, m.field3, m.field4)
             ..
             |(f1, f2, f3, f4) VALUES (1, 2, 3, 4), (5, 6, 7, 8)|
         """
@@ -558,13 +592,16 @@ class ORM(object):
                     return safe('DEFAULT')
             except AttributeError:
                 return field
-
-        self.state.add(ValuesClause("VALUES ", *map(_do_insert, vals)))
+        if not self.state.fields and all(isinstance(f, Field) for f in vals):
+            self.state.fields = list(vals)
+        self.state.add(ValuesClause("VALUES", *map(_do_insert, vals)))
         return self
+
+    payload = values
 
     def set(self, *exps, **kwargs):
         """ Sets a |SET| :class:Clause in the query :prop:state for
-            :class:UPDATE queries.
+            :class:Update queries.
 
             @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
@@ -604,7 +641,7 @@ class ORM(object):
 
     def group_by(self, *exps, **kwargs):
         """ Sets a |GROUP BY| :class:Clause in the query :prop:state for
-            :class:SELECT queries.
+            :class:Select queries.
 
             @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
@@ -626,7 +663,7 @@ class ORM(object):
 
     def order_by(self, *exps, **kwargs):
         """ Sets an |ORDER BY| :class:Clause in the query :prop:state for
-            :class:SELECT queries.
+            :class:Select queries.
 
             @*exps: :mod:bloom.expressions objects
             @**kwargs: keyword arguments to pass to the :class:Clause
@@ -666,7 +703,7 @@ class ORM(object):
 
     def limit(self, limit_offset, limit=None):
         """ Sets a |LIMIT| :class:Clause in the query :prop:state for
-            :class:SELECT queries, and optionally an |OFFSET| if @limit2 is
+            :class:Select queries, and optionally an |OFFSET| if @limit2 is
             defined.
 
             @limit_offset: #int number of records to limit the query to if
@@ -703,7 +740,7 @@ class ORM(object):
 
     def fetch(self, type="NEXT", count=None, direction=None):
         """ Sets a |FETCH| :class:Clause in the query :prop:state for
-            :class:SELECT queries. The @type and @direction arguments
+            :class:Select queries. The @type and @direction arguments
             are not parameterized and should not depend on user input.
 
             @type: (#str) see [Postgres Docs](
@@ -729,7 +766,7 @@ class ORM(object):
 
     def offset(self, offset):
         """ Sets an |OFFSET| :class:Clause in the query :prop:state for
-            :class:SELECT queries
+            :class:Select queries
 
             @offset: #int number of records to offset the query by
 
@@ -856,8 +893,6 @@ class ORM(object):
         #: Prepare the state if the this is an implicit run
         if not queries:
             #: Implicitly running compiles and closes multi/many queries
-            if self._many:
-                self.queries[-1].compile()
             self._multi = False
         #: Gets the client connection from a pool or client object
         conn = self.db.get()
@@ -967,8 +1002,8 @@ class ORM(object):
         return cursor
 
     def subquery(self, alias=None):
-        """ Parses the query :prop:state as a subquery. This query will not be
-            executed and can be passed around like other
+        """ Interprets the query :prop:state as a subquery. This query will
+            not be executed and can be passed around like other
             :class:bloom.expressions.
 
             Also see: :class:Subquery
@@ -981,7 +1016,7 @@ class ORM(object):
                 m.subquery()
                 subquery = m.select(m.user_id.max())
 
-                m.where(m.user_id == subquery)
+                m.where(m.user_id.eq(subquery))
                 m.select()
             ..
         """
@@ -1019,50 +1054,6 @@ class ORM(object):
             self.add_query(*queries)
         return self
 
-    def many(self):
-        """ Starts a 'many' INSERT query statement
-            i.e. |INSERT INTO foo (bar) VALUES (foobar,), (foobar2,),
-                (foobar3,)|
-
-            -> @self
-            =================================================================
-            ``Usage Example``
-            ..
-                my_model.many()  # Initializes the many query
-                my_model['username'] = 'foo'
-                my_model['password'] = 'bar'
-                my_model.insert()  # Does not execute query,
-                                   # appends it to the many query
-                my_model['username'] = 'foo2'
-                my_model['password'] = 'bar2'
-                my_model.insert()  # Does not execute query,
-                                   # appends it to the many query
-                my_model.run()     # Runs the many query
-            ..
-        """
-        self._many = 'BEGIN'
-        return self
-
-    def end_many(self):
-        """ Turns off |many()| without having to run the query.
-            ..
-                # Adds many query to the query stack
-                self.orm.many()
-                self.orm.insert(f1, f2)
-                self.orm.insert(f1, f2)
-                self.orm.end_many()
-                # Adds another many query to the query stack
-                self.orm.many()
-                self.orm.insert(f1, f2)
-                self.orm.insert(f1, f2)
-                self.orm.end_many()
-            ..
-            -> :class:Query
-        """
-        self.queries[-1].compile()
-        self.reset_many()
-        return self.queries[-1]
-
     # ``Query State``
 
     def add_query(self, *queries):
@@ -1095,11 +1086,6 @@ class ORM(object):
         self.state.reset()
         return self
 
-    def reset_many(self):
-        """ Removes many mode from the ORM state """
-        self._many = False
-        return self
-
     def reset_multi(self):
         """ Removes multi mode from the ORM state """
         self._multi = False
@@ -1114,7 +1100,6 @@ class ORM(object):
             multi-mode if @multi is set to |True|
         """
         self._with = False
-        self.reset_many()
         if not self._multi:
             self.queries = []
             self.reset_dry()
@@ -1152,7 +1137,7 @@ class QueryState(object):
         Manages the ORM clauses, joins, parameters and subqueries.
     """
     __slots__ = ('orm', 'clauses', 'params', 'alias', 'one', 'is_subquery',
-                 '_join')
+                 '_join', 'fields')
     _multi_clauses = {'VALUES', 'JOIN'}
 
     def __init__(self, orm):
@@ -1164,6 +1149,7 @@ class QueryState(object):
         #: Subqueries
         self.alias = None
         self.is_subquery = False
+        self.fields = []
 
     @prepr('clauses', 'params', _no_keys=True)
     def __repr__(self): return
@@ -1173,6 +1159,10 @@ class QueryState(object):
         for v in self.clauses.values():
             yield v
 
+    def add_fields(self, *fields):
+        """ Adds :class:Fields for :prop:ORM.insert and :prop:ORM.select """
+        self.fields.extend(fields)
+
     def reset(self):
         """ Resets the query state """
         self.clauses = OrderedDict()
@@ -1181,6 +1171,7 @@ class QueryState(object):
         self.alias = None
         self.one = False
         self.is_subquery = False
+        self.fields = []
         return self
 
     def has(self, name):
@@ -1251,6 +1242,15 @@ class QueryState(object):
                 #: Overwrite
                 self.clauses[clause_name] = clause
 
+    def replace(self, *clauses):
+        add = self.add
+        for clause in clauses:
+            try:
+                del self.clauses[clause.clause]
+            except KeyError:
+                pass
+            add(clause)
+
     def join(self, *args, **kwargs):
         """ :see::meth:ORM.join """
         self.add(self._join(*args, **kwargs))
@@ -1260,6 +1260,7 @@ class QueryState(object):
         cls = copy.copy(self)
         cls.clauses = self.clauses.copy()
         cls.params = self.params.copy()
+        cls.fields = self.fields.copy()
         return cls
 
 
@@ -1438,6 +1439,7 @@ class Joins(object):
 #
 #  ``Models``
 #
+_adapted_fields = set()
 
 
 class Model(ORM):
@@ -1574,6 +1576,7 @@ class Model(ORM):
         self.table = table
         for field in self.fields:
             field.table = table
+        return self
 
     def _getmembers(self):
         for attr, field in {
@@ -1742,13 +1745,16 @@ class Model(ORM):
 
     def _register_field(self, field):
         try:
-            field.register_adapter()
+            if field.__class__ not in _adapted_fields:
+                field.register_adapter()
+                _adapted_fields.add(field.__class__)
         except AttributeError:
             pass
         try:
-            self.db.after('connect', field.register_type)
+            self.db.after('connect', field.type.register_type)
         except AttributeError:
-            pass
+            if hasattr(field, 'register_type'):
+                self.db.after('connect', field.register_type)
 
     def _add_field(self, **fields):
         """ Adds one or several @fields to the model.
@@ -2079,18 +2085,38 @@ class Model(ORM):
         else:
             return results
 
-    def add(self, **kwargs):
+    def add(self, *args, **kwargs):
         """ Adds a new record to the DB without affecting the current model.
-            @**kwargs: |field=value| pairs to insert
+            @*args: values to insert according to the model's ordinal
+                defined by :attr:ordinal
+            @**kwargs: |field=value| pairs to insert, will be ignored if
+                @*args are supplied
 
             -> result of INSERT query
+            ..
+                class MyModel(Model):
+                    ordinal = ['f1', 'f2']
+                    f1 = Int()
+                    f2 = Int()
+                    ...
+                Model = MyModel()
+                Model.add(1, 2, 3, 4)
+                # INSERT INTO my_model (f1, f2) VALUES (1, 2), (3, 4)
+                Model.add(f1=1, f2=2)
+                # INSERT INTO my_model (f1, f2) VALUES (1, 2)
+            ..
         """
-        fields = []
-        add_field = fields.append
-        for name, val in kwargs.items():
-            field = getattr(self, name).copy()
-            field(val)
-            add_field(field)
+        if args:
+            fields = self.fields
+            for cargo in grouped(args, len(fields)):
+                self.payload(*cargo)
+        else:
+            fields = []
+            add_field = fields.append
+            for name, val in kwargs.items():
+                field = getattr(self, name).copy()
+                field(val)
+                add_field(field)
         return self.returning().one().new().insert(*fields)
 
     def save(self, *fields, **kwargs):
@@ -2124,16 +2150,10 @@ class Model(ORM):
 
             See also: :meth:_insert
         """
-        if not self.state.has('RETURNING'):
-            self.returning(*fields)
-        if not self.state.one and not self._many and not self._multi:
-            self.one()
-        fields = fields or filter(lambda x: x.value is not x.empty,
-                                  self.fields)
-        return self._insert(*fields)
+        return self._insert(*(fields or self.fields))
 
     def select(self, *fields, **kwargs):
-        """ Gets a single record from the DB based on the
+        """ Selects records from the DB based on the
             :prop:best_available_index within the current model if no
             |WHERE| clauses is already specified, otherwise obeys the
             |WHERE| clause in the :prop:state.

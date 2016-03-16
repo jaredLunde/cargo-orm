@@ -56,14 +56,14 @@ def populate(self):
     ]
     self.orm.state.add(*clauses)
     values = [
-        field.value
+        field
         for field in self.fields
         if field._should_insert() or field.default is not None
     ]
     self.orm.values(*values)
     self.orm.values(*values)
     self.orm.values(*values)
-    q = INSERT(self.orm, *self.fields)
+    q = Insert(self.orm)
     q.execute().fetchall()
 
     clauses = [
@@ -76,14 +76,14 @@ def populate(self):
         new_field('text', 'bar', name='textfield', table='foo_b'),
         new_field('int', 1234, name='uid', table='foo_b')]
     values = [
-        field.value
+        field
         for field in fields
         if field._should_insert() or field.default is not None
     ]
     self.orm.values(*values)
     self.orm.values(*values)
     self.orm.values(*values)
-    q = INSERT(self.orm, *fields)
+    q = Insert(self.orm)
     q.execute().fetchall()
     self.orm.reset()
 
@@ -101,17 +101,9 @@ class TestUpdate(unittest.TestCase):
 
     def test___init__(self):
         self.fields.append(self.fields[0] == 'uid')
-        q = Update(self.orm, *self.fields)
-        self.assertIs(q.orm, self.orm)
-        self.assertTupleEqual(q.fields, tuple(self.fields))
-        self.fields.pop(-1)
-        self.orm.reset()
-
-    def test_sets(self):
+        self.orm.set(*self.fields)
         q = Update(self.orm)
-        self.fields.append(self.fields[0] == 'uid')
-        q.set(*self.fields)
-        self.assertTupleEqual(q.fields, tuple(self.fields))
+        self.assertIs(q.orm, self.orm)
         self.fields.pop(-1)
         self.orm.reset()
 

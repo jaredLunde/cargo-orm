@@ -103,7 +103,6 @@ class _RangeAdapter(RangeAdapter):
                                     r._bounds[1].encode())
 
 
-
 class IntRange(Field, RangeLogic):
     OID = INTRANGE
     __slots__ = Field.__slots__
@@ -177,6 +176,10 @@ class IntRange(Field, RangeLogic):
         return
 
     @staticmethod
+    def register_adapter():
+        register_adapter(_NumericRange, IntRange.to_db)
+
+    @staticmethod
     def to_db(value):
         return _RangeAdapter(value)
 
@@ -191,12 +194,20 @@ class NumericRange(IntRange):
     __slots__ = Field.__slots__
     _cast = decimal.Decimal
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(_DateRange, DateRange.to_db)
+
 
 class TimestampRange(IntRange):
     OID = TSRANGE
     __slots__ = Field.__slots__
     _cast = Timestamp().__call__
     _range_cls = DateTimeRange
+
+    @staticmethod
+    def register_adapter():
+        register_adapter(DateTimeRange, TimestampRange.to_db)
 
 
 class TimestampTZRange(IntRange):
@@ -205,6 +216,10 @@ class TimestampTZRange(IntRange):
     _cast = TimestampTZ().__call__
     _range_cls = DateTimeTZRange
 
+    @staticmethod
+    def register_adapter():
+        register_adapter(DateTimeTZRange, TimestampTZRange.to_db)
+
 
 class DateRange(IntRange):
     OID = DATERANGE
@@ -212,8 +227,6 @@ class DateRange(IntRange):
     _cast = Date().__call__
     _range_cls = _DateRange
 
-
-_adapters = (_NumericRange, _DateRange, DateTimeRange, DateTimeTZRange)
-_adapter_classes = (IntRange, DateRange, TimestampRange, TimestampTZRange)
-for r, c in zip(_adapters, _adapter_classes):
-    register_adapter(r, getattr(c, 'to_db'))
+    @staticmethod
+    def register_adapter():
+        register_adapter(_DateRange, DateRange.to_db)

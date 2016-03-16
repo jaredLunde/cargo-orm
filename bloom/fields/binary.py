@@ -10,8 +10,7 @@ import binascii
 import psycopg2
 from base64 import b64encode, b64decode
 
-from psycopg2.extensions import new_type, register_type, register_adapter,\
-                                adapt
+from psycopg2.extensions import register_adapter, adapt
 
 from vital.tools.encoding import uniorbytes
 
@@ -170,13 +169,14 @@ class Binary(Field, BinaryLogic):
         return self.value
 
     @staticmethod
+    def register_adapter():
+        register_adapter(bloombytes, bloombytes.to_db)
+        BINARYTYPE = reg_type('BINARYTYPE', BINARY, Binary.to_python)
+        reg_array_type('BINARYARRAYTYPE', BINARYARRAY, BINARYTYPE)
+
+    @staticmethod
     def to_python(value, cur):
         try:
             return b64decode(psycopg2.BINARY(value, cur))
         except (TypeError, binascii.Error):
             return psycopg2.BINARY(value, cur)
-
-
-register_adapter(bloombytes, bloombytes.to_db)
-BINARYTYPE = reg_type('BINARYTYPE', BINARY, Binary.to_python)
-BINARYARRAYTYPE = reg_array_type('BINARYARRAYTYPE', BINARYARRAY, BINARYTYPE)

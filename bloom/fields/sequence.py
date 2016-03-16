@@ -144,7 +144,7 @@ class ArrayLogic(BaseLogic):
 
     def position(self, element, **kwargs):
         """ :see::meth:F.array_position """
-        return F.array_pposition(self, element, **kwargs)
+        return F.array_position(self, element, **kwargs)
 
     def positions(self, element, **kwargs):
         """ :see::meth:F.array_positions """
@@ -220,9 +220,7 @@ class OneOf(Field, NumericLogic, StringLogic):
         try:
             typ, atyp = db.get_type_OID(self.type_name)
             ENUMTYPE = reg_type(self.type_name.upper(), typ, psycopg2.STRING)
-            ARRAYENUMTYPE = reg_array_type(self.type_name.upper() + 'ARRAY',
-                                           atyp,
-                                           ENUMTYPE)
+            reg_array_type(self.type_name.upper() + 'ARRAY',  atyp, ENUMTYPE)
         except ValueError:
             warnings.warn('Type `%s` not found in the database.' %
                           self.type_name)

@@ -54,10 +54,18 @@ class TestSetOperations(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.orm.set_table('foo')
-        self.q1 = SELECT(self.orm, safe('1 as foo, 2 as bar, 3 as foobar'))
-        self.q2 = SELECT(self.orm, safe('1, 2, 5'))
-        self.q3 = SELECT(self.orm, safe('2, 3, 4'))
-        self.q4 = SELECT(self.orm, safe('4, 5, 6'))
+        self.orm.state.add_fields(safe('1 as foo, 2 as bar, 3 as foobar'))
+        self.q1 = Select(self.orm)
+        self.orm.reset()
+        self.orm.state.add_fields(safe('1, 2, 5'))
+        self.q2 = Select(self.orm)
+        self.orm.reset()
+        self.orm.state.add_fields(safe('2, 3, 4'))
+        self.q3 = Select(self.orm)
+        self.orm.reset()
+        self.orm.state.add_fields(safe('4, 5, 6'))
+        self.q4 = Select(self.orm)
+        self.orm.reset()
 
     def test___init__(self):
         q = SetOperations(self.orm, self.q1, self.q2)

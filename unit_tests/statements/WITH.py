@@ -60,17 +60,21 @@ class TestWith(unittest.TestCase):
     def test_with_union(self):
         t = safe('t')
         n = safe('n')
+        orm = ORM().use(t)
+        orm.state.add_fields(n+1)
         with (
           RAW(ORM().values(1), alias=t, recursive=(n,)) +
-          SELECT(ORM().use(t), n+1)
+          SELECT(orm)
         ) as orm:
             orm.use(t).limit(10).select(n)
         self.assertEqual(len(orm.result), 10)
 
+        orm = ORM().use(t)
+        orm.state.add_fields(n+1)
         q = With(
             self.orm,
             Raw(ORM().values(1), alias=t, recursive=(n,)) +
-            Select(ORM().use(t), n+1))
+            Select(orm))
         q.orm.use(t).limit(10).select(n)
         self.assertEqual(len(q.execute().fetchall()), 10)
 
