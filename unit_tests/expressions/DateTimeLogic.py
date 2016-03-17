@@ -6,51 +6,16 @@
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
-import unittest
-from kola import config
-
 from cargo.expressions import *
-from vital.security import randkey
-from cargo import ORM, Model
 from cargo.fields import Time, Field
 
-
-def new_field():
-    field = Text()
-    keyspace = 'aeioubcdhzpwnmprstln'
-    name = randkey(24, keyspace)
-    table = randkey(24, keyspace)
-    field.field_name = name
-    field.table = table
-    return field
+from unit_tests import configure
 
 
-class TestDateTimeLogic(unittest.TestCase):
+class TestDateTimeLogic(configure.LogicTestCase):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def setUp(self):
         self.base = Time('October 13, 2008 at 11:12:13pm UTC')
-
-    def validate_expression(self, expression, left, operator, right,
-                            params=None, values=None):
-        self.assertIsInstance(expression, Expression)
-        self.assertIs(expression.left, left)
-        self.assertEqual(expression.operator, operator)
-        self.assertEqual(expression.right, right)
-        if params is not None:
-            self.assertDictEqual(expression.params, params)
-        elif values:
-            for value in values:
-                self.assertIn(value, list(expression.params.values()))
-
-    def validate_function(self, function, func, args, alias=None, values=None):
-        self.assertIsInstance(function, Function)
-        self.assertEqual(function.func, func)
-        self.assertTupleEqual(function.args, tuple(args))
-        self.assertEqual(function.alias, alias)
-        if values:
-            for value in values:
-                self.assertIn(value, list(function.params.values()))
 
     def test_interval(self):
         for val in ('1 day', '2 hours'):
@@ -218,4 +183,4 @@ class TestDateTimeLogic(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestDateTimeLogic, failfast=True, verbosity=2)

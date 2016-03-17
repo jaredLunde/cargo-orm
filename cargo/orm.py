@@ -68,11 +68,13 @@ class ORM(object):
         self._client = client
         self.queries = []
         self.schema = schema
-        self._state = QueryState(self)
+        self._state = QueryState()
+        self._join = Joins(self)
         self._multi = False
         self._with = False
         self._dry = False
         self._naked = None
+        self._new = False
         self._cursor_factory = cursor_factory
         if not hasattr(self, 'table'):
             self.table = table
@@ -209,14 +211,14 @@ class ORM(object):
 
             -> result of :class:Insert query
         """
-        if not self.state.has('VALUES'):
-            self.orm.values(*fields)
+        if not len(self.state.get('VALUES', [])):
+            self.values(*fields)
+            if not self._multi:
+                self.one()
         if not self.state.has('RETURNING'):
             self.returning(*fields)
         if fields and all(isinstance(f, Field) for f in fields):
             self.state.fields = list(fields)
-        if not self._multi:
-            self.one()
         self._set_into_if_empty(fields)
         return self._cast_query(Insert(self, **kwargs))
 
@@ -250,8 +252,8 @@ class ORM(object):
         return self.one().select(*fields, **kwargs)
 
     def _update(self, *fields, **kwargs):
-        """ Interprets the :prop:state as an :class:Update statement. An |UPDATE|
-            will be performed on the fields given in @*fields
+        """ Interprets the :prop:state as an :class:Update statement.
+            An |UPDATE| will be performed on the fields given in @*fields
 
             @*fields: (:class:cargo.Field or :mod:cargo.expressions)
             @**kwargs: keyword arguments to pass to :class:Select
@@ -264,13 +266,14 @@ class ORM(object):
                 model.update(model.field_a, model.field_b.eq(2001))
             ..
         """
-        if not fields and not self.state.has('SET'):
-            try:
-                fields = self.fields
-            except AttributeError:
-                pass
+        if not self.state.has('SET'):
+            if not fields:
+                try:
+                    fields = self.fields
+                except AttributeError:
+                    pass
+            self.set(*fields)
         self._set_into_if_empty(fields)
-        self.set(*fields)
         return self._cast_query(Update(self, **kwargs))
 
     update = _update
@@ -401,11 +404,11 @@ class ORM(object):
             ..
                 m1 = Model()
                 m2 = SomeOtherModel()
-                m1.join(m2, on=(m1.user_id == m2.id,), alias="_m2")
+                m1.join(m2, on=(m1.user_id.eq(m2.id),), alias="_m2")
             ..
             |JOIN m2 _m2 ON m1.user_id = _m2.id|
         """
-        self.state.join(a, b, on, using, type, alias)
+        self.state.add(self._join(a, b, on, using, type, alias))
         return self
 
     inner_join = join
@@ -502,8 +505,8 @@ class ORM(object):
                 m = Model()
                 m.where(
                     (m.name >> ['Ringo Starr', 'Paul McCartney']) &
-                    ((m.band_name == 'Beatles') |
-                     (m.band_name == 'Ringo Starr & His All-Starr Band'))
+                    ((m.band_name.eq('Beatles')) |
+                     (m.band_name.eq('Ringo Starr & His All-Starr Band')))
                 )
                 m.select()
             ..
@@ -552,14 +555,14 @@ class ORM(object):
             except AttributeError:
                 pass
             if self.table:
-                table = self.table
+                self.into(self.table)
             elif fields:
                 for field in fields:
                     try:
-                        table = field.table
+                        self.into(field.table)
+                        return
                     except AttributeError:
                         continue
-            self.into(table)
 
     def values(self, *vals):
         """ Sets a |VALUES| :class:Clause in the query :prop:state for
@@ -614,8 +617,8 @@ class ORM(object):
             Increments the field 'views' in the model by one
             ..
                 m = Model()
-                m.where(m.uid == 700)
-                m.set(m.views == (m.views + 1))
+                m.where(m.uid.eq(700))
+                m.set(m.views.eq(m.views + 1))
                 m.update()
             ..
             |SET model_table.views = model_table.views + 1|
@@ -633,8 +636,7 @@ class ORM(object):
                     return field.eq(field.value)
             except AttributeError:
                 return field
-
-        exps = filter(lambda x: x is not None,  map(_do_update, exps))
+        exps = list(filter(lambda x: x is not None,  map(_do_update, exps)))
         self.state.add(CommaClause("SET", *exps, use_field_name=True,
                                    **kwargs))
         return self
@@ -1081,6 +1083,11 @@ class ORM(object):
         self._naked = None
         return self
 
+    def reset_new(self):
+        """ Resets the new option """
+        self._new = False
+        return self
+
     def reset_state(self):
         """ Resets the :prop:state object """
         self.state.reset()
@@ -1089,9 +1096,10 @@ class ORM(object):
     def reset_multi(self):
         """ Removes multi mode from the ORM state """
         self._multi = False
+        self.queries = []
         self.reset_dry()
         self.reset_naked()
-        self.queries = []
+        self.reset_new()
         self.reset_state()
         return self
 
@@ -1104,6 +1112,7 @@ class ORM(object):
             self.queries = []
             self.reset_dry()
             self.reset_naked()
+            self.reset_new()
         if multi:
             self.reset_multi()
         self.reset_state()
@@ -1136,13 +1145,10 @@ class QueryState(object):
     """`Query State`
         Manages the ORM clauses, joins, parameters and subqueries.
     """
-    __slots__ = ('orm', 'clauses', 'params', 'alias', 'one', 'is_subquery',
-                 '_join', 'fields')
+    __slots__ = ('clauses', 'params', 'alias', 'one', 'is_subquery', 'fields')
     _multi_clauses = {'VALUES', 'JOIN'}
 
-    def __init__(self, orm):
-        self.orm = orm
-        self._join = Joins(orm)
+    def __init__(self):
         self.clauses = OrderedDict()
         self.params = {}
         self.one = False
@@ -1218,7 +1224,7 @@ class QueryState(object):
             return self.clauses.pop(name, default)
 
     def add(self, *clauses):
-        """ Adds :class:Clause(s) to the :class:ORM query state
+        """ Adds or replaces :class:Clause(s) to the :class:ORM query state.
             @*clauses: (:class:Clause)
         """
         for clause in clauses:
@@ -1242,19 +1248,7 @@ class QueryState(object):
                 #: Overwrite
                 self.clauses[clause_name] = clause
 
-    def replace(self, *clauses):
-        add = self.add
-        for clause in clauses:
-            try:
-                del self.clauses[clause.clause]
-            except KeyError:
-                pass
-            add(clause)
-
-    def join(self, *args, **kwargs):
-        """ :see::meth:ORM.join """
-        self.add(self._join(*args, **kwargs))
-        return self
+    replace = add
 
     def copy(self, *args, **kwargs):
         cls = copy.copy(self)
@@ -1476,7 +1470,7 @@ class Model(ORM):
         Selects data from the model
         ..
             my_model = MyModel()
-            my_model.where(my_model.my_id == 4)
+            my_model.where(my_model.my_id.eq(4))
             my_model.select(my_model.my_text)
         ..
         |[{"my_text": "Hello world"}]|
@@ -1635,9 +1629,8 @@ class Model(ORM):
                 new_model_b = model.new(foo=bar)
             ..
         """
-        cls = self.copy().fill(**kwargs)
-        self.reset(multi=True)
-        return cls
+        self._new = True
+        return self
 
     def models(self):
         """ Causes the ORM to return copies of the model rather than
@@ -1718,6 +1711,9 @@ class Model(ORM):
         """ -> :func:namedtuple representation of the model """
         if not hasattr(self, self.__class__.__name__ + 'Record'):
             self._make_nt()
+        if self.ordinal:
+            return getattr(self, self.__class__.__name__ + 'Record')(
+                *self.field_values)
         return getattr(self, self.__class__.__name__ + 'Record')(
             **self.to_dict())
 
@@ -1808,14 +1804,19 @@ class Model(ORM):
         self.from_('pg_class')
         self.where(expr)
         self.naked()
-        q = Select(self, safe('reltuples::bigint %s' % (alias or "count")))
+        self.state.add_fields(safe('reltuples::bigint %s'
+                                   % (alias or "count")))
+        q = Select(self)
         result = q.execute().fetchone()
         self.reset_naked()
         if alias is None:
             try:
-                result = result.count
-            except AttributeError:
                 result = result['count']
+            except (TypeError, KeyError):
+                try:
+                    result = result.count
+                except KeyError:
+                    result = result[0]
         return result
 
     def exact_size(self, alias=None):
@@ -1833,9 +1834,9 @@ class Model(ORM):
         result = self.one().naked()._select(self.best_index.count(alias=alias))
         if alias is None:
             try:
-                result = result.count
-            except AttributeError:
                 result = result['count']
+            except (TypeError, KeyError):
+                result = result.count
         return result
 
     def _order_fields(self, ordinal=None):
@@ -1964,7 +1965,7 @@ class Model(ORM):
             field has a value, looking for a primary key, followed by unique
             keys, followed by any index
 
-            -> :class:cargo.Expression object |index_field == index_value|
+            -> :class:cargo.Expression object |index_field.eq(index_value)|
         """
         _zero = {0, 0.0}
 
@@ -2020,7 +2021,7 @@ class Model(ORM):
         """ Looks for the best available index in the model where the index
             field has a value, and the index is unique.
 
-            -> :class:cargo.Expression object |index_field == index_value|
+            -> :class:cargo.Expression object |index_field.eq(index_value)|
         """
         best_available = self.best_available_index
         if best_available is not None:
@@ -2117,7 +2118,9 @@ class Model(ORM):
                 field = getattr(self, name).copy()
                 field(val)
                 add_field(field)
-        return self.returning().one().new().insert(*fields)
+        if len(self.state.get('VALUES')) <= 1:
+            self.one()
+        return self.returning().new().insert(*fields)
 
     def save(self, *fields, **kwargs):
         """ Inserts a single record into the DB if it doesn't already exist
@@ -2131,10 +2134,10 @@ class Model(ORM):
         """
         best_index = self.best_unique_index
         if best_index is not None:
-            if not self.unique_indexes and self.primary_key is not None\
+            '''if not self.unique_indexes and self.primary_key is not None\
                and self.primary_key.value in {None, self.primary_key.empty}:
                 raise ORMIndexError("Could not find a unique index in `{}`"
-                                    .format(self.table))
+                                    .format(self.table))'''
             exists = self.copy().reset_dry().naked().where(best_index).get()
             if exists:
                 #: UPDATE
@@ -2316,8 +2319,7 @@ class Model(ORM):
         setattr_ = cls.__setattr__
         setattr_('db', self.db)
         setattr_('queries', self.queries.copy())
-        if self._state:
-            setattr_('_state', self._state.copy())
+        setattr_('_state', self._state.copy())
         for field in self.fields:
             field = field.copy()
             setattr_(field.field_name, field)
@@ -2333,7 +2335,7 @@ class RestModel(Model):
 
     def __init__(self, *args, **kwargs):
         """ `RESTful Model`
-            An implementation of :class:Model with a RESTful interface. Also
+            An implementation of :class:Model with a REST-like interface. Also
             provides the :meth:patch feature.
 
             :see::class:Model

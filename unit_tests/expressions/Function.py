@@ -7,38 +7,13 @@
    http://github.com/jaredlunde
 """
 import unittest
-import psycopg2
-
-from vital.security import randkey
 
 from cargo.expressions import *
 from cargo import *
-from cargo import fields
 
-
-# TODO: :class:WindowFunction
-
-
-def new_field(type='varchar', table=None, name=None):
-    field = getattr(fields, type.title())()
-    keyspace = 'aeioubcdlhzpwnmp'
-    name = name or randkey(24, keyspace)
-    table = table or randkey(24, keyspace)
-    field.field_name = name
-    field.table = table
-    return field
-
-
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return  Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return  Function('some_func', cast(12345), alias=alias)
+from unit_tests import configure
+from unit_tests.configure import new_field, new_function, new_expression, \
+                                 new_clause
 
 
 class TestFunction(unittest.TestCase):
@@ -274,4 +249,4 @@ class TestWindowFunctions(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestFunction, failfast=True, verbosity=2)

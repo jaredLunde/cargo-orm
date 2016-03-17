@@ -8,124 +8,45 @@
 """
 import pickle
 import random
-import unittest
-from kola import config
-
-from vital.security import randkey
 
 from cargo import *
-from cargo import fields
-from cargo.orm import QueryState
 from cargo.statements import Update
+from unit_tests import configure
+from unit_tests.configure import new_field, new_clause, new_expression, \
+                                 new_function
 
 
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_pool()
+randint = random.randint
 
 
-def new_field(type='varchar', value=None, name=None, table=None):
-    field = getattr(fields, type.title())(value=value)
-    field.field_name = name or randkey(24)
-    field.table = table or randkey(24)
-    return field
+class TestUpdate(configure.StatementTestCase):
 
-
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-def populate(self):
-    self.orm.reset()
-    self.orm.use('foo').delete()
-    clauses = [
-        new_clause('INTO', safe('foo')),
-        new_clause('RETURNING', safe('textfield'))
-    ]
-    self.orm.state.add(*clauses)
-    values = [
-        field
-        for field in self.fields
-        if field._should_insert() or field.default is not None
-    ]
-    self.orm.values(*values)
-    self.orm.values(*values)
-    self.orm.values(*values)
-    q = Insert(self.orm)
-    q.execute().fetchall()
-
-    clauses = [
-        new_clause('INTO', safe('foo_b')),
-        new_clause('RETURNING', safe('textfield'))
-    ]
-    self.orm.state.add(*clauses)
-
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo_b'),
-        new_field('int', 1234, name='uid', table='foo_b')]
-    values = [
-        field
-        for field in fields
-        if field._should_insert() or field.default is not None
-    ]
-    self.orm.values(*values)
-    self.orm.values(*values)
-    self.orm.values(*values)
-    q = Insert(self.orm)
-    q.execute().fetchall()
-    self.orm.reset()
-
-
-class TestUpdate(unittest.TestCase):
-    orm = ORM()
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo'),
-        new_field('int', 1234, name='uid', table='foo')]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.orm.set_table('foo')
-        self.orm.reset()
 
     def test___init__(self):
-        self.fields.append(self.fields[0] == 'uid')
-        self.orm.set(*self.fields)
+        self.orm.fields.append(self.orm.fields[1] == 'uid')
+        self.orm.set(*self.orm.fields)
         q = Update(self.orm)
         self.assertIs(q.orm, self.orm)
-        self.fields.pop(-1)
-        self.orm.reset()
+        self.orm.fields.pop(-1)
 
     def test_execute(self):
-        populate(self)
-        self.fields[0].value = 'bar_2'
-        self.orm.set(*[
-            field == field.value for field in self.fields])
-        self.orm.returning(*self.fields)
+        self.orm.fields[1].value = 'bar_2'
+        self.orm.where(self.orm.fields[0] == 1236).set(*[
+            field == field.value for field in self.orm.fields])
+        self.orm.returning(*self.orm.fields)
         q = Update(self.orm)
+        print()
         result = q.execute().fetchall()
         self.assertTrue(len(result) > 0)
         self.orm.reset()
 
-        self.fields[0].value = 'bar'
-        self.orm.set(*[
-            field == field.value for field in self.fields])
-        self.orm.returning(*self.fields[:1])
+        self.orm.fields[1].value = 'bar'
+        self.orm.where(self.orm.fields[0] == 1236).set(*[
+            field == field.value for field in self.orm.fields])
+        self.orm.returning(*self.orm.fields[:1])
         q = Update(self.orm)
         result = q.execute().fetchall()
         self.assertTrue(len(result) > 0)
-        self.orm.reset()
 
     def test_evaluate_state(self):
         '''
@@ -138,7 +59,6 @@ class TestUpdate(unittest.TestCase):
         elif state.clause == "RETURNING":
             query_clauses[3] = state.string
         '''
-        populate(self)
         clauses = [
             new_clause('SET', safe("textfield = b.textfield")),
             new_clause('FROM', safe('foo_b b')),
@@ -158,25 +78,24 @@ class TestUpdate(unittest.TestCase):
 
         field_b = new_field('int', 1234, name='uid', table='foo_b')
         field_b.set_alias(table='b')
-        self.orm.where(self.fields[1] == aliased(field_b))
+        self.orm.where(self.orm.fields[0] == aliased(field_b))
         self.orm.set(
-            self.fields[1] == aliased(field_b),
-            self.fields[0] == self.fields[0].value)
+            self.orm.fields[0] == aliased(field_b),
+            self.orm.fields[1] == self.orm.fields[1].value)
         self.orm.use(field_b.table, alias='b')
         self.orm.returning(aliased(field_b))
         q = Update(self.orm)
         result = q.execute().fetchall()
         self.assertTrue(len(result) > 1)
         self.assertIn('uid', result[0]._fields)
-        self.orm.reset()
 
     '''def test_pickle(self):
         field_b = new_field('int', value=1234, name='uid', table='foo_b')
         field_b.set_alias(table='b')
-        self.orm.where(self.fields[1] == aliased(field_b))
+        self.orm.where(self.orm.fields[0] == aliased(field_b))
         self.orm.set(
-            self.fields[1] == aliased(field_b),
-            self.fields[0] == self.fields[0].value)
+            self.orm.fields[0] == aliased(field_b),
+            self.orm.fields[1] == self.orm.fields[1].value)
         self.orm.use(field_b.table, alias='b')
         self.orm.returning(aliased(field_b))
         q = Update(self.orm)
@@ -194,4 +113,4 @@ class TestUpdate(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestUpdate)

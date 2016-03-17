@@ -37,23 +37,20 @@ def new_function(cast=int):
 class TestSubquery(unittest.TestCase):
 
     def test___init__(self):
-        fields = (new_field('int'), new_field('varchar'))
-        q = INSERT(ORM(), *fields)
+        q = Insert(ORM())
         base = Subquery(q)
         self.assertIs(base.subquery, q)
         self.assertIn(q.query, base.query)
         self.assertIs(base.params, q.params)
 
     def test_alias(self):
-        fields = (new_field('int'), new_field('varchar'))
-        q = INSERT(ORM(), *fields)
+        q = Insert(ORM())
         base = Subquery(q, alias='subalias')
         self.assertEqual(base.alias, 'subalias')
         self.assertTrue(base.query.endswith('subalias'))
 
     def test_exists(self):
-        fields = (new_field('int'), new_field('varchar'))
-        q = SELECT(ORM(), *fields)
+        q = Select(ORM())
         base = Subquery(q)
         func = base.exists()
         self.assertIsInstance(func, Function)
@@ -66,8 +63,7 @@ class TestSubquery(unittest.TestCase):
         self.assertEqual(func.alias, 'foo')
 
     def test_not_exists(self):
-        fields = (new_field('int'), new_field('varchar'))
-        q = SELECT(ORM(), *fields)
+        q = Select(ORM())
         base = Subquery(q)
         func = base.not_exists()
         self.assertIsInstance(func, Function)

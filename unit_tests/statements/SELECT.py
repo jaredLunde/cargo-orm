@@ -8,107 +8,27 @@
 """
 import pickle
 import random
-import unittest
-from kola import config
-
-from vital.security import randkey
 
 from cargo import *
-from cargo.orm import QueryState
 from cargo.statements import Select
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_pool()
-
-
-def new_field(type='char', value=None, name=None, table=None):
-    field = getattr(fields, type.title())(value=value)
-    field.field_name = name or randkey(24)
-    field.table = table or randkey(24)
-    return field
+from unit_tests import configure
+from unit_tests.configure import new_clause, new_field, new_expression
 
 
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-
-def populate(self):
-    self.orm.use('foo').delete()
-    clauses = [
-        new_clause('INTO', safe('foo')),
-        new_clause('RETURNING', safe('textfield'))
-    ]
-    self.orm.state.add(*clauses)
-    values = [
-        field.copy()
-        for field in self.fields
-        if field._should_insert() or field.default is not None
-    ]
-    self.orm.values(*values)
-    self.orm.values(*values)
-    self.orm.values(*values)
-    q = Insert(self.orm)
-    q.execute()
-    clauses = [
-        new_clause('INTO', safe('foo_b')),
-        new_clause('RETURNING', safe('textfield'))
-    ]
-    self.orm.state.add(*clauses)
-
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo_b'),
-        new_field('int', 1234, name='uid', table='foo_b')]
-    values = [
-        field.copy()
-        for field in fields
-        if field._should_insert() or field.default is not None
-    ]
-    self.orm.values(*values)
-    self.orm.values(*values)
-    self.orm.values(*values)
-    q = Insert(self.orm)
-    q.execute()
-    self.orm.reset()
-
-
-class TestSelect(unittest.TestCase):
-    orm = ORM()
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo'),
-        new_field('int', 1234, name='uid', table='foo')]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.orm.set_table('foo')
-        #: Fill data
-        populate(self)
+class TestSelect(configure.StatementTestCase):
 
     def test___init__(self):
-        func = F.new('id_generator', alias="id")
+        func = F.new('cargo_uid', alias="id")
         self.orm.state.fields = [func]
         q = Select(self.orm)
         self.assertIs(q.orm, self.orm)
         self.assertListEqual(list(q.fields), [func])
 
     def test__set_fields(self):
-        func = F.new('id_generator', alias="id")
+        func = F.new('cargo_uid', alias="id")
         fields = [func, 'fish', 1234]
-        fields.extend(self.fields)
+        fields.extend(self.orm.fields)
         self.orm.state.fields = fields
         q = Select(self.orm)
         q.compile()
@@ -120,14 +40,14 @@ class TestSelect(unittest.TestCase):
         self.orm.reset()
 
     def test_execute(self):
-        func = F.new('id_generator', alias="id")
+        func = F.new('cargo_uid', alias="id")
         fields = [
             func,
             parameterize('fish', alias='fish'),
             parameterize(1234, alias='fosh')]
-        fields.extend(self.fields)
+        fields.extend(self.orm.fields)
         self.orm.from_('foo')
-        self.orm.where(fields[-1] == fields[-1]())
+        self.orm.where(fields[-2] <= fields[-2]())
         self.orm.limit(1, 2)
         self.orm.state.fields = fields
         q = Select(self.orm)
@@ -148,38 +68,13 @@ class TestSelect(unittest.TestCase):
         self.orm.reset()
 
     def test__evaluate_state(self):
-        '''
-        if state.clause == "FROM":
-            insert_clause(0, state.string)
-                has_from = True
-            elif 'JOIN' in state.clause:
-                insert_clause(1, state.string)
-            elif state.clause == "WHERE":
-                insert_clause(2, state.string)
-            elif state.clause == "GROUP BY":
-                insert_clause(3, state.string)
-            elif state.clause == "HAVING":
-                insert_clause(4, state.string)
-            elif state.clause == "ORDER BY":
-                insert_clause(5, state.string)
-            elif state.clause == "LIMIT":
-                insert_clause(6, state.string)
-                self.limit = int(state.args[0])
-            elif state.clause == "OFFSET":
-                insert_clause(7, state.string)
-            elif state.clause == "FETCH":
-                insert_clause(8, state.string)
-            elif state.clause == "FOR":
-                insert_clause(9, state.string)
-        '''
-        populate(self)
         clauses = [
             new_clause('FROM', safe('foo foo')),
             new_clause('WINDOW', safe('w AS (ORDER BY foo.uid DESC)')),
             new_clause('INNER JOIN', safe('foo foo2 ON foo.uid = foo2.uid')),
-            new_clause('WHERE', self.fields[1] > 2),
-            new_clause('GROUP BY', self.fields[1]),
-            new_clause('HAVING', safe('max(foo.uid) < 1235')),
+            new_clause('WHERE', self.orm.fields[0] > 0),
+            new_clause('GROUP BY', self.orm.fields[0]),
+            new_clause('HAVING', safe('max(foo.uid) < 100000000000000')),
             new_clause('ORDER BY', safe('foo.uid DESC')),
             new_clause('LIMIT', 1),
             new_clause('OFFSET', 0),
@@ -190,16 +85,16 @@ class TestSelect(unittest.TestCase):
         random.shuffle(shuffled_clauses)
 
         self.orm.state.add(*shuffled_clauses)
-        self.orm.state.fields = [self.fields[1]]
+        self.orm.state.fields = [self.orm.fields[0]]
         q = Select(self.orm)
         result = q.execute().fetchall()[0]
-        self.assertDictEqual(result._asdict(), {'uid': 1234})
+        self.assertDictEqual(result._asdict(), {'uid': self.orm.fields[0]()})
         self.orm.reset()
 
         clauses = [
             new_clause('FROM', safe('foo foo')),
             new_clause('INNER JOIN', safe('foo foo2 ON foo.uid = foo2.uid')),
-            new_clause('WHERE', self.fields[1] > 2),
+            new_clause('WHERE', self.orm.fields[0] > 2),
             # new_clause('HAVING', safe('max(foo.uid) < 1235')),
             new_clause('ORDER BY', safe('foo.uid DESC')),
             # new_clause('LIMIT', 1),
@@ -211,15 +106,15 @@ class TestSelect(unittest.TestCase):
         random.shuffle(shuffled_clauses)
 
         self.orm.state.add(*shuffled_clauses)
-        self.orm.state.fields = [self.fields[1]]
+        self.orm.state.fields = [self.orm.fields[0]]
         q = Select(self.orm)
         result = q.execute().fetchall()[0]
-        self.assertDictEqual(result._asdict(), {'uid': 1234})
+        self.assertDictEqual(result._asdict(), {'uid': 1236})
         self.orm.reset()
 
     '''def test_pickle(self):
         self.orm.where(safe('true') & True)
-        self.orm.state.fields = [self.fields[1]]
+        self.orm.state.fields = [self.orm.fields[0]]
         q = Select(self.orm)
         b = pickle.loads(pickle.dumps(q))
         for k in dir(q):
@@ -235,4 +130,4 @@ class TestSelect(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestSelect, failfast=True, verbosity=2)

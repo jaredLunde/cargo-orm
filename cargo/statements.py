@@ -31,25 +31,16 @@ from cargo.fields import *
 
 
 __all__ = (
-    "DELETE",
     "Delete",
-    "EXCEPT",
     "Except",
-    "INSERT",
     "Insert",
-    "INTERSECT",
     "Intersect",
     "SetOperations",
     "Query",
-    "RAW",
     "Raw",
-    "SELECT",
     "Select",
-    "UNION",
     "Union",
-    "UPDATE",
     "Update",
-    "WITH",
     "With"
 )
 
@@ -59,12 +50,12 @@ __all__ = (
 #
 
 
-class BaseQuery(StringLogic, DateTimeLogic):
+class BaseQuery(StringLogic, NumericLogic):
     """ Base query object, provides several common methods for the
         various query statement types
     """
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'result')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with',
+                 'recursive', 'one', 'string', 'result')
     newline_re = re.compile(r"""\n+""")
 
     def __init__(self, query=None, params=None, orm=None):
@@ -75,7 +66,7 @@ class BaseQuery(StringLogic, DateTimeLogic):
             self.one = self.orm.state.one
             self._with = self.orm._with
         except AttributeError:
-            self.params = params
+            self.params = params or {}
             self.is_subquery = False
             self.one = False
             self._with = False
@@ -96,8 +87,8 @@ class BaseQuery(StringLogic, DateTimeLogic):
                 tn = safe('tn')
                 n = safe('n')
                 with (
-                  RAW(ORM().values(1), alias=tn, recursive=(n,)) +
-                  SELECT(ORM().use(tn), n+1)
+                  Raw(ORM().values(1), alias=tn, recursive=(n,)) +
+                  Select(ORM().use(tn), n+1)
                 ) as sub:
                     sub.use(tn).limit(10).select(n)
                     '''
@@ -114,7 +105,7 @@ class BaseQuery(StringLogic, DateTimeLogic):
             |   {'n': 6}, {'n': 7}, {'n': 8}, {'n': 9}, {'n': 10}]|
         """
         if not isinstance(self, WITH):
-            WITH(self.orm, self)
+            With(self.orm, self)
             return self.orm
         else:
             return self.orm
@@ -234,7 +225,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 & q2
             ..
-            |<cargo.statements.UNION(                                |
+            |<cargo.statements.Union(                                |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true UNION             |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -246,7 +237,7 @@ class SetOperations(Query):
                 union.execute()
             ..
         """
-        return UNION(self.orm, self, other)
+        return Union(self.orm, self, other)
 
     union = __and__
 
@@ -263,7 +254,7 @@ class SetOperations(Query):
                 q2 = Query("SELECT * FROM users_followers WHERE true")
                 union = q1 + q2
             ..
-            |<cargo.statements.UNION(                                |
+            |<cargo.statements.Union(                                |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true  UNION ALL        |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -275,7 +266,7 @@ class SetOperations(Query):
                 union.execute()
             ..
         """
-        return UNION(self.orm, self, other, all=True)
+        return Union(self.orm, self, other, all=True)
 
     union_all = __add__
 
@@ -293,7 +284,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 union = q1 - q2
             ..
-            |<cargo.statements.UNION(                                |
+            |<cargo.statements.Union(                                |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true  UNION DISTINCT   |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -305,7 +296,7 @@ class SetOperations(Query):
                 union.execute()
             ..
         """
-        return UNION(self.orm, self, other, distinct=True)
+        return Union(self.orm, self, other, distinct=True)
 
     union_distinct = __sub__
 
@@ -323,7 +314,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 < q2
             ..
-            |<cargo.statements.EXCEPT(                               |
+            |<cargo.statements.Except(                               |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT            |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -335,7 +326,7 @@ class SetOperations(Query):
                 _except.execute()
             ..
         """
-        return EXCEPT(self.orm, self, other)
+        return Except(self.orm, self, other)
 
     except_ = __lt__
 
@@ -353,7 +344,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 <= q2
             ..
-            |<cargo.statements.EXCEPT(                               |
+            |<cargo.statements.Except(                               |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT ALL        |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -365,7 +356,7 @@ class SetOperations(Query):
                 _except.execute()
             ..
         """
-        return EXCEPT(self.orm, self, other, all=True)
+        return Except(self.orm, self, other, all=True)
 
     except_all = __le__
 
@@ -383,7 +374,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 _except = q1 << q2
             ..
-            |<cargo.statements.EXCEPT(                               |
+            |<cargo.statements.Except(                               |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true EXCEPT DISTINCT   |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -395,7 +386,7 @@ class SetOperations(Query):
                 _except.execute()
             ..
         """
-        return EXCEPT(self.orm, self, other, distinct=True)
+        return Except(self.orm, self, other, distinct=True)
 
     except_distinct = __lshift__
 
@@ -413,7 +404,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 > q2
             ..
-            |<cargo.statements.INTERSECT(                            |
+            |<cargo.statements.Intersect(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT         |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -425,7 +416,7 @@ class SetOperations(Query):
                 intersect.execute()
             ..
         """
-        return INTERSECT(self.orm, self, other)
+        return Intersect(self.orm, self, other)
 
     intersect = __gt__
 
@@ -443,7 +434,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 >= q2
             ..
-            |<cargo.statements.INTERSECT(                            |
+            |<cargo.statements.Intersect(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT ALL     |
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -455,7 +446,7 @@ class SetOperations(Query):
                 intersect.execute()
             ..
         """
-        return INTERSECT(self.orm, self, other, all=True)
+        return Intersect(self.orm, self, other, all=True)
 
     intersect_all = __ge__
 
@@ -473,7 +464,7 @@ class SetOperations(Query):
                     ORM(), query="SELECT * FROM users_followers WHERE true")
                 intersect = q1 >> q2
             ..
-            |<cargo.statements.INTERSECT(                            |
+            |<cargo.statements.Intersect(                            |
             |   query_string=`                                       |
             |       SELECT * FROM users WHERE true INTERSECT DISTINCT|
             |       SELECT * FROM users_followers WHERE true`,       |
@@ -485,7 +476,7 @@ class SetOperations(Query):
                 intersect.execute()
             ..
         """
-        return INTERSECT(self.orm, self, other, distinct=True)
+        return Intersect(self.orm, self, other, distinct=True)
 
     intersect_distinct = __rshift__
 
@@ -530,16 +521,16 @@ class SetOperations(Query):
         return self.string
 
 
-class UNION(SetOperations):
+class Union(SetOperations):
     """ Creates a UNION statement between multiple :class:BaseQuery objects
 
         =======================================================================
         ``Usage Example``
         Creates the |UNION|
         ..
-            q1 = SELECT(SomeORM())
-            q2 = SELECT(SomeORM())
-            union = UNION(SomeORM(), q1, q2)
+            q1 = Select(SomeORM())
+            q2 = Select(SomeORM())
+            union = Union(SomeORM(), q1, q2)
         ..
         |q1.query UNION q2.query|
 
@@ -571,10 +562,10 @@ class UNION(SetOperations):
 
 
 # PEP 8 compliance
-Union = UNION
+UNION = Union
 
 
-class INTERSECT(SetOperations):
+class Intersect(SetOperations):
     """ Creates an |INTERSECT| statement between multiple :class:BaseQuery
         objects
 
@@ -583,9 +574,9 @@ class INTERSECT(SetOperations):
 
         Creates the |INTERSECT|
         ..
-            q1 = SELECT(SomeORM())
-            q2 = SELECT(SomeORM())
-            intersect = INTERSECT(SomeORM(), q1, q2)
+            q1 = Select(SomeORM())
+            q2 = Select(SomeORM())
+            intersect = Intersect(SomeORM(), q1, q2)
         ..
         |q1.query INTERSECT q2.query|
 
@@ -617,10 +608,10 @@ class INTERSECT(SetOperations):
 
 
 # PEP 8 compliance
-Intersect = INTERSECT
+INTERSECT = Intersect
 
 
-class EXCEPT(SetOperations):
+class Except(SetOperations):
     """ Creates an |EXCEPT| statement between multiple :class:BaseQuery objects
 
         =======================================================================
@@ -628,9 +619,9 @@ class EXCEPT(SetOperations):
 
         Creates the |EXCEPT|
         ..
-            q1 = SELECT(SomeORM())
-            q2 = SELECT(SomeORM())
-            except_ = EXCEPT(SomeORM(), q1, q2)
+            q1 = Select(SomeORM())
+            q2 = Select(SomeORM())
+            except_ = Except(SomeORM(), q1, q2)
         ..
         |q1.query EXCEPT q2.query|
 
@@ -662,10 +653,10 @@ class EXCEPT(SetOperations):
 
 
 # PEP 8 compliance
-Except = EXCEPT
+EXCEPT = Except
 
 
-class RAW(SetOperations):
+class Raw(SetOperations):
     """ Evaluates :class:QueryState clauses within the :mod:orm
         in the order in which they are declared, does not attempt to
         self-order at all.
@@ -673,9 +664,9 @@ class RAW(SetOperations):
         =======================================================================
         ``Usage Example``
         ..
-            RAW(ORM().values(1))
+            Raw(ORM().values(1))
         ..
-        |<cargo.statements.RAW(query_string=`VALUES (%(c5R053jXaKT4)s)`,      |
+        |<cargo.statements.Raw(query_string=`VALUES (%(c5R053jXaKT4)s)`,      |
         |   params={'c5R053jXaKT4': 1}):0x7f5f022ddf60>                       |
     """
     __querytype__ = "RAW"
@@ -705,16 +696,12 @@ class RAW(SetOperations):
         return self.string
 
 
-# PEP 8 compliance
-Raw = RAW
-
-
 #
 #  `` Query Objects by Type ``
 #
 
 
-class INSERT(Query):
+class Insert(Query):
     """ =======================================================================
         ``Usage Example``
 
@@ -734,7 +721,7 @@ class INSERT(Query):
             orm['username'] = 'FriskyWolf'
 
             # Inserts the record into the 'users' model
-            q = INSERT(orm)
+            q = Insert(orm)
             q.query
         ..
         |'INSERT INTO users (username) VALUES ('FriskyWolf')'|
@@ -747,7 +734,7 @@ class INSERT(Query):
     """
     __querytype__ = "INSERT"
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'fields')
+                 'one', 'string')
 
     def __init__(self, orm, **kwargs):
         """ `INSERT`
@@ -783,11 +770,10 @@ class INSERT(Query):
         return self.string
 
 
-# PEP 8 compliance
-Insert = INSERT
+INSERT = Insert
 
 
-class SELECT(SetOperations):
+class Select(SetOperations):
     """ =======================================================================
         ``Usage Example``
 
@@ -803,7 +789,7 @@ class SELECT(SetOperations):
         Creates and executes a simple |SELECT| query
         ..
             # Selects the field 'username' from the users model
-            q = SELECT(orm, orm.username)
+            q = Select(orm, orm.username)
             q.query
         ..
         |'SELECT users.username FROM users'|
@@ -821,7 +807,7 @@ class SELECT(SetOperations):
             orm.where(orm.username == 'FriskyWolf')
 
             # Selects the field 'username' from the users model
-            q = SELECT(orm, orm.username)
+            q = Select(orm, orm.username)
             q.query
         ..
         |"SELECT users.username FROM users WHERE username = 'FriskyWolf'"|
@@ -878,9 +864,9 @@ class SELECT(SetOperations):
             except (ValueError, AttributeError):
                 joins = (c.string for c in state)
 
-        self.params.update(self.orm.state.params)
         if joins:
             query_clauses[1] = " ".join(joins)
+        self.params.update(self.orm.state.params)
         return self._filter_empty(query_clauses)
 
     def compile(self):
@@ -891,11 +877,10 @@ class SELECT(SetOperations):
         return self.string
 
 
-# PEP 8 compliance
-Select = SELECT
+SELECT = Select
 
 
-class UPDATE(Query):
+class Update(Query):
     """ =======================================================================
         ``Usage Example``
 
@@ -915,7 +900,7 @@ class UPDATE(Query):
             # Tells the ORM to set a WHERE clause
             orm.where(orm.username == 'FriskyWolf')
             # Updates the field 'username' from the users model
-            q = UPDATE(orm)
+            q = Update(orm)
             q.query
             # Executes the query
             cursor = q.execute()
@@ -939,27 +924,28 @@ class UPDATE(Query):
 
     def evaluate_state(self):
         """ :see::meth:SELECT evaluate_state """
-        self.params.update(self.orm.state.params)
         get_state = self.orm.state.get
         for clause in self.clauses:
             v = get_state(clause, _empty).string
             if v is not _empty:
                 yield v
+        self.params.update(self.orm.state.params)
 
     def compile(self):
         """ :see::meth:SELECT.compile """
+        try:
+            table = self.orm.state.get('INTO').args[0]
+        except AttributeError:
+            table = self.orm.table
         self.string = (
-            "UPDATE %s %s" % (self.orm.state.get('INTO', self.orm.table),
-                              " ".join(self.evaluate_state()))
-        ).strip()
+            "UPDATE %s %s" % (table, " ".join(self.evaluate_state()))).strip()
         return self.string
 
 
-# PEP 8 compliance
-Update = UPDATE
+UPDATE = Update
 
 
-class DELETE(Query):
+class Delete(Query):
     """ =======================================================================
         ``Usage Example``
 
@@ -977,7 +963,7 @@ class DELETE(Query):
             # Tells the ORM to set a WHERE clause
             orm.where(orm.username == 'TurkeyTom')
             # Deletes the user 'TurkeyTom' from the 'users' model
-            q = DELETE(orm)
+            q = Delete(orm)
             q.query
             # Executes the query
             cursor = q.execute()
@@ -1000,12 +986,12 @@ class DELETE(Query):
 
     def evaluate_state(self):
         """ :see::meth:SELECT.evaluate_state """
-        self.params.update(self.orm.state.params)
         get_state = self.orm.state.get
         for clause in self.clauses:
             v = get_state(clause, _empty).string
             if v is not _empty:
                 yield v
+        self.params.update(self.orm.state.params)
 
     def compile(self):
         """ :see::meth:SELECT.compile """
@@ -1013,21 +999,20 @@ class DELETE(Query):
         return self.string
 
 
-# PEP 8 compliance
-Delete = DELETE
+DELETE = Delete
 
 
-class WITH(Query):
+class With(Query):
     """ Creates a |WITH| statement
         =======================================================================
         ``Usage Examples``
         ..
             t = safe('t')
             n = safe('n')
-            q = WITH(
+            q = With(
                 self.orm,
-                RAW(ORM().values(1), alias=t, recursive=(n,)) +
-                SELECT(ORM().use(t), n+1))
+                Raw(ORM().values(1), alias=t, recursive=(n,)) +
+                Select(ORM().use(t), n+1))
             q.orm.use(t).limit(10).select(n)
             result = q.execute().fetchall()
         ..
@@ -1038,8 +1023,8 @@ class WITH(Query):
             t = safe('t')
             n = safe('n')
             with (
-              RAW(ORM().values(1), alias=t, recursive=(n,)) +
-              SELECT(ORM().use(t), n+1)
+              Raw(ORM().values(1), alias=t, recursive=(n,)) +
+              Select(ORM().use(t), n+1)
             ) as orm:
                 orm.use(t).limit(10).select(n)
             print(sub.result)
@@ -1090,5 +1075,4 @@ class WITH(Query):
         self.string = "WITH {}{}".format(recursive, ", ".join(as_))
         self.orm.add_query(self)
 
-# PEP 8 compliance
-With = WITH
+WITH = With

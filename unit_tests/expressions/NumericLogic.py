@@ -7,52 +7,22 @@
    http://github.com/jaredlunde
 """
 import unittest
-from kola import config
 
 from cargo.expressions import *
-from vital.security import randkey
-from cargo import ORM, Model
-from cargo.fields import SmallInt, Int, Field
+from cargo import ORM
+from cargo.fields import SmallInt, Field
+
+from unit_tests import configure
+from unit_tests.configure import new_field, new_function, new_expression, \
+                                 new_clause
 
 
-def new_field():
-    field = Int()
-    keyspace = 'aeioubcdlhzpwnmp'
-    name = randkey(24, keyspace)
-    table = randkey(24, keyspace)
-    field.field_name = name
-    field.table = table
-    return field
+class TestNumericLogic(configure.LogicTestCase):
 
-
-class TestNumericLogic(unittest.TestCase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def setUp(self):
         self.base = SmallInt()
         self.base.field_name = 'test'
         self.base.table = 'tester'
-
-    def validate_expression(self, expression, left, operator, right,
-                            params=None, values=None):
-        self.assertIsInstance(expression, Expression)
-        self.assertIs(expression.left, left)
-        self.assertEqual(expression.operator, operator)
-        self.assertEqual(expression.right, right)
-        if params is not None:
-            self.assertDictEqual(expression.params, params)
-        elif values:
-            for value in values:
-                self.assertIn(value, list(expression.params.values()))
-
-    def validate_function(self, function, func, args, alias=None, values=None):
-        self.assertIsInstance(function, Function)
-        self.assertEqual(function.func, func)
-        self.assertTupleEqual(function.args, tuple(args))
-        self.assertEqual(function.alias, alias)
-        if values:
-            for value in values:
-                self.assertIn(value, list(function.params.values()))
 
     def test___lt__(self):
         for val in (160, new_field(), ORM().subquery().where(1).select()):
@@ -467,4 +437,4 @@ class TestNumericLogic(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestNumericLogic, failfast=True, verbosity=2)

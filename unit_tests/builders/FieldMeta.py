@@ -9,11 +9,8 @@
 import unittest
 import psycopg2
 
-from kola import config
 from cargo.builder import TableMeta
 
-
-cfile = '/home/jared/apps/xfaps/vital.json'
 
 
 class TestTableMeta(unittest.TestCase):

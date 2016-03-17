@@ -6,50 +6,13 @@
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
-import random
-import unittest
-from kola import config
-
-from vital.security import randkey
-
 from cargo import *
-from cargo.orm import QueryState
 from cargo.statements import SetOperations
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_pool()
+from unit_tests import configure
 
 
-def new_field(type='char', value=None, name=None, table=None):
-    field = getattr(fields, type.title())(value=value)
-    field.field_name = name or randkey(24)
-    field.table = table or randkey(24)
-    return field
-
-
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-class TestSetOperations(unittest.TestCase):
-    orm = ORM()
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo'),
-        new_field('int', 1234, name='uid', table='foo')]
+class TestSetOperations(configure.StatementTestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -145,4 +108,4 @@ class TestSetOperations(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestSetOperations, failfast=True, verbosity=2)

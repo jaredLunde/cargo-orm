@@ -9,14 +9,8 @@
 import unittest
 import psycopg2
 
-from kola import config
-from cargo import ORM, db, create_kola_db
+from cargo import ORM, db
 from cargo.builder import create_view
-
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_db()
 
 
 class TestCreateView(unittest.TestCase):

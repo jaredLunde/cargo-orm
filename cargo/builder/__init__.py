@@ -553,12 +553,18 @@ class Plan(Table):
     def create_types(self):
         """ Creates all of the functions defined in :prop:functions """
         for type in self.types:
-            type.execute()
+            try:
+                type.execute()
+            except QueryError as e:
+                logg(e.message).notice()
 
     def create_functions(self):
         """ Creates all of the functions defined in :prop:functions """
         for function in self.functions:
-            function.execute()
+            try:
+                function.execute()
+            except QueryError as e:
+                logg(e.message).notice()
 
     def create_extensions(self):
         """ Creates all of the functions defined in :prop:functions """

@@ -35,13 +35,8 @@ __all__ = (
     "PostgresPool",
     "db",
     "local_client",
-    "create_db",
     "create_client",
-    "create_pool",
-    # TODO: remove these
-    "create_kola_client",
-    "create_kola_pool",
-    "create_kola_db"
+    "create_pool"
 )
 
 
@@ -54,9 +49,11 @@ class BasePostgresClient(object):
                FROM pg_catalog.pg_type t
                WHERE t.typname IN(%s, %s)
                ORDER BY name DESC;"""
-        cur = self.cursor(cursor_factory=CNamedTupleCursor)
+        conn = self.get()
+        cur = conn.cursor(cursor_factory=CNamedTupleCursor)
         cur.execute(q, ('_%s' % typname, typname))
         res = cur.fetchall()
+        self.put(conn)
         return tuple(r.oid for r in res)
 
     def get_type_name(self, OID):
@@ -571,7 +568,7 @@ class _db(object):
         self.engine = ORM(client=client)
         return self
 
-    connect = bind
+    open = bind
 
     def close(self):
         try:
@@ -581,18 +578,6 @@ class _db(object):
 
 
 db = _db()
-
-
-def create_db(*opt, client=None, **opts):
-    """ Creates a global :class:ORM object which
-
-        @*opt and **opts are passed to :class:Postgres
-    """
-    from cargo.orm import ORM
-    if not client:
-        client = create_client(*opt, **opts)
-    db.engine = ORM(client=client)
-    return db
 
 
 def create_client(*opt, name='db', **opts):
@@ -621,45 +606,3 @@ def create_pool(minconn=None, maxconn=None, name='db', *args, **kwargs):
     maxconn = maxconn or (cpu_count() * 2)
     local_client[name] = PostgresPool(minconn, maxconn, *args, **kwargs)
     return local_client[name]
-
-
-# TODO: Move to separate vital package
-def create_kola_client(*opt, name='db', **opts):
-    """ :see::func:create_client
-
-        The client created will be configured with :class:vital.config
-        within the keyname @name
-
-        @name: (#str) name in the :attr:local_client thread dictionary to cache
-            the client within, and the name in the local :class:vital.config
-            where the configuration arguments are stored
-    """
-    from kola import config
-    cfg = config.get(name, {})
-    return create_client(*opt, name=name, **merge_dict(cfg, opts))
-
-
-def create_kola_pool(*opt, name='db', **opts):
-    """ :see::func:create_pool
-
-        The pool created will be configured with :class:vital.config
-        within the keyname @name
-
-        @name: (#str) name in the :attr:local_client thread dictionary to cache
-            the pool within, and the name in the local :class:vital.config
-            where the configuration arguments are stored
-    """
-    from kola import config
-    cfg = config.get(name, {})
-    return create_pool(*opt, name=name, **merge_dict(cfg, opts))
-
-
-def create_kola_db(*opt, client=None, **opts):
-    """ Creates a global :class:ORM object which
-
-        @*opt and **opts are passed to :class:Postgres
-    """
-    from cargo.orm import ORM
-    if not client:
-        create_kola_client(*opt, **opts)
-    db.engine = ORM(*opt, client=client, **opts)

@@ -9,15 +9,11 @@
 import copy
 import pickle
 import unittest
-from kola import config
 
-from cargo import Model, create_kola_pool, UID, RelationshipImportError,\
-                      Field
+from cargo import Model, UID, RelationshipImportError, Field
 from cargo.relationships import Relationship, ForeignKey
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_pool()
+from unit_tests import configure
 
 
 class Foo(Model):
@@ -110,4 +106,4 @@ class TestForeignKey(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestForeignKey, failfast=True, verbosity=2)

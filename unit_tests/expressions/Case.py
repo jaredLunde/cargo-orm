@@ -7,25 +7,11 @@
    http://github.com/jaredlunde
 """
 import unittest
-from kola import config
-from cargo import fields, ORM, create_kola_client, safe
-from vital.security import randkey
-
+from cargo import fields, ORM, safe
 from cargo.expressions import Case
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_client()
-
-
-def new_field(type='varchar', table=None, name=None):
-    field = getattr(fields, type.title())()
-    keyspace = 'aeioubcdlhzpwnmp'
-    name = name or randkey(24, keyspace)
-    table = table or randkey(24, keyspace)
-    field.field_name = name
-    field.table = table
-    return field
+from unit_tests import configure
+from unit_tests.configure import new_field
 
 
 class TestCase(unittest.TestCase):
@@ -109,4 +95,4 @@ class TestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestCase, failfast=True, verbosity=2)

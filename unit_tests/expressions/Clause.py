@@ -7,46 +7,18 @@
    http://github.com/jaredlunde
 """
 import unittest
-import psycopg2
-
-from vital.security import randkey
 
 from vital.tools.dicts import merge_dict
 from cargo.expressions import *
 from cargo import *
 from cargo import fields
 
-
-def new_field(type='varchar'):
-    field = getattr(fields, type.title())()
-    keyspace = 'aeioubcdlhzpwnmp'
-    name = randkey(24, keyspace)
-    table = randkey(24, keyspace)
-    field.field_name = name
-    field.table = table
-    return field
-
-
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-def new_clause(name='FROM'):
-    return Clause(name, 'foobar')
-
+from unit_tests import configure
+from unit_tests.configure import new_field, new_function, new_expression, \
+                                 new_clause
 
 
 class TestClause(unittest.TestCase):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def test_init_(self):
         for val in ('FROM', 'from'):
@@ -86,4 +58,4 @@ class TestClause(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestClause, failfast=True, verbosity=2)

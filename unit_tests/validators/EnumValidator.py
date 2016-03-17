@@ -8,7 +8,7 @@ from unit_tests.validators.Validator import TestValidator
 
 
 class TestEnumValidator(TestValidator):
-    field = Enum(('bingo', 'bango', 'bongo'), validator=EnumValidator)
+    field = Enum('bingo', 'bango', 'bongo', validator=EnumValidator)
 
     def setUp(self):
         self.field.not_null = False

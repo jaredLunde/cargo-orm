@@ -9,17 +9,12 @@
 import unittest
 import psycopg2
 
-from kola import config
 from vital.security import randkey
 
-from cargo import ORM, db, create_kola_db, fields
+from cargo import ORM, db, fields
 from cargo.builder import create_index
 from cargo.builder.indexes import Index
 
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_db()
 
 
 def new_field(type='char', value=None, name=None, table=None):
@@ -33,8 +28,8 @@ class TestCreateIndex(unittest.TestCase):
     orm = ORM()
 
     def test_create(self):
-        index = create_index(self.orm, 'bar', table='foo', dry=True)
-        print(index.query.mogrified)
+        '''index = create_index(self.orm, 'bar', table='foo', dry=True)
+        print(index.query.mogrified)'''
         field = new_field('int', table='foo', name='bar')
         index = Index(self.orm,
                       field,

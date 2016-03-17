@@ -13,7 +13,7 @@ from vital.debug import prepr
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
 from cargo.exceptions import *
-from cargo.expressions import BaseLogic, _empty
+from cargo.expressions import BaseLogic, Expression, _empty
 from cargo.validators import NullValidator
 
 
@@ -40,7 +40,7 @@ class Field(BaseLogic):
 
     def __init__(self, value=empty, not_null=None, primary=None,
                  unique=None, index=None, default=None,
-                 validator=NullValidator):
+                 validator=NullValidator, name=None, table=None):
         """``SQL Field``
 
             @value: value to populate the field with
@@ -58,9 +58,11 @@ class Field(BaseLogic):
                 |error| attribute which stores the content of the error message
                 if the validation fails. Passing |None| will disable validation
                 for this field.
+            @name: (#str) the name of the field in the table
+            @table: (#str) the name of the table
         """
-        self.table = None
-        self.field_name = None
+        self.table = table
+        self.field_name = name
         self.primary = primary
         self.unique = unique
         self.index = index
@@ -190,9 +192,6 @@ class Field(BaseLogic):
         vc = None
         if self.validator is not None:
             vc = self.validator.__class__
-        value = self.value
-        if self.value_is_not_null:
-            value = copy.copy(self.value)
         cls = self.__class__(*args,
                              primary=self.primary,
                              unique=self.unique,
@@ -200,10 +199,11 @@ class Field(BaseLogic):
                              not_null=self.not_null,
                              default=self.default,
                              validator=vc,
+                             name=self.field_name,
+                             table=self.table,
                              **kwargs)
-        cls.value = value
-        cls.field_name = self.field_name
-        cls.table = self.table
+        if self.value_is_not_null:
+            cls.value = copy.copy(self.value)
         cls._alias = self._alias
         return cls
 

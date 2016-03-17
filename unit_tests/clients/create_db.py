@@ -6,24 +6,23 @@
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
-import json
 import unittest
-from kola import config
 
-from cargo.clients import create_client, create_kola_client, local_client,\
-                              Postgres, create_db, create_kola_db
-
-
-cfile = '/home/jared/apps/xfaps/vital.json'
+from cargo import ORM
+from cargo.clients import db, Postgres, PostgresPool, local_client
 
 
-class Testcreate_client(unittest.TestCase):
-
-    with open(cfile, 'r') as f:
-        config = json.load(f)
+class TestDb(unittest.TestCase):
+    @staticmethod
+    def tearDownClass():
+        local_client.clear()
 
     def test_create_db(self):
-        pass
+        db.open()
+        self.assertIsInstance(db.engine, ORM)
+        self.assertIsInstance(db.engine.client, Postgres)
+        db.open(client=PostgresPool())
+        self.assertIsInstance(db.engine.client, PostgresPool)
 
 if __name__ == '__main__':
     # Unit test

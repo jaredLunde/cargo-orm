@@ -7,56 +7,21 @@
    http://github.com/jaredlunde
 """
 import pickle
-import unittest
-from kola import config
-
-from vital.security import randkey
 
 from cargo import *
 from cargo.expressions import _empty
-from cargo.orm import QueryState
 from cargo.statements import Raw
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_pool()
-
-
-def new_field(type='char'):
-    field = getattr(fields, type.title())()
-    keyspace = 'aeioubcdlhzpwnmp'
-    name = randkey(24, keyspace)
-    table = randkey(24, keyspace)
-    field.field_name = name
-    field.table = table
-    return field
+from unit_tests import configure
+from unit_tests.configure import new_clause, new_field, new_expression
 
 
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-class TestRaw(unittest.TestCase):
-    orm = ORM()
+class TestRaw(configure.StatementTestCase):
 
     def test___init__(self):
         self.orm.values(1)
         q = Raw(self.orm)
         self.assertIs(q.orm, self.orm)
-        self.orm.reset()
 
     def test__set_clauses(self):
         clauses = [
@@ -66,7 +31,6 @@ class TestRaw(unittest.TestCase):
         q = Raw(self.orm)
         clauses_ = list(filter(lambda x: x is not _empty, clauses))
         self.assertListEqual(list(q._filter_empty(clauses)), clauses_)
-        self.orm.reset()
 
     def test_execute(self):
         clause = new_clause('SELECT', safe('1 as foo'))
@@ -77,7 +41,6 @@ class TestRaw(unittest.TestCase):
         self.assertIsInstance(data, list)
         data = data[0]
         self.assertEqual(data.foo, 1)
-        self.orm.reset()
 
     def test_evaluate_state(self):
         clauses = [
@@ -93,7 +56,6 @@ class TestRaw(unittest.TestCase):
             else:
                 cl.append(clause.string)
         self.assertListEqual(list(q.evaluate_state()), cl)
-        self.orm.reset()
 
     def test_compile(self):
         clauses = [
@@ -106,7 +68,6 @@ class TestRaw(unittest.TestCase):
         q.evaluate_state()
         self.assertEqual(
             q.query % q.params, "SELECT * FROM foo WHERE true LIMIT 1")
-        self.orm.reset()
 
     '''def test_pickle(self):
         clauses = [
@@ -128,7 +89,6 @@ class TestRaw(unittest.TestCase):
                     getattr(q, k).__class__ == getattr(b, k).__class__)'''
 
 
-
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestRaw, failfast=True, verbosity=2)

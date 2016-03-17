@@ -32,7 +32,7 @@ class TestHStore(configure.KeyValueTestCase, TestField):
 
     def test_select(self):
         self.base(RandData(str).dict(10))
-        self.orm.new().save()
+        self.orm.save()
         orm = self.orm.new().desc(self.orm.uid)
         d = getattr(orm.get(), self.base.field_name).value
         self.assertDictEqual(d, self.base.value)

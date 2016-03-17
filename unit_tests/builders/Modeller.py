@@ -7,17 +7,10 @@
    http://github.com/jaredlunde
 """
 import unittest
-import psycopg2
 
-from kola import config
-from cargo import ORM, create_kola_client
+from cargo import ORM
 from cargo.builder import Modeller, create_models
 
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-
-create_kola_client()
 
 
 banner = '''
@@ -37,7 +30,7 @@ banner = '''
 class TestModeller(unittest.TestCase):
     orm = ORM()
 
-    def test_output_to_file(self):
+    '''def test_output_to_file(self):
         create_models(self.orm,
                       schema='xfaps',
                       output_to='/home/jared/apps/xfaps/tests/models.py',
@@ -49,7 +42,7 @@ class TestModeller(unittest.TestCase):
 
     def test_output_to_string_tables(self):
         print(create_models(self.orm, 'users', 'test',
-                            schema='xfaps'))
+                            schema='xfaps'))'''
 
 
 if __name__ == '__main__':

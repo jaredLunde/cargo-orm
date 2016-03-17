@@ -9,76 +9,53 @@
 import copy
 import types
 import pickle
-import unittest
+import random
 import psycopg2.extras
 from cnamedtuple import namedtuple
-
-from vital.debug import Timer
-from vital.security import randkey
-from kola import config, logg
 
 from cargo import *
 from cargo.orm import ORM, QueryState
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_client()
-
-
-# TODO: :meth:raw_query
-
-def new_field(type='char', value=None, name=None, table=None):
-    field = getattr(fields, type.title())(value=value)
-    field.field_name = name or randkey(24)
-    field.table = table or randkey(24)
-    return field
+from unit_tests import configure
+from unit_tests.configure import new_field, new_function, new_expression,\
+                                 new_clause
 
 
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-class TestORM(unittest.TestCase):
+class TestORM(configure.BaseTestCase):
     client = Postgres()
-    orm = ORM()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    @staticmethod
+    def setUpClass():
+        configure.setup()
+        configure.Plan(configure.Foo()).execute()
+
+    def setUp(self):
+        self.orm = ORM(schema='cargo_tests')
+        local_client.clear()
+
+    def tearDown(self):
+        self.orm.use('foo').where(True).delete()
+
+    def populate(self):
+        self.orm.use('foo').delete()
+        f1 = new_field('int', name='uid', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
+        self.orm.values(12345, 'bar')
+        self.orm.values(123456, 'bar')
+        self.orm.values(1234567, 'bar')
+        self.orm.returning(f1, f2)
+        res = self.orm.insert(f1, f2)
 
     def test___init__(self):
         orm = ORM()
         self.assertIsNone(orm._client)
         self.assertFalse(orm._multi)
         self.assertIsInstance(orm._state, QueryState)
-        self.assertFalse(orm._many)
         self.assertFalse(orm._with)
         self.assertEqual(orm._debug, False)
         orm = ORM(client=self.client, debug=True)
         self.assertTrue(orm._debug)
         self.assertIs(orm._client, self.client)
-
-    def test_connect(self):
-        self.assertIs(self.orm.connect(), local_client['db'].pool)
-        cfg = config.get('db').copy()
-        cfg['minconn'] = 5
-        cfg['maxconn'] = 10
-        self.orm.connect(**cfg)
-        self.assertEqual(self.orm.db.pool.minconn, 5)
-        self.assertEqual(self.orm.db.pool.maxconn, 10)
-        self.orm.reset()
 
     def test_client(self):
         if local_client.get('db'):
@@ -89,31 +66,28 @@ class TestORM(unittest.TestCase):
         self.assertIsNot(orm.db, self.client)
         orm = ORM(client=self.client)
         self.assertIs(orm.db, self.client)
-        create_kola_pool()
-        orm = ORM(client=None)
-        self.assertIs(orm.db,  local_client['db'])
 
     def test_close(self):
         # Client
-        orm = ORM(client=Postgres(**config.get('db')))
+        orm = ORM(client=Postgres())
         self.assertFalse(orm.db.connection.closed)
         orm.close()
         self.assertTrue(orm.db._connection.closed)
 
         # Pool
-        orm = ORM(client=PostgresPool(1, 2, **config.get('db')))
+        orm = ORM(client=PostgresPool(1, 2))
         self.assertFalse(orm.db.pool.closed)
         orm.close()
         self.assertTrue(orm.db._pool.closed)
 
     def test_context_manager(self):
         # Client
-        with ORM(client=Postgres(**config.get('db'))) as orm:
+        with ORM(client=Postgres()) as orm:
             self.assertFalse(orm.db._connection.closed)
         self.assertTrue(orm.db._connection.closed)
 
         # Pool
-        with ORM(client=PostgresPool(1, 2, **config.get('db'))) as orm:
+        with ORM(client=PostgresPool(1, 2)) as orm:
             self.assertFalse(orm.db._pool.closed)
         self.assertTrue(orm.db._pool.closed)
 
@@ -124,7 +98,6 @@ class TestORM(unittest.TestCase):
         self.assertEqual(self.orm.table, 'bar')
         self.orm.set_table('foo')
         self.assertEqual(self.orm.table, 'foo')
-        self.orm.reset()
 
     def test_window(self):
         field = new_field(table='foo', name='bar')
@@ -147,7 +120,6 @@ class TestORM(unittest.TestCase):
         self.assertEqual(self.orm.state.clauses.popitem(last=True)[1].string,
                          'WINDOW w AS (PARTITION BY foo.bar ORDER BY ' +
                          'foo.bar DESC)')
-        self.orm.reset()
 
     def test_from(self):
         for f in (self.orm.use, self.orm.from_):
@@ -168,7 +140,6 @@ class TestORM(unittest.TestCase):
             self.assertEqual(clause.args[0].string, 'foo')
             self.assertEqual(clause.alias, 'bar')
             self.assertIs(s, self.orm)
-            self.orm.reset()
 
     def test_join(self):
         # fields
@@ -232,7 +203,6 @@ class TestORM(unittest.TestCase):
                 self.assertIs(s, self.orm)
                 self.assertEqual(str(clause.string % clause.params),
                                  validate.format(clause.clause))
-        self.orm.reset()
 
     def test_where(self):
         # Single Expression
@@ -244,7 +214,7 @@ class TestORM(unittest.TestCase):
         self.orm.reset()
 
         # Comma'd expressions
-        s = self.orm.filter(1, 1)
+        s = self.orm.where(1, 1)
         self.assertTrue(self.orm.state.has('WHERE'))
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIs(s, self.orm)
@@ -252,14 +222,13 @@ class TestORM(unittest.TestCase):
         self.orm.reset()
 
         # Multiple filters
-        s = self.orm.filter(1, 1)
-        s = self.orm.filter(2, 2)
+        s = self.orm.where(1, 1)
+        s = self.orm.where(2, 2)
         self.assertTrue(self.orm.state.has('WHERE'))
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIs(s, self.orm)
         self.assertEqual(
             clause.string % clause.params, 'WHERE 1 AND 1 AND 2 AND 2')
-        self.orm.reset()
 
     def test_into(self):
         # No alias
@@ -279,7 +248,6 @@ class TestORM(unittest.TestCase):
         self.assertEqual(clause.args[0].string, 'foo')
         self.assertEqual(clause.alias, 'bar')
         self.assertIs(s, self.orm)
-        self.orm.reset()
 
     def test_values(self):
         s = self.orm.values(1, 2)
@@ -292,7 +260,6 @@ class TestORM(unittest.TestCase):
         clause = self.orm.state.clauses.popitem(last=True)[1][0]
         self.assertIs(s, self.orm)
         self.assertEqual(clause.string % clause.params, 'VALUES (5, 6)')
-        self.orm.reset()
 
     def test_set(self):
         field = new_field('int', name='bar', table='foo')
@@ -301,7 +268,6 @@ class TestORM(unittest.TestCase):
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIs(s, self.orm)
         self.assertEqual(clause.string % clause.params, 'SET bar = 2, 2')
-        self.orm.reset()
 
     def test_group_by(self):
         field = new_field('int', name='bar', table='foo')
@@ -319,7 +285,6 @@ class TestORM(unittest.TestCase):
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIs(s, self.orm)
         self.assertEqual(clause.string % clause.params, 'GROUP BY bar')
-        self.orm.reset()
 
     def test_order_by(self):
         field = new_field('int', name='bar', table='foo')
@@ -348,12 +313,11 @@ class TestORM(unittest.TestCase):
         self.assertIs(s, self.orm)
         self.assertEqual(
             clause.string % clause.params, 'ORDER BY bar DESC, bar_b ASC')
-        self.orm.reset()
 
     def test_asc(self):
         field = new_field('int', name='bar', table='foo')
         for v, f in (
-            ('foo.bar', field), ('num_posts', aliased('num_posts')),
+            ('foo.bar', field), ('num_posts', safe('num_posts')),
             ('num_posts', safe('num_posts'))
         ):
             s = self.orm.asc(f)
@@ -367,7 +331,7 @@ class TestORM(unittest.TestCase):
     def test_desc(self):
         field = new_field('int', name='bar', table='foo')
         for v, f in (
-            ('foo.bar', field), ('num_posts', aliased('num_posts')),
+            ('foo.bar', field), ('num_posts', safe('num_posts')),
             ('num_posts', safe('num_posts'))
         ):
             s = self.orm.desc(f)
@@ -433,7 +397,6 @@ class TestORM(unittest.TestCase):
         s = self.orm.one()
         self.assertTrue(self.orm.state.one)
         self.assertIs(s, self.orm)
-        self.orm.reset()
 
     def test_page(self):
         for f in (
@@ -471,7 +434,6 @@ class TestORM(unittest.TestCase):
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIs(s, self.orm)
         self.assertEqual(clause.string % clause.params, 'FOR UPDATE')
-        self.orm.reset()
 
     def test_for_share(self):
         s = self.orm.for_share()
@@ -479,11 +441,10 @@ class TestORM(unittest.TestCase):
         clause = self.orm.state.clauses.popitem(last=True)[1]
         self.assertIs(s, self.orm)
         self.assertEqual(clause.string % clause.params, 'FOR SHARE')
-        self.orm.reset()
 
     def test_returning(self):
         fields = (
-            (new_field('char'), new_field('int'), new_field('email')),
+            (new_field('text'), new_field('int'), new_field('email')),
             (new_field('decimal'), None, None),
             (None, None, None),
             ('*', None, None)
@@ -510,7 +471,7 @@ class TestORM(unittest.TestCase):
     def test_on(self):
         for f in (
             (Clause('CONFLICT', Clause('DO UPDATE')),),
-            (Functions.func("CONFLICT", new_field('char')), Clause('DO UPDATE'))
+            (F.new("CONFLICT", new_field('text')), Clause('DO UPDATE'))
         ):
             s = self.orm.on(*f, join_with=" ")
             self.assertTrue(self.orm.state.has('ON'))
@@ -524,17 +485,17 @@ class TestORM(unittest.TestCase):
     def test_insert(self):
         # Plain INSERT
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         self.orm.values(12345, 'bar')
         self.orm.values(123456, 'bar')
         self.orm.returning(f1, f2)
         res = self.orm.insert(f1, f2)
         self.assertEqual(len(res), 2)
-        self.assertEqual(len(res[0]), 2)
+        self.assertEqual(len(res[1]), 2)
 
         # Non-executing INSERT
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         self.orm.values(12345, 'bar')
         self.orm.values(123456, 'bar')
         self.orm.returning(f1, f2)
@@ -560,22 +521,11 @@ class TestORM(unittest.TestCase):
         res = self.orm.insert(f1, f2)
         self.assertIs(res, self.orm)
         self.assertEqual(len(self.orm.queries), 1)
-        self.orm.reset_multi()
-
-    def populate(self):
-        self.orm.use('foo').delete()
-        f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
-        self.orm.values(12345, 'bar')
-        self.orm.values(123456, 'bar')
-        self.orm.values(1234567, 'bar')
-        self.orm.returning(f1, f2)
-        res = self.orm.insert(f1, f2)
 
     def test_select(self):
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         # Plain SELECT
         self.orm.use(f1.table)
         self.orm.where(f2 == 'bar')
@@ -611,13 +561,23 @@ class TestORM(unittest.TestCase):
         self.orm.reset_multi()
         self.orm.reset()
 
+    def test_get(self):
+        self.populate()
+        #: Get always returns one result using 'fetchone'
+        result = self.orm.use('foo').get()
+        self.assertNotEqual(result.__class__, list)
+
+        #: Expects a :class:Query to be returned
+        result = self.orm.use('foo').dry().get()
+        self.assertIsInstance(result, Query)
+
     def test_select_cursor_factories(self):
         self.populate()
-        orm = ORM(cursor_factory=CNamedTupleCursor)
+        orm = ORM(cursor_factory=CNamedTupleCursor, schema='cargo_tests')
         orm.set_table('foo')
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         # Plain SELECT
         orm.use(f1.table)
         orm.where(f2 == 'bar')
@@ -627,10 +587,11 @@ class TestORM(unittest.TestCase):
         self.assertEqual(len(res), 2)
         self.assertTrue(hasattr(res[0], '_asdict'))
 
-        orm = ORM(cursor_factory=psycopg2.extras.RealDictCursor)
+        orm = ORM(cursor_factory=psycopg2.extras.RealDictCursor,
+                  schema='cargo_tests')
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         # Plain SELECT
         orm.use(f1.table)
         orm.where(f2 == 'bar')
@@ -643,18 +604,19 @@ class TestORM(unittest.TestCase):
     def test_update(self):
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         # Plain UPDATE
         self.orm.returning()
-        f1.value = 12345
-        res = self.orm.update(f1, f2 == 'bar')
+        f1.value = random.randint(1, 100000)
+        f2.value = 'bar'
+        res = self.orm.update(f2)
         self.assertIsInstance(res, list)
         self.assertTrue(len(res) > 0)
         self.assertEqual(len(res[0]), 2)
 
         # Non-executing UPDATE
         self.orm.returning()
-        f1.value = 12345
+        f1.value = random.randint(1, 100000)
         res = self.orm.dry().update(f1, f2 == 'bar')
         self.assertIsInstance(res, Query)
         self.assertFalse(len(self.orm.queries))
@@ -666,7 +628,8 @@ class TestORM(unittest.TestCase):
 
         # Multi UPDATE
         self.orm.multi()
-        res = self.orm.update(f1 == 12345, f2 == 'textfield')
+        res = self.orm.update(f1 == random.randint(1, 100000),
+                              f2 == 'textfield')
         self.assertIs(res, self.orm)
         self.assertEqual(len(self.orm.queries), 1)
         self.orm.reset_multi()
@@ -674,7 +637,7 @@ class TestORM(unittest.TestCase):
     def test_delete(self):
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         # Plain DELETE
         self.orm.use('foo')
         self.orm.where(f1 == 12345)
@@ -707,7 +670,7 @@ class TestORM(unittest.TestCase):
     def test_raw(self):
         self.populate()
         f1 = new_field('int', name='uid', table='foo')
-        f2 = new_field('char', name='textfield', table='foo')
+        f2 = new_field('text', name='textfield', table='foo')
         # Plain NAKED SELECT
         self.orm.state.add(Clause('SELECT', safe('uid')))
         self.orm.use(f1.table)
@@ -781,25 +744,25 @@ class TestORM(unittest.TestCase):
         orm.multi()
         self.assertTrue(orm._multi)
         f1, f2 = new_field(table='foo', name='uid'),\
-                 new_field('char', table='foo', name='textfield')
+                 new_field('text', table='foo', name='textfield')
         orm.values(1234567, 'fish').returning()
         self.assertIs(orm.insert(f1, f2), orm)
         self.assertTrue(orm._multi)
         self.assertEqual(len(orm.queries), 1)
-        orm.values(1234567, 'fish').returning()
+        orm.values(12345678, 'fish').returning()
         self.assertIs(orm.insert(f1, f2), orm)
         self.assertTrue(orm._multi)
         self.assertEqual(len(orm.queries), 2)
-        self.assertIs(orm.use('foo').filter(f2 == 'fish').select(), orm)
+        self.assertIs(orm.use('foo').where(f2 == 'fish').select(), orm)
         self.assertTrue(orm._multi)
         self.assertEqual(len(orm.queries), 3)
         self.assertEqual(len(orm.run()), 3)
         self.assertFalse(orm._multi)
         # Query in the midst
         orm.multi()
-        orm.values(1234567, 'fish').returning()
+        orm.values(12345679, 'fish').returning()
         orm.insert(f1, f2)
-        orm.values(1234567, 'fish').returning()
+        orm.values(123456710, 'fish').returning()
         q = orm.dry().insert(f1, f2)
         res = orm.run(q)
         self.assertEqual(len(res), 1)
@@ -807,51 +770,6 @@ class TestORM(unittest.TestCase):
         res = orm.run()
         self.assertEqual(len(res), 1)
         self.assertFalse(orm._multi)
-
-    def test_many(self):
-        self.assertFalse(self.orm._many)
-        self.orm.many()
-        self.assertEqual(self.orm._many, 'BEGIN')
-        f1, f2 = new_field(table='foo', name='uid', value=1234),\
-                 new_field('char', table='foo', name='textfield', value='bar')
-        self.orm.insert(f1, f2)
-        self.assertEqual(self.orm._many, True)
-        self.orm.insert(f1, f2)
-        self.orm.insert(f1, f2)
-        self.assertIs(self.orm.insert(f1, f2), self.orm)
-        self.assertEqual(len(self.orm.queries), 1)
-        self.assertEqual(len(self.orm.state.clauses), 2)
-        self.assertEqual(len(self.orm.state.get('VALUES')), 4)
-        self.orm.returning()
-        self.assertTrue(len(self.orm.run()), 4)
-        self.orm.reset()
-        self.assertFalse(self.orm._many)
-
-    def test_multi_many(self):
-        f1, f2 = new_field(table='foo', name='uid', value=1234),\
-                 new_field('char', table='foo', name='textfield', value='bar')
-
-        self.orm.multi().many()
-        self.assertEqual(self.orm._many, 'BEGIN')
-        self.orm.insert(f1, f2)
-        self.assertEqual(self.orm._many, True)
-        self.orm.insert(f1, f2)
-        self.orm.insert(f1, f2)
-        self.orm.returning()
-        self.orm.end_many()
-        self.assertEqual(len(self.orm.queries), 1)
-        self.assertFalse(self.orm._many)
-
-        self.orm.many()
-        self.assertEqual(self.orm._many, 'BEGIN')
-        self.orm.insert(f1, f2)
-        self.orm.insert(f1, f2)
-        self.orm.insert(f1, f2)
-        self.orm.returning()
-        self.orm.end_many()
-        self.assertEqual(len(self.orm.queries), 2)
-        self.assertEqual(len(self.orm.run()), 2)
-        self.assertFalse(self.orm._many)
 
     def test_reset_multi(self):
         self.assertFalse(self.orm._multi)
@@ -866,13 +784,6 @@ class TestORM(unittest.TestCase):
         self.assertFalse(self.orm._multi)
         self.assertEqual(len(self.orm.queries), 0)
         self.assertEqual(len(self.orm.state.clauses), 0)
-
-    def test_reset_many(self):
-        self.assertFalse(self.orm._many)
-        self.orm.many()
-        self.assertTrue(self.orm._many)
-        self.orm.reset_many()
-        self.assertFalse(self.orm._many)
 
     def test_add_query(self):
         self.assertEqual(len(self.orm.queries), 0)
@@ -891,7 +802,6 @@ class TestORM(unittest.TestCase):
 
     def test_reset(self):
         self.orm._with = True
-        self.orm._many = True
         self.orm.queries = [1, 2]
         self.orm._multi = True
         self.orm.state.add(new_clause())
@@ -927,8 +837,11 @@ class TestORM(unittest.TestCase):
 
     def test_deepcopy(self):
         orm = copy.deepcopy(self.orm)
-        for k, v in self.orm.__dict__.items():
+        for k, v in self.orm.__dict__.copy().items():
             x = getattr(orm, k)
+            if k in {'schema', 'table', '_cursor_factory'}:
+                self.assertEqual(v, x)
+                continue
             if not isinstance(v, (type(False), type(None), type(True),
                                   self.orm.db.__class__)):
                 self.assertIsNot(v, x)
@@ -936,7 +849,7 @@ class TestORM(unittest.TestCase):
     def test_pickle(self):
         b = pickle.loads(pickle.dumps(self.orm))
         for k in self.orm.__dict__:
-            if k == '_client':
+            if k in {'_client'}:
                 continue
             if isinstance(
                getattr(self.orm, k), (str, list, tuple, dict, int, float)):
@@ -946,6 +859,122 @@ class TestORM(unittest.TestCase):
                     getattr(self.orm, k).__class__ == getattr(b, k).__class__)
 
 
+class TestORMRealDictCursor(TestORM):
+
+    def setUp(self):
+        self.orm = ORM(schema='cargo_tests',
+                       cursor_factory=psycopg2.extras.RealDictCursor)
+        local_client.clear()
+
+    def test_execute(self):
+        qps = (
+            ('SELECT %s', (1,)),
+            ('SELECT %(foo)s', {'foo': 1})
+        )
+        for q, p in qps:
+            if isinstance(p, dict):
+                for x in self.orm.execute(q, p).fetchall():
+                    for k, (_, v) in enumerate(p.items()):
+                        self.assertEqual(x['?column?'], v)
+            else:
+                for x in self.orm.execute(q, p).fetchall():
+                    for k, v in enumerate(p):
+                        self.assertEqual(x['?column?'], v)
+        with self.assertRaises(QueryError):
+            self.orm.execute('SELECT ORDER').fetchall()
+
+    def test_run_iter(self):
+        queries = [
+            self.orm.dry().select(1),
+            self.orm.dry().select(2),
+            self.orm.dry().select(3),
+        ]
+        res = self.orm.run_iter(*queries)
+        self.assertIsInstance(res, types.GeneratorType)
+        self.assertEqual(len(list(res)), 3)
+        self.assertNotEqual(list(res), [[{'?column?': 1}],
+                                        [{'?column?': 2}],
+                                        [{'?column?': 3}]])
+        res = self.orm.run_iter(*queries[:1], fetch=True)
+        self.assertIsInstance(res, types.GeneratorType)
+        self.assertListEqual(list(res), [[{'?column?': 1}]])
+
+    def test_run(self):
+        queries = [
+            self.orm.dry().select(1),
+            self.orm.dry().select(2),
+            self.orm.dry().select(3),
+        ]
+        res = self.orm.run(*queries)
+        self.assertIsInstance(res, list)
+        self.assertEqual(len(res), 3)
+        self.assertEqual(
+            res, [
+                [{'?column?': 1}],
+                [{'?column?': 2}],
+                [{'?column?': 3}]
+            ])
+        res = self.orm.run(*queries[:1])
+        self.assertIsInstance(res, list)
+        self.assertListEqual(res, [{'?column?': 1}])
+
+
+class TestORMOrderedDictCursor(TestORMRealDictCursor):
+
+    def setUp(self):
+        self.orm = ORM(schema='cargo_tests',
+                       cursor_factory=OrderedDictCursor)
+        local_client.clear()
+
+
+class TestORMDictCursor(TestORMRealDictCursor):
+
+    def setUp(self):
+        self.orm = ORM(schema='cargo_tests',
+                       cursor_factory=psycopg2.extras.DictCursor)
+        local_client.clear()
+
+    def test_run_iter(self):
+        queries = [
+            self.orm.dry().select(1),
+            self.orm.dry().select(2),
+            self.orm.dry().select(3),
+        ]
+        res = self.orm.run_iter(*queries)
+        self.assertIsInstance(res, types.GeneratorType)
+        self.assertEqual(len(list(res)), 3)
+        self.assertNotEqual(list(res), [[1],
+                                        [[2]],
+                                        [[3]]])
+        res = self.orm.run_iter(*queries[:1], fetch=True)
+        self.assertIsInstance(res, types.GeneratorType)
+        self.assertListEqual(list(res), [[[1]]])
+
+    def test_run(self):
+        queries = [
+            self.orm.dry().select(1),
+            self.orm.dry().select(2),
+            self.orm.dry().select(3),
+        ]
+        res = self.orm.run(*queries)
+        self.assertIsInstance(res, list)
+        self.assertEqual(len(res), 3)
+        self.assertEqual(
+            res, [
+                [[1]],
+                [[2]],
+                [[3]]
+            ])
+        res = self.orm.run(*queries[:1])
+        self.assertIsInstance(res, list)
+        self.assertListEqual(res, [[1]])
+
+
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestORM,
+                        TestORMRealDictCursor,
+                        TestORMOrderedDictCursor,
+                        TestORMDictCursor,
+                        failfast=True,
+                        verbosity=2)

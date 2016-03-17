@@ -9,17 +9,11 @@
 import unittest
 import psycopg2
 
-from kola import config
 from vital.security import randkey
 
-from cargo import ORM, db, create_kola_db, fields
+from cargo import ORM, db, fields
 from cargo.builder import create_operator
 from cargo.builder.operators import Operator
-
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_db()
 
 
 def new_field(type='char', value=None, name=None, table=None):

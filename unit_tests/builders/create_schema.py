@@ -9,14 +9,8 @@
 import unittest
 import psycopg2
 
-from kola import config
-from cargo import ORM, create_kola_client
-from cargo.builder import Builder
-
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_client()
+from cargo import ORM
+from cargo.builder import Plan
 
 
 class TestTableMeta(unittest.TestCase):

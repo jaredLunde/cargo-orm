@@ -1,12 +1,17 @@
 import os
 import unittest
+import psycopg2
 
-from cargo import create_db, db, Model as _Model
+from vital.security import randhex
+
+from cargo import db, Model as _Model, ORM, fields
 from cargo.fields import *
+from cargo.expressions import *
+from cargo.statements import Insert
 from cargo.builder import *
 
 
-create_db()
+db.open()
 
 
 def run_tests(*tests, **opts):
@@ -24,7 +29,7 @@ def run_discovered(path=None):
     tests = []
     suite = unittest.TestSuite()
     for test in unittest.defaultTestLoader.discover(
-            path, pattern='[A-Z]*.py', top_level_dir=None):
+            path, pattern='*.py', top_level_dir=None):
         suite.addTests((t for t in test
                         if t not in tests and not tests.append(t)))
     return ut.run(suite)
@@ -39,9 +44,44 @@ def cleanup():
     drop_schema(db, 'cargo_tests', cascade=True, if_exists=True)
 
 
+def new_field(type='text', value=None, name=None, table=None):
+    field = getattr(fields, type.title())(value=value)
+    field.field_name = name or randhex(24)
+    field.table = table or randhex(24)
+    return field
+
+
+def new_expression(cast=int):
+    if cast == bytes:
+        cast = lambda x: psycopg2.Binary(str(x).encode())
+    return Expression(new_field(), '=', cast(12345))
+
+
+def new_function(cast=int, alias=None):
+    if cast == bytes:
+        cast = lambda x: psycopg2.Binary(str(x).encode())
+    return Function('some_func', cast(12345), alias=alias)
+
+
+def new_clause(name='FROM', *vals, **kwargs):
+    vals = vals or ['foobar']
+    return Clause(name, *vals, **kwargs)
+
+
 class Model(_Model):
     schema = 'cargo_tests'
     uid = UID()
+
+
+class Foo(_Model):
+    schema = 'cargo_tests'
+    ordinal = ('uid', 'textfield')
+    uid = Int(index=True, unique=True)
+    textfield = Text()
+
+
+class FooB(Foo):
+    pass
 
 
 class BaseTestCase(unittest.TestCase):
@@ -52,6 +92,73 @@ class BaseTestCase(unittest.TestCase):
 
     def setUp(self):
         self.orm.clear()
+
+
+class StatementTestCase(BaseTestCase):
+    orm = Foo(schema='cargo_tests', naked=True)
+    orm_b = FooB(schema='cargo_tests', naked=True)
+
+    @classmethod
+    def setUpClass(cls):
+        from cargo.builder.extras import UIDFunction
+        setup()
+        Plan(Foo()).execute()
+        Plan(FooB()).execute()
+        UIDFunction(cls.orm).execute()
+
+    def setUp(self):
+        for field in self.orm.fields:
+            field.clear()
+        self._populate()
+        self.orm.reset()
+        self.orm_b.reset()
+
+    def tearDown(self):
+        for orm in (self.orm, self.orm_b):
+            orm.reset()
+            orm.where(True).delete()
+
+    def _populate(self):
+        self.orm.state.add(new_clause('INTO', safe('foo')))
+        self.orm_b.state.add(new_clause('INTO', safe('foo_b')))
+        def values(orm, start):
+            orm.fields[0](start)
+            orm.fields[1](randhex(10))
+            yield orm.fields[0]
+            yield orm.fields[1]
+        for orm in (self.orm, self.orm_b):
+            start = 1234
+            orm.values(*values(orm, start))
+            start += 1
+            orm.values(*values(orm, start))
+            start += 1
+            orm.values(*values(orm, start))
+        Insert(self.orm).execute()
+        Insert(self.orm_b).execute()
+
+
+class LogicTestCase(unittest.TestCase):
+
+    def validate_expression(self, expression, left, operator, right,
+                            params=None, values=None):
+        self.assertIsInstance(expression, Expression)
+        self.assertIs(expression.left, left)
+        self.assertEqual(expression.operator, operator)
+        self.assertEqual(expression.right, right)
+        if params is not None:
+            self.assertDictEqual(expression.params, params)
+        elif values:
+            for value in values:
+                self.assertIn(value, list(expression.params.values()))
+
+    def validate_function(self, function, func, args, alias=None, values=None):
+        self.assertIsInstance(function, Function)
+        self.assertEqual(function.func, func)
+        self.assertTupleEqual(function.args, tuple(args))
+        self.assertEqual(function.alias, alias)
+        if values:
+            for value in values:
+                self.assertIn(value, list(function.params.values()))
 
 
 #: Geometry setup

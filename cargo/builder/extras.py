@@ -250,7 +250,7 @@ class CITextExtension(Extension):
 
     @staticmethod
     def _get_comment():
-        return """A keyvalue storage type."""
+        return """A case-insensitive text storage type."""
 
     def execute(self):
         try:

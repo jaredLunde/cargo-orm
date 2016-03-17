@@ -8,14 +8,8 @@
 """
 import unittest
 
-from kola import config
-from cargo import ORM, db, create_kola_db
+from cargo import ORM, db
 from cargo.builder import create_user, create_role
-
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_db()
 
 
 class TestCreateRole(unittest.TestCase):

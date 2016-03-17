@@ -8,99 +8,20 @@
 """
 import pickle
 import random
-import unittest
-from kola import config
-
-from vital.security import randkey
 
 from cargo import *
-from cargo.orm import QueryState
 from cargo.statements import Delete
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_pool()
-
-
-def new_field(type='char', value=None, name=None, table=None):
-    field = getattr(fields, type.title())(value=value)
-    field.field_name = name or randkey(24)
-    field.table = table or randkey(24)
-    return field
+from unit_tests import configure
+from unit_tests.configure import new_field, new_clause, new_expression, \
+                                 new_function
 
 
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-def populate(self):
-    self.orm.use('foo').delete()
-    clauses = [
-        new_clause('INTO', safe('foo')),
-        new_clause('RETURNING', safe('textfield'))
-    ]
-    self.orm.state.add(*clauses)
-    values = [
-        field
-        for field in self.fields
-        if field._should_insert() or field.default is not None
-    ]
-    self.orm.values(*values)
-    self.orm.values(*values)
-    self.orm.values(*values)
-    q = Insert(self.orm)
-    q.execute().fetchall()
-
-    clauses = [
-        new_clause('INTO', safe('foo_b')),
-        new_clause('RETURNING', safe('textfield'))
-    ]
-    self.orm.state.add(*clauses)
-
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo_b'),
-        new_field('int', 1234, name='uid', table='foo_b')]
-    values = [
-        field.value
-        for field in fields
-        if field._should_insert() or field.default is not None
-    ]
-    self.orm.values(*values)
-    self.orm.values(*values)
-    self.orm.values(*values)
-    q = Insert(self.orm)
-    q.execute().fetchall()
-    self.orm.reset()
-
-
-class TestDelete(unittest.TestCase):
-    orm = ORM()
-    fields = [
-        new_field('text', 'bar', name='textfield', table='foo'),
-        new_field('int', 1234, name='uid', table='foo')]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.orm.set_table('foo')
-        populate(self)
+class TestDelete(configure.StatementTestCase):
 
     def test___init__(self):
         q = Delete(self.orm)
         self.assertIs(q.orm, self.orm)
-        self.orm.reset()
 
     def test_evaluate_state(self):
         clauses = [
@@ -116,10 +37,8 @@ class TestDelete(unittest.TestCase):
         clause_str = " ".join(q.evaluate_state())
         for clause in clauses:
             self.assertIn(clause.clause, clause_str)
-        self.orm.reset()
 
     def test__execute(self):
-        populate(self)
         clauses = [
             new_clause('FROM', safe("foo")),
             new_clause('USING', safe('foo_b b')),
@@ -182,4 +101,4 @@ class TestDelete(unittest.TestCase):
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestDelete, failfast=True, verbosity=2)

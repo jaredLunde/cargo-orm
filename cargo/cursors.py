@@ -124,13 +124,12 @@ class ModelCursor(_cursor):
             model = self._cargo_model
         field_names = set(model.field_names)
         ga = model.__getattribute__
-        for k, v in zip(self.description, tup):
-            k = k[0]
+        for (k, *_), v in zip(self.description, tup):
             if k in field_names:
                 ga(k)(v)
             else:
-                raise KeyError("Field `{}` not in {}".format(
-                    k, model.__class__.__name__))
+                raise KeyError("Field `%s` not in %s" %
+                               (k, model.__class__.__name__))
         return model
 
     def execute(self, query, vars=None):
@@ -145,7 +144,7 @@ class ModelCursor(_cursor):
     def fetchone(self):
         t = super().fetchone()
         if t is not None:
-            return self._fill_model(t, new=False)
+            return self._fill_model(t, new=self._cargo_model._new)
 
     def fetchmany(self, size=None):
         ts = super().fetchmany(size)

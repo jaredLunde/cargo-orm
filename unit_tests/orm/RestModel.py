@@ -7,7 +7,6 @@
    http://github.com/jaredlunde
 """
 import unittest
-from kola import config
 
 from cargo.orm import RestModel
 

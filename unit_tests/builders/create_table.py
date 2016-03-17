@@ -9,17 +9,11 @@
 import unittest
 import psycopg2
 
-from kola import config
 from vital.security import randkey
 
-from cargo import ORM, db, create_kola_db, fields, Function, Clause
+from cargo import ORM, db, fields, Function, Clause
 from cargo.builder import create_table
 from cargo.builder.tables import Table
-
-
-cfile = '/home/jared/apps/xfaps/vital.json'
-config.bind(cfile)
-create_kola_db()
 
 
 def new_field(type='char', value=None, name=None, table=None, **attrs):
@@ -52,7 +46,7 @@ class TestCreateTable(unittest.TestCase):
         table.temporary()
         table.foreign_key((fielda, fieldb), 'foo_b', ('bar_a', 'bar_b'),
                           on_delete="cascade", on_update="cascade")
-        table.columns(id=('integer', 'NOT NULL', 'PRIMARY KEY'))
+        table.set_columns(id=('integer', 'NOT NULL', 'PRIMARY KEY'))
         print(table.query)
         print(table.query.mogrified)
 

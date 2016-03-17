@@ -6,25 +6,28 @@
    2016 Jared Lunde © The MIT License (MIT)
    http://github.com/jaredlunde
 """
-try:
-    import ujson as json
-except:
-    import json
-
 import unittest
 import psycopg2
 
-from kola import config
 from cargo.cursors import *
-from cargo.clients import Postgres, PostgresPool
+from cargo.clients import PostgresPool, local_client
 
-
-cfile = '/home/jared/apps/xfaps/vital.json'
+from unit_tests import configure
 
 
 class TestPostgresPool(unittest.TestCase):
-    with open(cfile, 'r') as f:
-        config = json.load(f)
+    @staticmethod
+    def setUpClass():
+        db = configure.db
+        configure.drop_schema(db, 'cargo_tests', cascade=True, if_exists=True)
+        configure.create_schema(db, 'cargo_tests')
+        configure.Plan(configure.Foo()).execute()
+
+    @staticmethod
+    def tearDownClass():
+        db = configure.db
+        configure.drop_schema(db, 'cargo_tests', cascade=True, if_exists=True)
+        local_client.clear()
 
     def test_connect(self):
         client = PostgresPool()
@@ -36,20 +39,18 @@ class TestPostgresPool(unittest.TestCase):
         self.assertEqual(client.cursor_factory, CNamedTupleCursor)
 
     def test_connection(self):
-        cfg = self.config.get('db')
-        dsn_config = Postgres.to_dsn(cfg)
-        client = PostgresPool(1, 2, dsn_config)
+        client = PostgresPool(1, 2)
         conn = client.get()
         self.assertFalse(conn._connection.closed)
         conn.close()
         self.assertTrue(conn._connection.closed)
 
-        client = PostgresPool(1, 2, **cfg)
+        client = PostgresPool(1, 2)
         conn = client.get()
         self.assertFalse(conn._connection.closed)
 
     def test_close(self):
-        client = PostgresPool(1, 2, **self.config.get('db', {}))
+        client = PostgresPool(1, 2)
         self.assertTrue(client.closed)
         client.connect()
         self.assertFalse(client.closed)
@@ -57,7 +58,7 @@ class TestPostgresPool(unittest.TestCase):
         self.assertTrue(client.closed)
 
     def test_context_manager(self):
-        with PostgresPool(1, 2, **self.config.get('db', {})) as pool:
+        with PostgresPool(1, 2) as pool:
             self.assertFalse(pool.closed)
             with pool.get() as connection:
                 with pool.get() as connection2:
@@ -75,7 +76,7 @@ class TestPostgresPool(unittest.TestCase):
         self.assertTrue(pool.closed)
 
     def test_connection_obj(self):
-        with PostgresPool(1, 2, **self.config.get('db', {})) as pool:
+        with PostgresPool(1, 2) as pool:
             with pool.get() as connection:
                 self.assertIs(connection.autocommit, pool.autocommit)
                 self.assertIs(connection._dsn, pool._dsn)
@@ -86,7 +87,7 @@ class TestPostgresPool(unittest.TestCase):
                 self.assertIs(connection.cursor_factory, pool.cursor_factory)
 
     def test_put(self):
-        with PostgresPool(1, 2, **self.config.get('db', {})) as pool:
+        with PostgresPool(1, 2) as pool:
             conn = pool.get()
             self.assertIsNotNone(conn._connection)
             conn2 = pool.get()
@@ -106,9 +107,10 @@ class TestPostgresPool(unittest.TestCase):
         self.assertTrue(conn2.closed)
 
     def test_commit(self):
-        client = PostgresPool(1, 2, **self.config.get('db', {}))
+        client = PostgresPool(1, 2)
         conn = client.get()
         cur = conn.cursor()
+        client.apply_schema(cur, 'cargo_tests')
         cur.execute("INSERT INTO foo (uid, textfield) VALUES (1, 'bar')")
         self.assertIsNone(conn.commit())
         cur = conn.cursor()
@@ -121,10 +123,11 @@ class TestPostgresPool(unittest.TestCase):
         client.put(conn)
 
     def test_rollback(self):
-        client = PostgresPool(1, 2, **self.config.get('db', {}))
+        client = PostgresPool(1, 2)
         conn = client.get()
         cur = conn.cursor()
-        cur.execute("INSERT INTO foo (uid, textfield) VALUES (1, 'bar')")
+        client.apply_schema(cur, 'cargo_tests')
+        cur.execute("INSERT INTO foo (uid, textfield) VALUES (2, 'bar')")
         self.assertIsNone(conn.commit())
         cur = conn.cursor()
         with self.assertRaises(psycopg2.ProgrammingError):
@@ -134,12 +137,12 @@ class TestPostgresPool(unittest.TestCase):
         with self.assertRaises(psycopg2.InternalError):
             cur.execute("INSERT INTO foo (uid, textfield) VALUES (1, 'bar')")
         conn.rollback()
-        cur.execute("INSERT INTO foo (uid, textfield) VALUES (1, 'bar')")
+        cur.execute("INSERT INTO foo (uid, textfield) VALUES (3, 'bar')")
         self.assertIsNone(conn.commit())
         client.put(conn)
 
     def test_minconn_maxconn(self):
-        client = PostgresPool(10, 12, **self.config.get('db', {}))
+        client = PostgresPool(10, 12)
         self.assertEqual(client.pool.minconn, 10)
         self.assertEqual(client.pool.maxconn, 12)
 

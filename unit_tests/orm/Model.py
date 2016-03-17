@@ -7,63 +7,24 @@
    http://github.com/jaredlunde
 """
 import copy
-import types
 import pickle
-import unittest
+
 from random import randint
 import psycopg2.extras
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 
-from vital.debug import Timer
 from vital.security import randkey
-from kola import config, local, logg
 
 from cargo import *
 from cargo.orm import ORM, QueryState
 
-
-config.bind('/home/jared/apps/xfaps/vital.json')
-create_kola_client()
-
-
-def new_field(type='char', value=None, name=None, table=None):
-    field = getattr(fields, type.title())(value=value)
-    field.field_name = name or randkey(24)
-    field.table = table or randkey(24)
-    return field
-
-
-def new_expression(cast=int):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Expression(new_field(), '=', cast(12345))
-
-
-def new_function(cast=int, alias=None):
-    if cast == bytes:
-        cast = lambda x: psycopg2.Binary(str(x).encode())
-    return Function('some_func', cast(12345), alias=alias)
-
-
-def new_clause(name='FROM', *vals):
-    vals = vals or ['foobar']
-    return Clause(name, *vals)
-
-
-class BaseFoo(Model):
-    uid = UID()
-
-
-class Foo(BaseFoo):
-    textfield = Text()
-    # clone = Relationship('FooB.uid', backref='clone')
-
-
-class FooB(BaseFoo):
-    textfield = Text()
+from unit_tests import configure
+from unit_tests.configure import new_field, new_expression, new_clause, \
+                                 new_function, Foo, FooB
 
 
 class FooC(Model):
+    schema = 'cargo_tests'
     foo_a = UID()
     foo_b = Int(index=True)
     foo_c = Int(unique=True, index=True)
@@ -72,6 +33,7 @@ class FooC(Model):
 
 
 class FooD(Model):
+    schema = 'cargo_tests'
     foo_b = Int(index=True)
     foo_c = Int(unique=True, index=True)
     foo_d = Text(unique=True, index=True)
@@ -79,23 +41,28 @@ class FooD(Model):
 
 
 class FooE(Model):
+    schema = 'cargo_tests'
     foo_b = Int(index=True)
     foo_d = Text(unique=True, index=True)
     foo_e = Text(index=True)
 
 
 class FooF(Model):
+    schema = 'cargo_tests'
     foo_b = Int(index=True)
     foo_e = Text(index=True)
 
 
 class FooMultiPrimary(Model):
+    schema = 'cargo_tests'
     table = 'foo'
     uid = UID()
     uid2 = UID()
 
 
-class TestModel(unittest.TestCase):
+class TestModel(configure.BaseTestCase):
+    _GET_TYPE = '__getattr__'
+    _FACTORY_TYPE = tuple
     model = Foo()
     modelb = FooB()
     modelc = FooC()
@@ -109,8 +76,17 @@ class TestModel(unittest.TestCase):
                           naked=True)
     o_dict_model = Foo(cursor_factory=OrderedDictCursor, naked=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def setUpClass():
+        configure.Plan(configure.Foo()).execute()
+        configure.Plan(configure.FooB()).execute()
+
+    def setUp(self):
+        for k in dir(self.__class__):
+            x = getattr(self, k)
+            if isinstance(x, Model):
+                x.clear()
 
     def test__compile(self):
         self.assertEqual(self.model.table, 'foo')
@@ -123,6 +99,13 @@ class TestModel(unittest.TestCase):
         self.assertListEqual(self.modelb.foreign_keys, [])
         self.assertListEqual(self.model.foreign_keys, [])
         self.assertListEqual(self.modelb.relationships, [])
+
+    def _gres(self, result, attr):
+        """ Gets the result for various factories """
+        if self._GET_TYPE == '__getitem__':
+            return result.__getitem__(attr)
+        else:
+            return result.__getattribute__(attr)
 
     def fill(self, num=10):
         self.model.clear()
@@ -240,16 +223,16 @@ class TestModel(unittest.TestCase):
         self.assertIsNot(ret, self)
 
         #: Expects a single raw psycopg2 cursor factory
-        ret = self.model.naked().add(uid=1234567, textfield='bar')
-        self.assertEqual(ret.uid, 1234567)
-        self.assertEqual(ret.textfield, 'bar')
-        self.assertIsInstance(ret, tuple)
+        ret = self.model.naked().add(uid=12345678, textfield='bar')
+        self.assertEqual(self._gres(ret, 'uid'), 12345678)
+        self.assertEqual(self._gres(ret, 'textfield'), 'bar')
+        self.assertIsInstance(ret, self._FACTORY_TYPE)
 
         #: Expects list of single results as copies of self
         self.model.multi()
-        self.model.add(uid=1234567, textfield='bar')
-        self.model.add(uid=1234568, textfield='bar')
-        self.model.add(uid=1234569, textfield='bar')
+        self.model.add(uid=1234567101, textfield='bar')
+        self.model.add(uid=1234568102, textfield='bar')
+        self.model.add(uid=1234569103, textfield='bar')
         ret = self.model.run()
         self.assertIsInstance(ret, list)
         for r in ret:
@@ -259,29 +242,37 @@ class TestModel(unittest.TestCase):
 
         #: Expects list of single raw results as cursor factories
         self.model.multi()
-        self.model.add(uid=1234567, textfield='bar')
-        self.model.add(uid=1234568, textfield='bar')
-        self.model.add(uid=1234569, textfield='bar')
+        self.model.add(uid=1234567201, textfield='bar')
+        self.model.add(uid=1234568202, textfield='bar')
+        self.model.add(uid=1234569203, textfield='bar')
         ret = self.model.naked().run()
         self.assertIsInstance(ret, list)
         for r in ret:
-            self.assertEqual(r.textfield, 'bar')
-            self.assertIsInstance(r, tuple)
-        self.model.clear()
+            self.assertEqual(self._gres(r, 'textfield'), 'bar')
+            self.assertIsInstance(r, self._FACTORY_TYPE)
+
+        #: Expects list of raw results as cursor factories
+        ret = self.model.naked().add(1234567301, 'bar',
+                                     1234568302, 'bar',
+                                     1234569303, 'bar')
+        self.assertIsInstance(ret, list)
+        for r in ret:
+            self.assertEqual(self._gres(r, 'textfield'), 'bar')
+            self.assertIsInstance(r, self._FACTORY_TYPE)
 
     def test_approx_size(self):
         self.fill(4)
         row = self.model.approx_size()
         self.assertTrue(str(row).isdigit())
         row = self.model.approx_size('num')
-        self.assertTrue(str(row.num).isdigit())
+        self.assertTrue(str(self._gres(row, 'num')).isdigit())
 
     def test_exact_size(self):
         self.fill(4)
         row = self.model.exact_size()
         self.assertEqual(row, 4)
         row = self.model.exact_size('num')
-        self.assertEqual(row.num, 4)
+        self.assertEqual(self._gres(row, 'num'), 4)
 
     def test_fill(self):
         rds = {
@@ -296,6 +287,38 @@ class TestModel(unittest.TestCase):
             self.model.fill(**rds)
         self.model.clear()
 
+    def test_filter_methods(self):
+        self.model.filter(uid__eq=1234, textfield__like='foo')
+        self.assertTrue(self.model.state.has('WHERE'))
+        clause = self.model.state.clauses.popitem(last=True)[1]
+        self.assertIn(clause.string % clause.params,
+                      ("WHERE foo.uid = 1234 AND foo.textfield LIKE foo",
+                       "WHERE foo.textfield LIKE foo AND foo.uid = 1234"))
+        self.model.reset()
+
+        self.model.filter(textfield__startswith='j')
+        clause = self.model.state.clauses.popitem(last=True)[1]
+        self.assertEqual(clause.string % clause.params,
+                         "WHERE foo.textfield ILIKE j%")
+
+    def test_filter_keywords(self):
+        self.model.filter(textfield='foo')
+        clause = self.model.state.clauses.popitem(last=True)[1]
+        self.assertEqual(clause.string % clause.params,
+                         "WHERE foo.textfield = foo")
+
+    def test_filter_expressions(self):
+        self.model.filter(self.model.textfield.eq('foo'), uid=4)
+        clause = self.model.state.clauses.popitem(last=True)[1]
+        self.assertEqual(clause.string % clause.params,
+                         "WHERE foo.textfield = foo AND foo.uid = 4")
+
+    def test_filter_parameters(self):
+        self.model.filter(1, 2, 'abc', True)
+        clause = self.model.state.clauses.popitem(last=True)[1]
+        self.assertEqual(clause.string % clause.params,
+                         "WHERE 1 AND 2 AND abc AND True")
+
     def test_to_json(self):
         rds = {
             'textfield': 'foo',
@@ -303,16 +326,13 @@ class TestModel(unittest.TestCase):
         }
         self.model.fill(**rds)
         self.assertIn(
-            self.model.to_json(), (
-                '{"textfield":"foo","uid":1234}',
-                '{"uid":1234,"textfield":"foo"}'))
-        self.model.reset()
+            self.model.to_json(), ('{"textfield":"foo","uid":1234}',
+                                   '{"uid":1234,"textfield":"foo"}'))
 
     def test_from_json(self):
         self.model.from_json('{"uid":1234,"textfield":"foo"}')
         self.assertEqual(self.model['uid'], 1234)
         self.assertEqual(self.model['textfield'], 'foo')
-        self.model.clear()
 
     def test_namedtuple(self):
         # To NT
@@ -329,12 +349,11 @@ class TestModel(unittest.TestCase):
         nt = nt._replace(uid=76)
         self.model.from_namedtuple(nt)
         self.assertEqual(self.model['uid'], 76)
-        self.model.clear()
 
     def test_insert(self):
         rds = {
             'textfield': randkey(48),
-            'uid': randint(1, 10000)
+            'uid': randint(1, 100000)
         }
         #: Single
         #  Insert always returns one result (self)
@@ -343,52 +362,34 @@ class TestModel(unittest.TestCase):
         self.assertIs(self.model, result)
         self.assertEqual(result.textfield.value, rds['textfield'])
         self.assertEqual(result.uid.value, rds['uid'])
-        # Single w/ returning
-        self.model['uid'] = 67
-        q = self.model.dry().insert(self.model.uid)
+
+    def test_insert_query(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 100000)
+        }
+        self.model.fill(**rds)
+        # Single w/ :class:Query
+        q = self.model.dry().insert(self.model.uid, self.model.textfield)
         for clause in q.evaluate_state():
             if clause.startswith('RETURNING'):
                 self.assertEqual(clause, 'RETURNING foo.uid')
-        self.assertIs(self.model.run(q), self.model)
+        result = self.model.run(q)
+        self.assertIs(result, self.model)
         self.assertEqual(result.textfield.value, rds['textfield'])
-        self.assertEqual(result.uid.value, 67)
-        # Single raw
+        self.assertEqual(result.uid.value, rds['uid'])
+
+    def test_insert_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 100000)
+        }
         self.model.fill(**rds)
+        # Single raw
         result = self.model.naked().insert()
-        self.assertTrue(hasattr(result, '_asdict'))
+        self.assertIsInstance(result, self._FACTORY_TYPE)
         self.assertEqual(self.model.textfield.value, rds['textfield'])
         self.assertEqual(self.model.uid.value, rds['uid'])
-        self.model.clear()
-
-    def test_many(self):
-        #: Many models
-        self.model.many()
-        for _ in range(5):
-            rds = {
-                'textfield': randkey(48),
-                'uid': randint(1, 10000)
-            }
-            self.model.fill(**rds)
-            self.model.insert()
-        result = self.model.run()
-        self.assertIsInstance(result, list)
-        for x in result:
-            self.assertIsInstance(x, self.model.__class__)
-
-        #: Many Raw
-        self.model.many()
-        for _ in range(5):
-            rds = {
-                'textfield': randkey(48),
-                'uid': randint(1, 10000)
-            }
-            self.model.fill(**rds)
-            self.model.insert()
-        result = self.model.naked().run()
-        self.assertIsInstance(result, list)
-        for x in result:
-            self.assertIsInstance(x, tuple)
-        self.model.clear()
 
     def test_update(self):
         rds = {
@@ -422,17 +423,33 @@ class TestModel(unittest.TestCase):
                         ' RETURNING *'
                         ).format(uid=rds['uid']),
                       ])
+
+    def test_update_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.insert()
         # Updates return lists by default
         result = self.model.update()
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], self.model.__class__)
         result = self.model.naked().update()
-        self.assertTrue(hasattr(result[0], '_asdict'))
+        self.assertIsInstance(result[0], self._FACTORY_TYPE)
         # Update one returns self
         result = self.model.one().update()
         self.assertIs(result, self.model)
         result = self.model.naked().update()
-        self.assertTrue(hasattr(result[0], '_asdict'))
+        self.assertIsInstance(result[0], self._FACTORY_TYPE)
+
+    def test_update_raises(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.insert()
         self.model.clear()
         #: With no model info, update should raise ORMIndexError if
         #  no explicit WHERE clause was specified
@@ -440,11 +457,11 @@ class TestModel(unittest.TestCase):
             self.model.update()
         self.assertIs(
             self.model,
-            self.model.where(self.model.uid == rds['uid'])
-                      .set(self.model.textfield.eq('foobar'))
-                      .one()
-                      .update())
-        self.model.clear()
+            self.model
+                .where(self.model.uid == rds['uid'])
+                .set(self.model.textfield.eq('foobar'))
+                .one()
+                .update())
 
     def test_save(self):
         rds = {
@@ -461,25 +478,36 @@ class TestModel(unittest.TestCase):
         self.assertEqual(result.textfield.value, rds['textfield'])
         self.assertEqual(result.uid.value, rds['uid'])
         self.model['textfield'] = 'bar'
+
+    def test_save_query(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        q = self.model.dry().save()
+        self.assertEqual(q.__querytype__, 'INSERT')
+        result = self.model.run(q)
         # Update expects one result returned (self)
         q = self.model.dry().save()
         result = self.model.run(q)
         self.assertTrue(q.one)
         self.assertIs(self.model, result)
-        self.assertEqual(result.textfield.value, 'bar')
+        self.assertEqual(result.textfield.value, rds['textfield'])
         self.assertEqual(result.uid.value, rds['uid'])
         self.assertEqual(q.__querytype__, 'UPDATE')
+
+    def test_save_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
         # Update expects one result returned (cursor factory)
         result = self.model.naked().save()
-        self.assertTrue(hasattr(result, '_asdict'))
-        self.assertEqual(result.textfield, 'bar')
-        self.assertEqual(result.uid, rds['uid'])
-        self.model.clear()
-        #: With no model info, update should raise ORMIndexError if
-        #  no explicit WHERE clause was specified
-        with self.assertRaises(ORMIndexError):
-            del self.model['uid']
-            self.model.save()
+        self.assertIsInstance(result, self._FACTORY_TYPE)
+        self.assertEqual(self._gres(result, 'textfield'), rds['textfield'])
+        self.assertEqual(self._gres(result, 'uid'), rds['uid'])
 
     def test_select(self):
         rds = {
@@ -494,14 +522,29 @@ class TestModel(unittest.TestCase):
         result = self.model.select()
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], self.model.__class__)
-        #: Expects list of raw cursor factories
-        result = self.model.naked().select()
-        self.assertIsInstance(result, list)
-        self.assertTrue(hasattr(result[0], '_asdict'))
+
+    def test_select_query(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.save()
         #: Expects :class:Query
         result = self.model.naked().dry().select()
         self.assertIsInstance(result, Query)
-        self.model.clear()
+
+    def test_select_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.save()
+        #: Expects list of raw cursor factories
+        result = self.model.naked().select()
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], self._FACTORY_TYPE)
 
     def test_get(self):
         rds = {
@@ -509,20 +552,47 @@ class TestModel(unittest.TestCase):
             'uid': randint(1, 10000)
         }
         self.model.fill(**rds)
-        #: Get always returns a single result
         self.model.save()
         #: Get always returns one result (self by default)
         result = self.model.get()
         self.assertIs(result, self.model)
+
+    def test_get_query(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.save()
         #: Expects :class:Query
         result = self.model.dry().get()
         self.assertIsInstance(result, Query)
+
+    def test_get_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.save()
         #: Expects raw cursor factory
         result = self.model.naked().get()
-        self.assertTrue(hasattr(result, '_asdict'))
-        self.model.clear()
+        self.assertIsInstance(result, self._FACTORY_TYPE)
 
     def test_delete(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.save()
+        #: Delete always returns a list when running
+        result = self.model.delete()
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], self.model.__class__)
+        self.assertEqual(self.model.uid.value, result[0].uid.value)
+
+    def test_delete_query(self):
         rds = {
             'textfield': randkey(48),
             'uid': randint(1, 10000)
@@ -532,19 +602,19 @@ class TestModel(unittest.TestCase):
         #: Delete always returns a list
         result = self.model.dry().delete()
         self.assertIsInstance(result, Query)
-        #: Delete always returns a list when running
-        result = self.model.delete()
-        self.assertIsInstance(result, list)
-        self.assertIsInstance(result[0], self.model.__class__)
-        self.assertEqual(self.model.uid.value, result[0].uid.value)
 
+
+    def test_delete_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
         self.model.fill(**rds)
         self.model.save()
         #: Expects list of raw cursor factories
         result = self.model.naked().delete()
         self.assertIsInstance(result, list)
-        self.assertTrue(hasattr(result[0], '_asdict'))
-        self.assertEqual(self.model.uid.value, result[0].uid)
+        self.assertEqual(self.model.uid.value, self._gres(result[0], 'uid'))
         self.model.clear()
         #: With no model info, update should raise ORMIndexError if
         #  no explicit WHERE clause was specified
@@ -568,7 +638,7 @@ class TestModel(unittest.TestCase):
         self.model.save()
         #: Expects a single raw cursor factory
         result = self.model.naked().remove()
-        self.assertTrue(hasattr(result, '_asdict'))
+        self.assertIsInstance(result, self._FACTORY_TYPE)
         self.model.clear()
         #: With no model info, update should raise ORMIndexError if
         #  no explicit WHERE clause was specified
@@ -591,20 +661,25 @@ class TestModel(unittest.TestCase):
 
         self.model.fill(**rds)
         self.model.save()
-        #: Expects a single result as cursor factory
-        result = self.model.naked().pop()
-        self.assertIsNone(self.model.get())
-        self.assertTrue(hasattr(result, '_asdict'))
-        self.assertEqual(rds['textfield'], result.textfield)
-        self.assertEqual(rds['uid'], result.uid)
-
-        self.model.fill(**rds)
-        self.model.save()
         #: Expects a single :class:Query
         result = self.model.dry().pop()
         self.assertIsNotNone(self.model.get())
         self.assertIsInstance(result, Query)
-        self.model.clear()
+
+    def test_pop_factory(self):
+        rds = {
+            'textfield': randkey(48),
+            'uid': randint(1, 10000)
+        }
+        self.model.fill(**rds)
+        self.model.fill(**rds)
+        self.model.save()
+        #: Expects a single result as cursor factory
+        result = self.model.naked().pop()
+        self.assertIsNone(self.model.get())
+        self.assertIsInstance(result, self._FACTORY_TYPE)
+        self.assertEqual(rds['textfield'], self._gres(result, 'textfield'))
+        self.assertEqual(rds['uid'], self._gres(result, 'uid'))
 
     def test_multi_orm(self):
         rds = {
@@ -616,6 +691,7 @@ class TestModel(unittest.TestCase):
             'uid': randint(1, 10000)
         }
         self.model.fill(**rds).save()
+        self.modelb.fill(**rds_b).save()
         q1 = self.model.dry().get()
         self.assertIsInstance(q1, Query)
         self.assertEqual(q1.__querytype__, 'SELECT')
@@ -624,39 +700,6 @@ class TestModel(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], self.model.__class__)
         self.assertIsInstance(result[1], self.model.__class__)
-        self.model.clear()
-        self.modelb.clear()
-
-    def test_multi_many_orm(self):
-        self.model.many()
-        self.modelb.many()
-        for x in range(10):
-            rds = {
-                'textfield': randkey(48),
-                'uid': randint(1, 10000)
-            }
-            rds_b = {
-                'textfield': randkey(48),
-                'uid': randint(1, 10000)
-            }
-            self.model.fill(**rds).insert()
-            self.modelb.fill(**rds_b).insert()
-        q1 = self.model.end_many()
-        q2 = self.modelb.end_many()
-        result = self.model.multi().add_query(q1, q2).run()
-        for q in result:
-            for r in q:
-                self.assertIsInstance(r, self.model.__class__)
-        self.assertEqual(len(result[0]), 10)
-        self.assertEqual(len(result[1]), 10)
-        result = self.model.multi(q1, q2).run()
-        for q in result:
-            for r in q:
-                self.assertIsInstance(r, self.model.__class__)
-        self.assertEqual(len(result[0]), 10)
-        self.assertEqual(len(result[1]), 10)
-        self.model.clear()
-        self.modelb.clear()
 
     def test_join(self):
         s = self.model.join(self.modelb)
@@ -664,16 +707,14 @@ class TestModel(unittest.TestCase):
         self.assertTrue(self.model.state.has('JOIN'))
         clause = self.model.state.clauses.popitem(last=True)[1][0]
         self.assertEqual(clause.string, 'JOIN foo_b ON foo_b.uid = foo.uid')
-        self.model.clear()
 
     def test_iternaked(self):
         self.fill(10)
         raws = []
         for x in self.model.iternaked():
-            self.assertTrue(hasattr(x, '_asdict'))
+            self.assertIsInstance(x, self._FACTORY_TYPE)
             raws.append(x)
         self.assertEqual(len(raws), 10)
-        self.model.clear()
 
     def test_iter(self):
         self.fill(10)
@@ -684,7 +725,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(len(res), 10)
 
         for i, x in enumerate(self.model.naked().iter(reverse=True), 1):
-            self.assertEqual(res[i*-1].uid.value, x.uid)
+            self.assertEqual(res[i*-1].uid.value, self._gres(x, 'uid'))
 
         res2 = []
         for i, x in enumerate(self.model.iter(offset=2, limit=2)):
@@ -701,7 +742,6 @@ class TestModel(unittest.TestCase):
         for x in self.model.where(self.model.uid > res[1].uid()).iter():
             res4.append(x)
         self.assertEqual(len(res4), 8)
-        self.model.clear()
 
     def test_reset_fields(self):
         rds = {
@@ -787,7 +827,7 @@ class TestModel(unittest.TestCase):
         }
         self.raw_model.fill(**rds)
         result = self.raw_model.save()
-        self.assertTrue(hasattr(result, '_asdict'))
+        self.assertIsInstance(result, tuple)
         result = self.raw_model.models().save()
         self.assertIs(result, self.raw_model)
 
@@ -860,7 +900,8 @@ class TestModel(unittest.TestCase):
         for k, v in self.model.__dict__.items():
             x = getattr(orm, k)
             if k not in ('unique_indexes', 'indexes', 'foreign_keys',
-                         'field_names', 'names', 'FooRecord') \
+                         'field_names', 'names', 'FooRecord',
+                         '_cursor_factory') \
                and not isinstance(v, (type(False), type(None), type(True),
                                       str, self.model.db.__class__)):
                 self.assertIsNot(v, x)
@@ -881,6 +922,60 @@ class TestModel(unittest.TestCase):
                     getattr(self.model, k).__class__ == getattr(b, k).__class__)
 
 
+class TestOrderedDictModel(TestModel):
+    _GET_TYPE = '__getitem__'
+    _FACTORY_TYPE = OrderedDict
+    model = Foo(cursor_factory=OrderedDictCursor)
+    modelb = FooB()
+    modelc = FooC()
+    modeld = FooD()
+    modele = FooE()
+    modelf = FooF()
+    model_prim = FooMultiPrimary()
+    raw_model = Foo(naked=True)
+    dict_model = Foo(cursor_factory=psycopg2.extras.DictCursor, naked=True)
+    real_dict_model = Foo(cursor_factory=psycopg2.extras.RealDictCursor,
+                          naked=True)
+    o_dict_model = Foo(cursor_factory=OrderedDictCursor, naked=True)
+
+
+class TestDictModel(TestOrderedDictModel):
+    _FACTORY_TYPE = list
+    model = Foo(cursor_factory=psycopg2.extras.DictCursor)
+    modelb = FooB()
+    modelc = FooC()
+    modeld = FooD()
+    modele = FooE()
+    modelf = FooF()
+    model_prim = FooMultiPrimary()
+    raw_model = Foo(naked=True)
+    dict_model = Foo(cursor_factory=psycopg2.extras.DictCursor, naked=True)
+    real_dict_model = Foo(cursor_factory=psycopg2.extras.RealDictCursor,
+                          naked=True)
+    o_dict_model = Foo(cursor_factory=OrderedDictCursor, naked=True)
+
+
+class TestRealDictModel(TestOrderedDictModel):
+    _FACTORY_TYPE = dict
+    model = Foo(cursor_factory=psycopg2.extras.RealDictCursor)
+    modelb = FooB()
+    modelc = FooC()
+    modeld = FooD()
+    modele = FooE()
+    modelf = FooF()
+    model_prim = FooMultiPrimary()
+    raw_model = Foo(naked=True)
+    dict_model = Foo(cursor_factory=psycopg2.extras.DictCursor, naked=True)
+    real_dict_model = Foo(cursor_factory=psycopg2.extras.RealDictCursor,
+                          naked=True)
+    o_dict_model = Foo(cursor_factory=OrderedDictCursor, naked=True)
+
+
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    configure.run_tests(TestModel,
+                        TestOrderedDictModel,
+                        TestRealDictModel,
+                        TestDictModel,
+                        failfast=True,
+                        verbosity=2)

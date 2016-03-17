@@ -8,13 +8,10 @@
 """
 import unittest
 
-from cargo import db, Model, ForeignKey, create_db
+from cargo import db, Model, ForeignKey
 from cargo.fields import *
 from cargo.builder import *
 from cargo.builder.schemas import Schema
-
-
-create_db()
 
 
 class FooUsers(Model):
@@ -89,7 +86,7 @@ class FooCommentsPlan(Plan):
 
 class TestPlan(unittest.TestCase):
 
-    def test_builder_a(self):
+    '''def test_builder_a(self):
         b = FooUsersPlan()
         b.debug()
         b.execute()
@@ -100,7 +97,7 @@ class TestPlan(unittest.TestCase):
 
     def test_builder_c(self):
         b = FooCommentsPlan()
-        b.execute()
+        b.execute()'''
 
 
 if __name__ == '__main__':

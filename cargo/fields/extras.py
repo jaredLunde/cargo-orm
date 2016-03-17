@@ -412,8 +412,7 @@ class Password(Field, StringLogic):
     OID = PASSWORD
 
     def __init__(self, hasher=Argon2Hasher(), minlen=8, maxlen=-1,
-                 validator=PasswordValidator, blacklist=passwords.blacklist,
-                 **kwargs):
+                 validator=PasswordValidator, blacklist=_empty, **kwargs):
         """ `Password`
             :see::meth:Field.__init__
             @hasher: (:class:Hasher) the password hasher to use
@@ -427,7 +426,10 @@ class Password(Field, StringLogic):
         super().__init__(validator=validator, **kwargs)
         self.minlen = minlen
         self.maxlen = maxlen
-        self.blacklist = blacklist
+        if blacklist is _empty:
+            self.blacklist = passwords.blacklist
+        else:
+            self.blacklist = blacklist or []
         self.validation_value = Field.empty
 
     def __call__(self, value=Field.empty):
@@ -683,8 +685,7 @@ class Username(Text):
                  '_re', 'reserved_usernames', 'table')
     OID = USERNAME
 
-    def __init__(self, maxlen=25, minlen=1,
-                 reserved_usernames=usernames.reserved_usernames,
+    def __init__(self, maxlen=25, minlen=1, reserved_usernames=Field.empty,
                  re_pattern=None, validator=UsernameValidator, **kwargs):
         """ `Username`
             :see::meth:Field.__init__
@@ -698,8 +699,12 @@ class Username(Text):
         super().__init__(minlen=minlen, maxlen=maxlen, validator=validator,
                          **kwargs)
         self._re = re_pattern or string_tools.username_re
-        if reserved_usernames is not None:
+        if reserved_usernames is self.empty:
+            self.reserved_usernames = usernames.reserved_usernames
+        elif reserved_usernames is not None:
             self.reserved_usernames = set(reserved_usernames)
+        else:
+            self.reserved_usernames = set()
 
     def add_reserved_username(self, *usernames):
         for username in usernames:
@@ -719,7 +724,7 @@ class Username(Text):
         except ValueError:
             warnings.warn('Type `citext` was not found in the database.')
 
-    def copy(self, *args, **kwargs):
+    def copy(self, **kwargs):
         return self._copy(maxlen=self.maxlen,
                           minlen=self.minlen,
                           re_pattern=self._re,

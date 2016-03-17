@@ -2,19 +2,16 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-import unittest
-path = os.path.dirname(os.path.abspath(__file__)).split('cargo-orm')[0] + \
-    'cargo-orm'
+
+
+cd = os.path.dirname(os.path.abspath(__file__))
+path = cd.split('cargo-orm')[0] + 'cargo-orm'
 sys.path.insert(0, path)
 
-from unit_tests.statements.DELETE import *
-from unit_tests.statements.INSERT import *
-from unit_tests.statements.Intersections import *
-from unit_tests.statements.RAW import *
-from unit_tests.statements.SELECT import *
-from unit_tests.statements.UPDATE import *
-from unit_tests.statements.WITH import *
 
 if __name__ == '__main__':
     # Unit test
-    unittest.main()
+    from unit_tests import configure
+    configure.setup()
+    configure.run_discovered(cd)
+    configure.cleanup()
