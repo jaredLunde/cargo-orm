@@ -8,6 +8,8 @@
 """
 import copy
 import importlib
+from functools import lru_cache
+
 from pydoc import locate, ErrorDuringImport
 
 from docr import Docr
@@ -28,8 +30,36 @@ __all__ = (
 )
 
 
+@lru_cache(1000)
+def _import_from(owner_module, string):
+    obj = locate(string)
+    if obj is None:
+        full_string = "{}.{}".format(owner_module, string)
+        obj = locate(full_string)
+        if obj is None:
+            *name, attr = full_string.split(".")
+            name = ".".join(name)
+            try:
+                mod = importlib.import_module(name)
+                obj = getattr(mod, attr)
+            except (AttributeError, ImportError):
+                *name, attr_sup = name.split(".")
+                name = ".".join(name)
+                mod = importlib.import_module(name)
+                obj = getattr(getattr(mod, attr_sup), attr)
+    return obj
+
+
 class _ForeignObject(object):
-    pass
+    __slots__ = tuple()
+
+    def pull(self, *args, dry=False, naked=False, **kwargs):
+        model = self.ref.model.where(self.ref.field == self.value)
+        if naked:
+            model.naked()
+        if dry:
+            model.dry()
+        return model.get(*args, **kwargs)
 
 
 class BaseRelationship(object):
@@ -38,30 +68,11 @@ class BaseRelationship(object):
         raise RelationshipImportError("Could not import object at {}. {}"
                                       .format(path, additional or ""))
 
-    def _import_from(self, string):
-        obj = locate(string)
-        if obj is None:
-            owner_module = self._owner.__module__
-            full_string = "{}.{}".format(owner_module, string)
-            obj = locate(full_string)
-            if obj is None:
-                *name, attr = full_string.split(".")
-                name = ".".join(name)
-                try:
-                    mod = importlib.import_module(name)
-                    obj = getattr(mod, attr)
-                except (AttributeError, ImportError):
-                    *name, attr_sup = name.split(".")
-                    name = ".".join(name)
-                    try:
-                        mod = importlib.import_module(name)
-                        obj = getattr(getattr(mod, attr_sup), attr)
-                    except:
-                        self._raise_forge_error(string)
-        return obj
-
     def _find(self, string):
-        obj = self._import_from(string)
+        try:
+            obj = _import_from(self._owner.__module__, string)
+        except:
+            self._raise_forge_error(string)
         return obj
 
 
@@ -74,11 +85,30 @@ class Reference(object):
             and field objects which the foreign key is a reference to.
         """
         self._model = model
+        self._forged = False
         self.field_name = field_name
         self.constraints = constraints or []
 
     @prepr('_model', 'field_name')
     def __repr__(self): return
+
+    def __getattr__(self, name):
+        try:
+            return self.__getattribute__(name)
+        except AttributeError:
+            return self.model.__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        try:
+            super().__setattr__(name, value)
+        except AttributeError:
+            self.model.__setattr__(name, value)
+
+    def __setitem__(self, name, value):
+        self.model[name] = value
+
+    def __delitem__(self, name):
+        del self.model[name]
 
     def add_constraint(self, name, val=None):
         """ Adds foreign key constraints to the reference. This is used
@@ -112,11 +142,8 @@ class Reference(object):
     @cached_property
     def model(self):
         """ The referenced :class:Model """
+        self._forged = True
         return self._model()
-
-    @cached_property
-    def table(self):
-        return self.field.table
 
     @cached_property
     def field(self):
@@ -127,6 +154,8 @@ class Reference(object):
 
 class ForeignKeyState(object):
     """ State object for pickling and unpickling """
+    __slots__ = ('args', 'kwargs', 'relation', 'ref')
+
     def __init__(self, args, kwargs, relation, ref):
         self.args = args
         self.kwargs = kwargs
@@ -228,14 +257,6 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             model and the field referenced.
         """
         _class = copy.copy(self.ref.__class__)
-        '''if _class.OID == SERIAL:
-            _class.OID = INT
-        elif _class.OID == BIGSERIAL:
-            _class.OID = BIGINT
-        elif _class.OID == SMALLSERIAL:
-            _class.OID = SMALLINT
-        elif _class.OID in {STRUID, UIDTYPE}:
-            _class.OID = BIGINT'''
         _args, _kwargs = self._args, self._kwargs
         _owner, _owner_attr = self._owner, self._owner_attr
         _relation = self._relation
@@ -261,13 +282,19 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                 self.ref = Reference(_ref_model, _ref_attr)
                 self._state = ForeignKeyState(_args, _kwargs, _relation, _ref)
 
-            def __repr__(self):
-                rep = _class.__repr__(self)
-                rep = rep.replace(
-                    'value=',
-                    'ref=`{}`, type=`{}`, value='
-                    .format(_ref, _class.__name__))
-                return rep
+            __repr__ = _class.__repr__
+
+            def clear(self):
+                super().clear()
+                if self.ref._forged:
+                    self.ref.model.reset()
+                    self.ref.model.reset_fields()
+
+            def copy(self):
+                cls = _class.copy(self)
+                cls.ref = Reference(_ref_model, _ref_attr)
+                cls._state = self._state
+                return cls
 
         return ForeignKeyField()
 
@@ -275,8 +302,8 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         """ Creates the :class:Relationship object in the parent model
             at the attribute specified in :prop:_relation
         """
-        objname = "{}.{}".format(
-            get_obj_name(self._owner), get_obj_name(self))
+        objname = "{}.{}".format(self._owner.__class__.__name__,
+                                 self._owner_attr)
         setattr(self.ref_model, self._relation, Relationship(objname))
 
     def forge(self, owner, attribute):
@@ -292,17 +319,14 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         self._owner_attr = attribute
         self._forged = True
         field = self.get_field()
-        field_dict = {}
-        field_dict[attribute] = field
-        owner._add_field(**field_dict)
-        owner._foreign_keys.append(field)
+        field.field_name = attribute
+        owner._add_field(field)
         if self._relation:
             self._create_relation()
         return field
 
     def copy(self):
-        cls = copy.copy(self.__class__)
-        return cls(self._ref, relation=self._relation)
+        return self.__class__(self._ref, relation=self._relation)
 
 
 class Relationship(BaseRelationship):
@@ -377,10 +401,16 @@ class Relationship(BaseRelationship):
     def __repr__(self): return
 
     def __getattr__(self, name):
-        if name in self.__dict__:
+        try:
             return self.__getattribute__(name)
-        else:
+        except AttributeError:
             return self._model.__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        try:
+            super().__setattr__(name, value)
+        except AttributeError:
+            self._model.__setattr__(name, value)
 
     def __getitem__(self, name):
         return self._model[name]
@@ -388,7 +418,7 @@ class Relationship(BaseRelationship):
     def __setitem__(self, name, value):
         self._model[name] = value
 
-    def __detitem__(self, name):
+    def __delitem__(self, name):
         del self._model[name]
 
     def __getstate__(self):
@@ -412,6 +442,14 @@ class Relationship(BaseRelationship):
         else:
             self._raise_forge_error(
                 string, 'The object found was not a ForeignKey.')
+
+    def filter(self, *args, **kwargs):
+        self._model.filter(*args, **kwargs)
+        return self
+
+    def one(self):
+        self._model.one()
+        return self
 
     def pull(self, *args, offset=0, limit=0, order_field=None, reverse=None,
              dry=False, **kwargs):
@@ -441,15 +479,27 @@ class Relationship(BaseRelationship):
         model.where(self.foreign_key.eq(self.join_field.value))
         if dry:
             model.dry()
-        results = model._select(*args, **kwargs)
-        if kwargs.get('run') is False:
-            return results
-        elif hasattr(results, '__len__') and len(results) == 1:
-            if not kwargs.get('raw'):
-                model.from_namedtuple(**results[0].to_namedtuple())
-            return results[0]
-        else:
-            return results
+        results = model.select(*args, **kwargs)
+        return results
+
+    def pull_one(self, *args, offset=0, order_field=None, reverse=None,
+                 dry=False, **kwargs):
+        """ Pulls a single row from the relationship model based on the data in
+            the :prop:join_field
+
+            @offset: (#int) cursor start position
+            @reverse: (#bool) True if returning in descending order
+            @order_field: (:class:cargo.Field) object to order the
+                query by
+            @*args and @**kwargs get passed to the :meth:Model.select query
+        """
+        self._model.one()
+        return self.pull(*args,
+                         offset=offset,
+                         order_field=order_field,
+                         reverse=reverse,
+                         dry=dry,
+                         **kwargs)
 
     @cached_property
     def foreign_key(self):
@@ -480,12 +530,19 @@ class Relationship(BaseRelationship):
             @attribute: (#str) name of the attribute in the owner where the
                 relationship resides
         """
-        self._owner = owner
-        self._owner_attr = attribute
-        self._forged = True
-        self._owner._relationships.append(self)
-        self._owner.__setattr__(attribute, self)
+        cls = self.__class__(self._foreign_key)
+        cls._owner = owner
+        cls._owner_attr = attribute
+        cls._forged = True
+        cls._owner._relationships.append(cls)
+        cls._owner.__setattr__(attribute, cls)
+        return cls
 
-    def copy(self):
-        cls = copy.copy(self.__class__)
-        return cls(self._foreign_key)
+    def copy(self, owner=None):
+        owner = owner or self._owner
+        if self._forged and owner:
+            cls = self.__class__(self._foreign_key)
+            cls.forge(owner, self._owner_attr)
+            return cls
+        else:
+            return self.__class__(self._foreign_key)

@@ -30,3 +30,6 @@ class Bool(Field):
         if value is not Field.empty:
             self.value = bool(value) if value is not None else value
         return self.value
+
+    def __bool__(self):
+        return self.value

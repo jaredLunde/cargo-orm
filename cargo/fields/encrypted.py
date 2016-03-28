@@ -280,8 +280,6 @@ class Encrypted(Field):
 
         =========================
         ``Types and Limitations``
-        * :class:Array types: will be stored in the same fashion as their
-            value types below
         * :class:Binary types: will be stored as |bytea| in Postgres
         * :class:Integer and :class:Numeric types: will be stored as |text|
             in Postgres
@@ -294,6 +292,8 @@ class Encrypted(Field):
         * :mod:identifier, :mod:geometry, :mod:bits, :mod:boolean,
             :class:Enum and :mod:range, types are unsupported, as you
             should expect.
+        * :class:Array types: encrypted fields reside INSIDE array fields
+            and not the other way around. e.g. |Array(Encrypted(Text()))|
 
         =========================
         ``Usage``
@@ -301,16 +301,17 @@ class Encrypted(Field):
             import os
             from cargo.fields import *
 
-            permissions = Encrypted(os.environ.get('BLOOM_ENCRYPTION_SECRET'),
-                                    type=Array(type=Text, dimensions=1),
-                                    not_null=True)
+            permissions = Encrypted(os.environ.get('CARGO_ENCRYPTION_SECRET'),
+                                    type=Text(not_null=True))
         ..
 
-        ``Example with :class:Binary field``
+        ``Example with :class:BigInt field``
         ..
+            # Plain
             e = Encrypted(Encrypted.generate_secret(),
                           type=BigInt(),
                           factory=AESFactory)
+            # Array
             array_e = Array(Encrypted(Encrypted.generate_secret(),
                                       type=BigInt(),
                                       factory=AESFactory))
@@ -366,6 +367,18 @@ class Encrypted(Field):
             if self._labeled(self.type.value):
                 self.type.__call__(self.decrypt(self.type.value))
         return self.value
+
+    def __str__(self):
+        return self.type.__str__()
+
+    def __int__(self):
+        return self.type.__int__()
+
+    def __float__(self):
+        return self.type.__float__()
+
+    def __bytes__(self):
+        return self.type.__bytes__()
 
     def __getattr__(self, name):
         try:

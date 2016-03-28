@@ -212,9 +212,7 @@ class UUIDExtension(Extension):
     extras_name = 'uuid_ossp'
 
     def __init__(self, orm):
-        schema = orm.schema or orm.db.schema or 'public'
-        super().__init__(orm, safe('"uuid-ossp"'), schema=schema,
-                         not_exists=True)
+        super().__init__(orm, safe('"uuid-ossp"'), schema='public')
 
     @staticmethod
     def _get_comment():
@@ -225,8 +223,7 @@ class HStoreExtension(Extension):
     extras_name = 'hstore'
 
     def __init__(self, orm):
-        schema = orm.schema or orm.db.schema or 'public'
-        super().__init__(orm, safe('"hstore"'), schema=schema, not_exists=True)
+        super().__init__(orm, safe('"hstore"'), schema='public')
 
     @staticmethod
     def _get_comment():
@@ -244,9 +241,7 @@ class CITextExtension(Extension):
     extras_name = 'citext'
 
     def __init__(self, orm):
-        schema = orm.schema or orm.db.schema or 'public'
-        super().__init__(orm, safe('citext'), schema=schema,
-                         not_exists=True)
+        super().__init__(orm, safe('citext'), schema='public')
 
     @staticmethod
     def _get_comment():

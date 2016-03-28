@@ -15,6 +15,7 @@ except ImportError:
     from collections import namedtuple as nt
 
 from psycopg2.extensions import cursor as _cursor
+from vital.cache import cached_property
 
 
 __all__ = (
@@ -76,7 +77,7 @@ class CNamedTupleCursor(_cursor):
             yield nt._make(next(it))
 
     def _make_nt(self):
-        return nt("Record", (d[0] for d in self.description or []),
+        return nt("Record", (d for d, *_ in self.description or []),
                   rename=True)
 
 
@@ -117,19 +118,10 @@ class OrderedDictCursor(_cursor):
 
 class ModelCursor(_cursor):
 
-    def _fill_model(self, tup, new=False):
-        if new:
-            model = self._cargo_model.copy().clear()
-        else:
-            model = self._cargo_model
-        field_names = set(model.field_names)
-        ga = model.__getattribute__
+    def _fill_model(self, tup, new=True):
+        model = self._cargo_model.clear_copy() if new else self._cargo_model
         for (k, *_), v in zip(self.description, tup):
-            if k in field_names:
-                ga(k)(v)
-            else:
-                raise KeyError("Field `%s` not in %s" %
-                               (k, model.__class__.__name__))
+            model[k] = v
         return model
 
     def execute(self, query, vars=None):
@@ -148,15 +140,15 @@ class ModelCursor(_cursor):
 
     def fetchmany(self, size=None):
         ts = super().fetchmany(size)
-        return list(map(lambda t: self._fill_model(t, new=True), ts))
+        return list(map(self._fill_model, ts))
 
     def fetchall(self):
         ts = super().fetchall()
-        return list(map(lambda t: self._fill_model(t, new=True), ts))
+        return list(map(self._fill_model, ts))
 
     def __iter__(self):
         it = super().__iter__()
         t = next(it)
-        yield self._fill_model(t, new=True)
+        yield self._fill_model(t)
         while 1:
-            yield self._fill_model(next(it), new=True)
+            yield self._fill_model(next(it))

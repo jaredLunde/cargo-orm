@@ -7,9 +7,11 @@
 
 """
 import re
+import sre_constants
 import sys
 import copy
 import string
+import random
 import warnings
 import datetime
 import phonenumbers
@@ -29,7 +31,7 @@ from argon2 import PasswordHasher
 from passlib.context import CryptContext
 
 from vital.debug import prepr, Timer, line
-from vital.security import randkey
+from vital.security import randkey, randstr
 from vital.tools import strings as string_tools
 
 from cargo.etc import passwords, usernames
@@ -57,59 +59,151 @@ __all__ = (
     'Password',
     'Slug',
     'SlugFactory',
+    'UniqueSlugFactory',
     'Key',
     'Duration',
     'PhoneNumber')
 
 
 class SlugFactory(object):
-    __slots__ = ('slugify_opt',)
+    __slots__ = ('slugify_opt', '_re')
+    _re_pattern = '''^([a-z0-9]+)(?:%s[a-z0-9]+)+$'''
 
     def __init__(self, **slugify_opt):
-        """ :see::func:slugify """
+        """ `Slug Generation`
+            Turns a string into a URL-ready pretty slug.
+
+            :see::func:slugify
+        """
         self.slugify_opt = slugify_opt
+        pattern = self._re_pattern % \
+            re.escape(self.slugify_opt.get('separator', '-'))
+        self._re = re.compile(pattern)
+
+    def __getstate__(self):
+        return {'slugify_opt': self.slugify_opt}
+
+    def __setstate__(self, dict_):
+        setattr(self, 'slugify_opt', dict_['slugify_opt'])
+
+    def is_slug(self, text):
+        try:
+            return self._re.match(text)
+        except sre_constants.error:
+            return False
 
     def __call__(self, value):
         return _slugify(value, **self.slugify_opt)
 
 
-class Slug(Text):
+class UniqueSlugFactory(SlugFactory):
+    __slots__ = ('slugify_opt', '_re', '_size')
+    _re_pattern = '''^([a-z0-9]+)(?:%s[A-Za-z0-9]+)+$'''
+
+    def __init__(self, unique_size=8, **slugify_opt):
+        """ `Unique Slug Generation`
+            Turns a string into a URL-ready pretty slug with a unique
+            8-character string appended to the end of it.
+            @unique_size: (#int) size of the unique string to append in
+                number of characters
+            :see::func:slugify
+        """
+        self._size = unique_size
+        super().__init__(**slugify_opt)
+
+    def is_slug(self, text):
+        try:
+            return self._re.match(text)
+        except sre_constants.error:
+            return False
+
+    def __call__(self, value):
+        slug = _slugify(value, **self.slugify_opt)
+        slug += self.slugify_opt.get('separator', '-')
+        slug += randstr(self._size, string.ascii_letters)
+        return slug
+
+
+class Slug(Field, StringLogic):
     """ =======================================================================
         Field object for the PostgreSQL field type |TEXT|
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
-                 'value', 'validator', '_alias', 'default', 'minlen', 'maxlen',
-                 '_factory', 'table')
+                 'value', 'validator', '_alias', 'default',  'factory',
+                 'table')
     OID = SLUG
 
-    def __init__(self, maxlen=-1, slug_factory=None, **kwargs):
+    def __init__(self, factory=SlugFactory(), *args, **kwargs):
         """ `Slug`
             :see::meth:Field.__init__
-            @maxlen: (#int) maximum length of the slug
-            @slug_factory: (:class:SlugFactory)
+            @factory: (:class:SlugFactory) a #callable which generates
+                the slug
         """
-        self._factory = slug_factory
-        super().__init__(minlen=1, maxlen=maxlen, **kwargs)
+        self.factory = factory
+        super().__init__(*args, **kwargs)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            if value is None:
-                value = None
-            else:
+            if value is not None:
                 value = self.slugify(str(value))
             self.value = value
         return self.value
 
+    def _get_separator(self, separator='-'):
+        separator = '-'
+        try:
+            separator = self.factory.slugify_opt.get('separator', separator)
+        except AttributeError:
+            pass
+        return separator
+
+    def _get_re_pattern(self):
+        return _re_pat % self._get_separator()
+
+    def append(self, value, separator='-'):
+        """ Used for appending unique values to the generated slug if that
+            is a requirement for your app.
+
+            ..
+                uid = UID()
+                slug = Slug()
+                slug('Some Title I just came Up with')
+                # some-title-i-just-came-up-with
+                uid(123456)
+                slug.append(uid)
+                # some-title-i-just-came-up-with-123456
+            ..
+        """
+        self.value += self._get_separator(separator)
+        self.value += str(value)
+        return self.value
+
+    def prepend(self, value, separator='-'):
+        """ Used for prepending unique values to the generated slug if that
+            is a requirement for your app.
+
+            ..
+                uid = UID()
+                slug = Slug()
+                slug('Some Title I just came Up with')
+                # some-title-i-just-came-up-with
+                uid(123456)
+                slug.prepend(uid)
+                # 123456-some-title-i-just-came-up-with
+            ..
+        """
+        value = str(value)
+        value += self._get_separator()
+        value += self.value
+        return value
+
     def slugify(self, value):
-        if self._factory is not None:
-            return self._factory(value)
-        else:
-            return _slugify(value, max_length=self.maxlen, word_boundary=False)
+        if not self.factory.is_slug(value):
+            return self.factory(value)
+        return value
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, maxlen=self.maxlen, slug_factory=self._factory,
-                         **kwargs)
-        return cls
+        return Field.copy(self, *args, factory=self.factory, **kwargs)
 
     __copy__ = copy
 
@@ -537,7 +631,7 @@ class Password(Field, StringLogic):
         self.value = self.empty
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args,
+        cls = Field.copy(self, *args,
                          hasher=self.hasher,
                          minlen=self.minlen,
                          maxlen=self.maxlen,
@@ -591,6 +685,9 @@ class Key(Field, StringLogic):
             self.value = str(value) if value is not None else value
         return self.value
 
+    def __str__(self):
+        return str(self.value)
+
     @classmethod
     def generate(cls, size=256,
                  keyspace=string.ascii_letters+string.digits+'/.#+',
@@ -620,7 +717,8 @@ class Key(Field, StringLogic):
         self.__call__(value)
 
     def copy(self, *args, **kwargs):
-        return self._copy(self.size, self.keyspace, self.rng, *args, **kwargs)
+        return Field.copy(self, self.size, self.keyspace, self.rng, *args,
+                          **kwargs)
 
     __copy__ = copy
 
@@ -715,7 +813,7 @@ class Username(Text):
         return 'citext'
 
     @staticmethod
-    def register(db):
+    def register_type(db):
         try:
             OID, ARRAY_OID = db.get_type_OID('citext')
             return reg_array_type('CITEXTARRAYTYPE',
@@ -725,11 +823,13 @@ class Username(Text):
             warnings.warn('Type `citext` was not found in the database.')
 
     def copy(self, **kwargs):
-        return self._copy(maxlen=self.maxlen,
-                          minlen=self.minlen,
-                          re_pattern=self._re,
-                          reserved_usernames=self.reserved_usernames,
-                          **kwargs)
+        cls = Field.copy(self,
+                         maxlen=self.maxlen,
+                         minlen=self.minlen,
+                         re_pattern=self._re,
+                         **kwargs)
+        cls.reserved_usernames = self.reserved_usernames
+        return cls
 
     __copy__ = copy
 
@@ -828,6 +928,12 @@ class Duration(Double):
                     value = _DurationDelta(seconds=value.total_seconds())
             self.value = value
         return self.value
+
+    def __int__(self):
+        return int(self.value.total_seconds())
+
+    def __float__(self):
+        return float(self.value.total_seconds())
 
     @staticmethod
     def register_adapter():

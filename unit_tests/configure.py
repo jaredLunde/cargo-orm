@@ -4,7 +4,7 @@ import psycopg2
 
 from vital.security import randhex
 
-from cargo import db, Model as _Model, ORM, fields
+from cargo import db, Model as _Model, fields
 from cargo.fields import *
 from cargo.expressions import *
 from cargo.statements import Insert
@@ -159,6 +159,22 @@ class LogicTestCase(unittest.TestCase):
         if values:
             for value in values:
                 self.assertIn(value, list(function.params.values()))
+
+
+#: Builder setup
+class BuilderTestCase(BaseTestCase):
+    orm = Foo(schema='cargo_tests', naked=True)
+
+    @classmethod
+    def setUpClass(cls):
+        setup()
+        Plan(Foo()).execute()
+
+    def setUp(self):
+        self.orm.clear()
+
+    def tearDown(self):
+        self.orm.clear()
 
 
 #: Geometry setup
@@ -493,7 +509,8 @@ class StrUIDModel(Model):
     uid = StrUID()
 
 
-class SerialModel(Model):
+class SerialModel(_Model):
+    schema = 'cargo_tests'
     uid = None
     serial = Serial()
 

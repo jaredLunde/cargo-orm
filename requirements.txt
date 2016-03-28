@@ -1,3 +1,4 @@
+aiopg
 argon2_cffi
 arrow
 babel

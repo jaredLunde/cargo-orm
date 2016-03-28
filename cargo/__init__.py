@@ -47,7 +47,6 @@
    http://github.com/jaredlunde/cargo-orm
 
 """
-from cargo import etc
 from cargo.exceptions import *
 from cargo.clients import *
 from cargo.cursors import *

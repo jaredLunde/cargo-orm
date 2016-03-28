@@ -96,8 +96,8 @@ class TestModel(configure.BaseTestCase):
         self.assertSequenceEqual(
             set(self.modelb.field_names), set(['uid', 'textfield']))
         self.assertListEqual(self.model.relationships, [])
-        self.assertListEqual(self.modelb.foreign_keys, [])
-        self.assertListEqual(self.model.foreign_keys, [])
+        self.assertTupleEqual(self.modelb.foreign_keys, tuple())
+        self.assertTupleEqual(self.model.foreign_keys, tuple())
         self.assertListEqual(self.modelb.relationships, [])
 
     def _gres(self, result, attr):
@@ -129,14 +129,7 @@ class TestModel(configure.BaseTestCase):
         self.model['uid'] = 12345
         self.assertEqual(self.model.uid.value, 12345)
         del self.model['uid']
-        self.assertIsNone(self.model['uid'])
-
-    def test___iter__(self):
-        fields = []
-        for field in self.model:
-            self.assertIsInstance(field, Field)
-            fields.append(field.field_name)
-        self.assertSequenceEqual(set(fields), {'uid', 'textfield'})
+        self.assertIs(self.model['uid'], self.model.uid.empty)
 
     def test_names(self):
         self.assertSequenceEqual(
@@ -280,8 +273,8 @@ class TestModel(configure.BaseTestCase):
             'uid': randint(1, 10000)
         }
         self.model.fill(**rds)
-        self.assertIn(rds['uid'], self.model.values())
-        self.assertIn(rds['textfield'], self.model.values())
+        self.assertIn(rds['uid'], self.model.field_values)
+        self.assertIn(rds['textfield'], self.model.field_values)
         with self.assertRaises(KeyError):
             rds = {"foo": "bar"}
             self.model.fill(**rds)
@@ -749,11 +742,11 @@ class TestModel(configure.BaseTestCase):
             'uid': randint(1, 10000)
         }
         self.model.fill(**rds)
-        for field in self.model:
+        for field in self.model.fields:
             self.assertIn(field.field_name, rds)
             self.assertIn(field.value, rds.values())
         self.model.reset_fields()
-        for field in self.model:
+        for field in self.model.fields:
             self.assertIs(field.value, Field.empty)
 
     def test_reset(self):
@@ -764,11 +757,11 @@ class TestModel(configure.BaseTestCase):
         self.model.where(True)
         self.model.fill(**rds)
         self.assertTrue(self.model.state.has('WHERE'))
-        for field in self.model:
+        for field in self.model.fields:
             self.assertIn(field.field_name, rds)
             self.assertIn(field.value, rds.values())
         self.model.reset()
-        for field in self.model:
+        for field in self.model.fields:
             self.assertIn(field.value, rds.values())
         self.assertFalse(self.model.state.has('WHERE'))
 
@@ -780,11 +773,11 @@ class TestModel(configure.BaseTestCase):
         self.model.where(True)
         self.model.fill(**rds)
         self.assertTrue(self.model.state.has('WHERE'))
-        for field in self.model:
+        for field in self.model.fields:
             self.assertIn(field.field_name, rds)
             self.assertIn(field.value, rds.values())
         self.model.clear()
-        for field in self.model:
+        for field in self.model.fields:
             self.assertNotIn(field.value, rds.values())
         self.assertFalse(self.model.state.has('WHERE'))
 
@@ -882,7 +875,7 @@ class TestModel(configure.BaseTestCase):
         orm_a.state.add(new_clause())
         orm_b = orm_a.copy()
         self.assertIsNot(orm_a, orm_b)
-        for field in orm_a:
+        for field in orm_a.fields:
             self.assertIsNot(field, getattr(orm_b, field.field_name))
         self.assertIsNot(orm_a.queries, orm_b.queries)
         self.assertIsNot(orm_a._state, orm_b._state)

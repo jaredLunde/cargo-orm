@@ -30,19 +30,19 @@ class TestSlug(configure.ExtrasTestCase, TestField):
             self.base(subject)
             self.assertEqual(self.base(), match)
 
-    def test_slug_factory(self):
+    def test_factory(self):
         factory = SlugFactory(max_length=5, word_boundary=False)
         subjects = [
             'Lazy Saturday',
             'The quick brown fox jumped over the lazy dog',
             '283250@$)%*2350423-jGWG)NGP#@G'
         ]
-        base = Slug(slug_factory=factory)
+        base = Slug(factory=factory)
         for subject in subjects:
             base(subject)
             self.assertLessEqual(len(self.base.value), 5)
         factory = SlugFactory(separator='**')
-        base = Slug(slug_factory=factory)
+        base = Slug(factory=factory)
         for subject in subjects:
             base(subject)
             self.assertIn("**", base())

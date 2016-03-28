@@ -10,6 +10,7 @@
 import uuid
 import string
 
+import psycopg2
 from psycopg2.extensions import adapt, register_adapter, new_type,\
                                 register_type, AsIs
 
@@ -65,6 +66,13 @@ class UUID(Field, StringLogic):
         register_adapter(uuid.UUID, UUID.adapt)
         UUIDTYPE_ = reg_type('UUIDTYPE', UUIDTYPE, UUID.to_python)
         UUIDARRAYTYPE = reg_array_type('UUIDARRAYTYPE', UUIDARRAY, UUIDTYPE_)
+
+    @staticmethod
+    def register_type(db):
+        try:
+            return db.register('uuid')
+        except (ValueError, psycopg2.ProgrammingError):
+            warnings.warn('Type `uuid` was not found in the database.')
 
     @staticmethod
     def adapt(uuid):

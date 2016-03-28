@@ -976,10 +976,10 @@ class Expression(BaseExpression, NumericLogic, StringLogic):
         """ `Expression`
             Formats and parameterizes SQL expressions.
 
-            @left: #str operator or object
-            @operator: #str operator or object. This does NOT get parameterized
-                so it is completely unsafe to put user submitted data here.
-            @right: #str operator or object
+            @left: any object
+            @operator: (#str) operator. This does NOT get parameterized so it
+                is completely unsafe to put user submitted data here.
+            @right: any object
         """
         self.string = None
         self.left = left
@@ -1041,7 +1041,7 @@ class Clause(BaseExpression):
             @clause: (#str) name of the clause - this does NOT get
                 parameterized so it is completely unsafe to put user
                 submitted data here.
-            @*args: objects to include in the clause
+            @*args: any objects to include in the clause
             @join_with: (#str) delimeter to join @*args with
             @wrap: (#bool) True to wrap @args with parantheses when formatting
             @use_field_name: (#bool) True to use :class:Field field names
@@ -1199,12 +1199,12 @@ class Function(BaseExpression, NumericLogic, StringLogic):
         """ `Function`
             Formats and aliases SQL functions.
 
-            @func: #str name of func - this does NOT get parameterized
+            @func: (#str) name of func - this does NOT get parameterized
                 so it is completely unsafe to put user submitted data here
             @*args: arguments to pass to the function
-            @use_field_name: #bool True to use the 'field_name' attribute in
+            @use_field_name: (#bool) True to use the 'field_name' attribute in
                 :class:Field objects instead of 'name'
-            @alias: #str name to alias the function with
+            @alias: (#str) name to alias the function with
         """
         self.string = None
         self.func = func

@@ -102,6 +102,21 @@ class Field(BaseLogic):
             self.value = value
         return self.value
 
+    def __str__(self):
+        return self.value.__str__()
+
+    def __int__(self):
+        return self.value.__int__()
+
+    def __float__(self):
+        return self.value.__float__()
+
+    def __bytes__(self):
+        return self.value.__bytes__()
+
+    def __len__(self):
+        return self.value.__len__()
+
     def set_name(self, field_name):
         """ @field_name: (#str) name of the field """
         self.field_name = field_name
@@ -188,7 +203,7 @@ class Field(BaseLogic):
 
     validate = _validate
 
-    def _copy(self, *args, **kwargs):
+    def copy(self, *args, **kwargs):
         vc = None
         if self.validator is not None:
             vc = self.validator.__class__
@@ -203,13 +218,16 @@ class Field(BaseLogic):
                              table=self.table,
                              **kwargs)
         if self.value_is_not_null:
-            cls.value = copy.copy(self.value)
+            try:
+                cls.value = self.value.copy()
+            except AttributeError:
+                cls.value = copy.copy(self.value)
         cls._alias = self._alias
         return cls
 
-    copy = _copy
-    __copy__ = _copy
+    __copy__ = copy
 
     def clear(self):
         """ Sets the value of the field to :prop:empty """
         self.value = self.empty
+        return self

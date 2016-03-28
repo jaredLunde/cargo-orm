@@ -14,23 +14,11 @@ from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
 from cargo.expressions import *
 from cargo.fields.field import Field
+from cargo.logic.bit import BitLogic
 from cargo.validators import BitValidator, VarbitValidator
 
 
-__all__ = ('BitLogic', 'Bit', 'Varbit',)
-
-
-class BitLogic(object):
-    __slots__ = tuple()
-    '''
-    ||	concatenation	B'10001' || B'011'	10001011
-    &	bitwise AND	B'10001' & B'01101'	00001
-    |	bitwise OR	B'10001' | B'01101'	11101
-    #	bitwise XOR	B'10001' # B'01101'	11100
-    ~	bitwise NOT	~ B'10001'	01110
-    <<	bitwise shift left	B'10001' << 3	01000
-    >>	bitwise shift right	B'10001' >> 2	00100
-    '''
+__all__ = ('Bit', 'Varbit',)
 
 
 class Bit(Field, BitLogic):
@@ -76,8 +64,7 @@ class Bit(Field, BitLogic):
         reg_array_type('BITARRAYTYPE', (VARBITARRAY, BITARRAY), BITTYPE)
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(self.length, *args, **kwargs)
-        return cls
+        return Field.copy(self, self.length, *args, **kwargs)
 
     __copy__ = copy
 

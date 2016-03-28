@@ -401,8 +401,8 @@ class Plan(Table):
              @schema: (#str) schema to use, otherwise the schema defined
                 within the @model will be defaulted to
         """
-        self.model = model.copy() if model is not None else self.model.copy()
-        super().__init__(self.model.copy(), self.model.table)
+        self.model = model if model is not None else self.model
+        super().__init__(self.model, self.model.table)
         self.schema = schema or self.model.schema or \
             self.model.db.schema or 'public'
         self.from_fields(*self.columns)
@@ -618,8 +618,6 @@ class Plan(Table):
 
     def execute(self):
         cn = self.model.__class__.__name__
-        if self.schema != 'public':
-            self.model.db.add_search_path('public')
         logg().log('Building `%s` at `%s.%s`...' %
                    (cn, self.schema, self.name))
         self.before()

@@ -42,7 +42,8 @@ class TestUID(configure.IdentifierTestCase):
     def test_select(self):
         self.orm.insert(self.base)
         self.assertEqual(
-            getattr(self.orm.new().get(), self.base.field_name).value,
+            getattr(self.orm.new().desc(self.base).get(),
+                    self.base.field_name).value,
             self.base.value)
 
     def test_type_name(self):

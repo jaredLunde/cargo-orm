@@ -59,16 +59,11 @@ class BaseDecimal(Field, NumericLogic):
             self.value = value
         return self.value
 
-    def __float__(self):
-        return float(self.value)
-
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minval = self.minval
-        cls.maxval = self.maxval
-        cls.locale = self.locale
-        cls._context = copy.copy(self._context)
-        return cls
+        return Field.copy(self, *args, decimal_places=self.decimal_places,
+                          minval=self.minval, maxval=self.maxval,
+                          locale=self.locale, context=self._context.copy(),
+                          **kwargs)
 
     __copy__ = copy
 
@@ -188,12 +183,9 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
         return self.value
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minval = self.minval
-        cls.maxval = self.maxval
-        cls.decimal_places = self.decimal_places
-        cls.locale = self.locale
-        return cls
+        return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,
+                          decimal_places=self.decimal_places,
+                          locale=self.locale, **kwargs)
 
     __copy__ = copy
 
@@ -310,3 +302,14 @@ class Money(Currency):
     def register_adapter():
         MONEYTYPE = reg_type('MONEYTYPE', MONEY, Money.to_python)
         reg_array_type('MONEYARRAYTYPE', MONEYARRAY, MONEYTYPE)
+
+    def copy(self, *args, **kwargs):
+        return Field.copy(self,
+                          *args,
+                          minval=self.minval,
+                          maxval=self.maxval,
+                          locale=self.locale,
+                          context=self._context.copy(),
+                          **kwargs)
+
+    __copy__ = copy

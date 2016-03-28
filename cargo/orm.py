@@ -7,7 +7,6 @@
    http://github.com/jaredlunde/cargo-orm
 
 """
-import re
 import copy
 from collections import OrderedDict
 
@@ -22,7 +21,6 @@ except ImportError:
     from collections import namedtuple
 
 import psycopg2
-import psycopg2.extras
 from psycopg2.extensions import cursor as _cursor
 
 from vital.cache import cached_property
@@ -31,25 +29,26 @@ from vital.tools.lists import grouped
 from vital.debug import prepr, line, logg
 
 from cargo.clients import *
-from cargo.cursors import CNamedTupleCursor
+from cargo.cursors import CNamedTupleCursor, ModelCursor
 from cargo.etc.types import *
 from cargo.exceptions import *
 from cargo.expressions import *
 from cargo.statements import *
 from cargo.relationships import *
-from cargo.fields import *
+from cargo.relationships import _ForeignObject
+from cargo.fields import Field
 
 
 __all__ = (
     "ORM",
     "QueryState",
-    "Joins",
     "Model",
     "RestModel"
 )
 
 
 class ORM(object):
+    table = None
 
     def __init__(self, client=None, cursor_factory=None, schema=None,
                  table=None, debug=False):
@@ -76,8 +75,7 @@ class ORM(object):
         self._naked = None
         self._new = False
         self._cursor_factory = cursor_factory
-        if not hasattr(self, 'table'):
-            self.table = table
+        self.table = table or self.table
         self._debug = debug
 
     @prepr('db')
@@ -151,8 +149,6 @@ class ORM(object):
         if '_fields' in d:
             d['_fields'] = list(filter(lambda f: f.name not in fkeys,
                                        d['_fields']))
-            d['_foreign_keys'] = list(filter(lambda f: f.name not in fkeys,
-                                             d['_foreign_keys']))
         return d
 
     def __setstate__(self, dict):
@@ -201,7 +197,7 @@ class ORM(object):
             self.add_query(q)
             return self.run()
 
-    def _insert(self, *fields, **kwargs):
+    def insert(self, *fields, **kwargs):
         """ Interprets the :prop:state as an :class:Insert statement
 
             @*fields: (:class:Field) fields to set VALUES for, if |None| are
@@ -222,9 +218,7 @@ class ORM(object):
         self._set_into_if_empty(fields)
         return self._cast_query(Insert(self, **kwargs))
 
-    insert = _insert
-
-    def _select(self, *fields, **kwargs):
+    def select(self, *fields, **kwargs):
         """ Interprets the :prop:state as a :class:Select statement. If a table
             is specified within the model and a |FROM| clause hasn't been
             added to the state, a |FROM| clause will automatically be added
@@ -240,10 +234,8 @@ class ORM(object):
         """
         if not self.state.has('FROM'):
             self.from_()
-        self.state.fields = list(fields)
+        self.state.fields = fields
         return self._cast_query(Select(self, **kwargs))
-
-    select = _select
 
     def get(self, *fields, **kwargs):
         """ Gets a single record from the database
@@ -251,7 +243,7 @@ class ORM(object):
         """
         return self.one().select(*fields, **kwargs)
 
-    def _update(self, *fields, **kwargs):
+    def update(self, *fields, **kwargs):
         """ Interprets the :prop:state as an :class:Update statement.
             An |UPDATE| will be performed on the fields given in @*fields
 
@@ -276,9 +268,7 @@ class ORM(object):
         self._set_into_if_empty(fields)
         return self._cast_query(Update(self, **kwargs))
 
-    update = _update
-
-    def _delete(self, **kwargs):
+    def delete(self, **kwargs):
         """ Interprets the :prop:state as a :class:Delete statement. If a table
             is specified within the model and a |FROM| clause hasn't been
             added to the state, a |FROM| clause will automatically be added
@@ -294,11 +284,10 @@ class ORM(object):
             self.from_()
         return self._cast_query(Delete(self, **kwargs))
 
-    delete = _delete
-    remove = _delete
+    remove = delete
 
-    def _upsert(self, *fields, conflict_field=None, conflict_action=None,
-                **kwargs):
+    def upsert(self, *fields, conflict_field=None, conflict_action=None,
+               **kwargs):
         """ !! Postgres 9.5 only !!
             Updates @fields if they don't already exist, otherwise the
             fields are inserted.
@@ -317,9 +306,7 @@ class ORM(object):
                 Clause('CONFLICT', conflict_field, wrap=True), conflict_action)
         else:
             self.on(Clause('CONFLICT'), conflict_action)
-        return self._insert(*fields, **kwargs)
-
-    upsert = _upsert
+        return self.insert(*fields, **kwargs)
 
     def _raw(self, *args, **kwargs):
         """ Interprets the :prop:state as a :class:Raw statement. All clauses
@@ -879,8 +866,7 @@ class ORM(object):
 
     def run_iter(self, *queries, fetch=False):
         """ Runs all of the queries in @*qs or in :prop:queries,
-            fetches all of the results if there are any and :prop:_dry
-            is |False|
+            fetches all of the results if there are any and @fetch is |True|
 
             @*queries: (:class:cargo.Query) one or several objects
             @fetch: (#bool) True if all query results should be automatically
@@ -911,22 +897,18 @@ class ORM(object):
                     self.reset_state()
                 raise
             if fetch:
-                #: Fetches 'all' by default
-                fetch_type = 'fetchall'
-                if q.one:
-                    #: Fetches one result if 'one' specified in the :clas:Query
-                    fetch_type = 'fetchone'
                 try:
                     #: Fetches the result
-                    result = result.__getattribute__(fetch_type)()
+                    result = result.__getattribute__('fetchone'
+                                                     if q.one else
+                                                     'fetchall')()
                 except psycopg2.ProgrammingError:
                     #: No results to fetch
                     pass
             yield result
+        self._reset_accordingly(multi, queries, conn)
 
-        self._get_reset_method(multi, queries, conn)
-
-    def _get_reset_method(self, multi, queries, conn):
+    def _reset_accordingly(self, multi, queries, conn):
         if queries:
             #: Explicit 'run', the user is in control of everything except
             #  for the query state and client connection
@@ -957,6 +939,20 @@ class ORM(object):
         else:
             return results
 
+    def _prepend_search_path_to(self, query):
+        search_path = self.db.get_search_paths(self.schema)
+        if search_path:
+            return 'SET search_path TO %s; %s;' % (", ".join(search_path),
+                                                   query)
+        return query
+
+    def get_cursor(self, conn, *args, **kwargs):
+        """ Gets a database cursor from @conn
+            -> (:class:psycopg2.cursor)
+        """
+        return conn.cursor(*args, cursor_factory=self._cursor_factory,
+                           **kwargs)
+
     def execute(self, query, params=None, commit=True, conn=None):
         """ Executes @query with @params in the cursor.
             If the client isn't configured to autocommit and @query
@@ -974,33 +970,32 @@ class ORM(object):
 
             -> :mod:psycopg2 cursor or None
         """
-        params = params or tuple()
-        _conn = conn
         #: Gets a client connection if one wasn't passed as an argument
-        if _conn is None:
-            conn = self.db.get()
-        cursor = conn.cursor(schema=self.schema,
-                             model=self,
-                             cursor_factory=self._cursor_factory)
+        _conn = conn or self.db.get()
+        cursor = self.get_cursor(_conn)
+        #: Sets the search path to the locally defined schema
+        query = self._prepend_search_path_to(query)
+        #: For debug mode
         self.debug(cursor, query, params)
-        #: Sets the cursor search path to the current schema
         try:
             #: Executes the cursor
-            cursor.execute(query, params)
+            cursor.execute(query, params or tuple())
             #: Commits if the client connection is not set to autocommit
             #  and the 'commit' argument is true
-            if commit and not conn.autocommit:
-                conn.commit()
-        except (psycopg2.ProgrammingError, psycopg2.IntegrityError,
-                psycopg2.DataError, psycopg2.InternalError) as e:
+            if commit and not _conn.autocommit:
+                _conn.commit()
+        except (psycopg2.ProgrammingError,
+                psycopg2.IntegrityError,
+                psycopg2.DataError,
+                psycopg2.InternalError) as e:
             #: Rolls back the transaction in the event of a failure
-            conn.rollback()
+            _conn.rollback()
             raise QueryError(e.args[0].strip())
         #: Puts a client connection away if it is a pool and no connection
         #  was passed in arguments. If a connection object is passed,
         #  it's the user's responsibility to put it away.
-        if _conn is None:
-            self.db.put(conn)
+        if conn is None:
+            self.db.put(_conn)
         return cursor
 
     def subquery(self, alias=None):
@@ -1133,12 +1128,31 @@ class ORM(object):
             l.log("Mogrified", force=True)
             line('—')
 
-    def copy(self, *args, **kwargs):
-        cls = copy.copy(self)
-        cls.queries = self.queries.copy()
-        if self.state:
-            cls._state = self.state.copy()
+    def copy(self, *args, clear=False, **kwargs):
+        """ -> a safe copy of the model """
+        cls = self.__class__(*args,
+                             client=self._client,
+                             cursor_factory=self._cursor_factory,
+                             schema=self.schema,
+                             debug=self._debug,
+                             **kwargs)
+        if not clear:
+            cls.queries = self.queries.copy()
+            if self.state:
+                cls._state = self.state.copy()
+            cls._multi = self._multi
+            cls._with = self._with
+            cls._dry = self._dry
+            cls._naked = self._naked
+            cls._new = self._new
+        cls.table = self.table
         return cls
+
+    def clear_copy(self, *args, **kwargs):
+        """ -> a safe and cleared copy of the model """
+        return self.copy(*args, clear=True, **kwargs)
+
+    __copy__ = copy
 
 
 class QueryState(object):
@@ -1251,11 +1265,16 @@ class QueryState(object):
     replace = add
 
     def copy(self, *args, **kwargs):
-        cls = copy.copy(self)
+        cls = self.__class__()
         cls.clauses = self.clauses.copy()
         cls.params = self.params.copy()
         cls.fields = self.fields.copy()
+        cls.alias = self.alias
+        cls.one = self.one
+        cls.is_subquery = self.is_subquery
         return cls
+
+    __copy__ = copy
 
 
 class Joins(object):
@@ -1323,7 +1342,10 @@ class Joins(object):
                 elif isinstance(field, a.__class__) and \
                         typed_match is None and is_index:
                     typed_match = field_name
-            on = a.eq(named_match or typed_match)
+            if named_match is not None:
+                on = a.eq(named_match)
+            elif typed_match is not None:
+                on = a.eq(typed_match)
         if on is None:
             raise ValueError(
                 'Could not find join field in `{}` for ' +
@@ -1496,10 +1518,11 @@ class Model(ORM):
             my_model.delete()
         ..
     """
+    table = None
     ordinal = []
 
     def __init__(self, client=None, cursor_factory=None, naked=None,
-                 schema=None, debug=False, **kwargs):
+                 schema=None, debug=False, **field_data):
         """ `Basic Model`
             A basic model for Postgres tables.
 
@@ -1507,19 +1530,25 @@ class Model(ORM):
             @naked: (#bool) True to default to raw query results in the form
                 of the :prop:_cursor_factory, rather than the default which
                 is to return query results as copies of the current model.
+            @**field_data: |field_name=field_value| key/value pairs
         """
         if schema is None and hasattr(self, 'schema'):
             schema = self.schema
-        super().__init__(client, cursor_factory=cursor_factory, schema=schema,
+        super().__init__(client,
+                         cursor_factory=cursor_factory,
+                         schema=schema,
+                         table=self.table or camel_to_underscore(
+                            self.__class__.__name__),
                          debug=debug)
-        self.table = self.table or camel_to_underscore(self.__class__.__name__)
         self._fields = []
         self._relationships = []
-        self._foreign_keys = []
         self._alias = None
         self._always_naked = naked or False
-        self._compile()
-        self.fill(**kwargs)
+        if not field_data.get('__nocompile__'):
+            self._compile()
+        else:
+            del field_data['__nocompile__']
+        self.fill(**field_data)
 
     @prepr('field_names', _no_keys=True)
     def __repr__(self): return
@@ -1542,14 +1571,14 @@ class Model(ORM):
     def __getitem__(self, name):
         """ -> value of the field at @name """
         try:
-            return getattr(self, name).value
+            return self.__getattribute__(name).__getattribute__('value')
         except AttributeError:
             raise KeyError("Field `{}` not in {}".format(name, self.table))
 
     def __setitem__(self, name, value):
         """ Sets the field value for @name to @value """
         try:
-            getattr(self, name).__call__(value)
+            self.__getattribute__(name).__call__(value)
         except AttributeError:
             raise KeyError("Field `{}` not in {}".format(name, self.table))
 
@@ -1557,13 +1586,13 @@ class Model(ORM):
         """ Deletes the field value for @name, the field remains in the model
         """
         try:
-            getattr(self, name).__call__(None)
+            self.__getattribute__(name).__getattribute__('clear')()
         except AttributeError:
             raise KeyError("Field `{}` not in {}".format(name, self.table))
 
     def __iter__(self):
-        """ -> #iter of :prop:fields in the model """
-        return iter(self.fields)
+        """ -> iterates through records in the model """
+        return self.iter()
 
     def set_table(self, table):
         """ Sets the ORM table to @table (#str) """
@@ -1573,30 +1602,24 @@ class Model(ORM):
         return self
 
     def _getmembers(self):
-        for attr, field in {
-            attr: field
-            for mro in reversed(self.__class__.__mro__[:-1])
-            for attr, field in mro.__dict__.items()
-        }.items():
-            yield attr, field
+        mro = self.__class__.__mro__
+        mro_len = len(mro) - 3  # 3 = object, ORM, Model
+        for x in range(mro_len):
+            for items in mro[mro_len - x - 1].__dict__.items():
+                yield items
 
     def _compile(self):
         """ Sets :class:Field, :class:Relationship and :class:ForeignKey
             attributes
         """
-        fields = {}
-        relationships = {}
-        foreign_keys = {}
         for field_name, field in self._getmembers():
             if isinstance(field, Field):
-                fields[field_name] = field
-            elif isinstance(field, Relationship):
-                relationships[field_name] = field
-            elif isinstance(field, ForeignKey):
-                foreign_keys[field_name] = field
-        self._add_field(**fields)
-        self._add_foreign_key(**foreign_keys)
-        self.add_relationship(**relationships)
+                field = field.copy()
+                field.field_name = field_name
+                self._add_field(field)
+            elif isinstance(field, (ForeignKey, Relationship)):
+                field.forge(self, field_name)
+        self._order_fields()
 
     def _make_nt(self):
         """ Makes a :class:namedtuple object with :prop:field names
@@ -1704,11 +1727,16 @@ class Model(ORM):
         return self
 
     def to_dict(self):
-        """ -> #dict of |{field_name: field_value}| pairs within the model """
-        return {field.field_name: field() for field in (self.fields or [])}
+        """ -> (#dict) of |{field_name: field_value}| pairs within the model
+        """
+        if self.ordinal:
+            return OrderedDict((field.field_name, field())
+                               for field in (self.fields or []))
+        else:
+            return {field.field_name: field() for field in (self.fields or [])}
 
     def to_namedtuple(self):
-        """ -> :func:namedtuple representation of the model """
+        """ -> (:class:namedtuple) representation of the model """
         if not hasattr(self, self.__class__.__name__ + 'Record'):
             self._make_nt()
         if self.ordinal:
@@ -1718,7 +1746,9 @@ class Model(ORM):
             **self.to_dict())
 
     def from_namedtuple(self, nt):
-        """ -> self """
+        """ Fills the model using a namedtuple
+            -> self
+        """
         field_names = self.field_names
         getattr_ = nt.__getattribute__
         for field in nt._fields:
@@ -1752,7 +1782,7 @@ class Model(ORM):
             if hasattr(field, 'register_type'):
                 self.db.after('connect', field.register_type)
 
-    def _add_field(self, **fields):
+    def _add_field(self, field):
         """ Adds one or several @fields to the model.
             @**fields: |field_name=<Field>| keyword arguments
 
@@ -1761,33 +1791,17 @@ class Model(ORM):
                 model.add_field(city=Text())
             ..
         """
-        add_field = self._fields.append
-        sa = self.__setattr__
-        for field_name, field in fields.items():
-            field = field.copy()
-            field.table = self.table
-            field.field_name = field_name
-            self._register_field(field)
-            sa(field_name, field)
-            add_field(field)
-        self._order_fields()
+        field.table = self.table
+        self._register_field(field)
+        setattr(self, field.field_name, field)
+        self._fields.append(field)
 
-    def _add_foreign_key(self, **foreign_keys):
-        """ Adds one or several @foreign_keys to the model
-            @**relationships: (:class:cargo.ForeignKey) keyword
-                arguments |field_name=ForeignKey|
+    def add_relationship(self, name, relationships):
+        """ Adds a relationship to the model
+            @name: (#str) name of the relationship
+            @relationship: (:class:cargo.Relationship)
         """
-        for name, foreign_key in foreign_keys.items():
-            foreign_key = foreign_key.forge(self, name)
-
-    def add_relationship(self, **relationships):
-        """ Adds one or several @relationships to the model
-            @**relationships: (:class:cargo.Relationship) keyword
-                arguments |rel_name=Relationship|
-        """
-        for name, relationship in relationships.items():
-            relationship = relationship.copy()
-            relationship.forge(self, name)
+        relationship.forge(self, name)
         return self
 
     def approx_size(self, alias=None):
@@ -1831,7 +1845,8 @@ class Model(ORM):
             -> #int number of results counted if no alias is given, otherwise
                 the raw cursor factory result
         """
-        result = self.one().naked()._select(self.best_index.count(alias=alias))
+        self.one().naked()
+        result = super().select(self.best_index.count(alias=alias))
         if alias is None:
             try:
                 result = result['count']
@@ -1840,66 +1855,70 @@ class Model(ORM):
         return result
 
     def _order_fields(self, ordinal=None):
-        if ordinal or self.ordinal:
-            self._fields = [self.__getattribute__(name)
-                            for name in self.ordinal]
+        ordinal = ordinal or self.ordinal
+        if ordinal:
+            self._fields = list(map(self.__getattribute__, ordinal))
         return self._fields
 
     @property
     def fields(self):
-        """ -> yields the fields in the model based on :desc:__dict__ or
+        """ -> (#list) of the fields in the model based on :desc:__dict__ or
                 :attr:ordinal if it exists
         """
         return self._fields
 
     @cached_property
     def field_names(self):
-        """ -> #tuple of all field names (without the table name) within the
+        """ -> (#tuple) of all field names (without the table name) within the
                 model
         """
         return tuple(field.field_name for field in self.fields)
 
     @cached_property
     def names(self):
-        """ -> #tuple of all the full field names, table included """
+        """ -> (#tuple) of all the full field names, table included """
         return tuple(field.name for field in self.fields)
 
     @property
     def field_values(self):
-        """ -> #tuple of all field values within the model """
+        """ -> (#tuple) of all field values within the model """
         return tuple(field.value for field in self.fields)
 
     @property
     def relationships(self):
-        """ -> yields all :class:Relationship(s) within the model """
+        """ -> (#list) all :class:Relationship(s) within the model """
         return self._relationships
 
     @cached_property
     def foreign_keys(self):
-        """ -> yields all :class:ForeignKeyField(s) fields within the model """
-        return self._foreign_keys
+        """ -> (#list) all :class:ForeignKeyField(s) fields within the model
+        """
+        return tuple(field
+                     for field in self.fields
+                     if isinstance(field, _ForeignObject))
 
     @cached_property
     def indexes(self):
-        """ -> #tuple of all indexes within the model """
+        """ -> (#tuple) of all indexes within the model excluding primary keys
+        """
         return tuple(field for field in self.fields if field.index)
 
     @cached_property
     def plain_indexes(self):
-        """ -> #tuple of all plain indexes within the model
-                (not unique, foreign or primary keys)
+        """ -> (#tuple) of all plain indexes within the model
+                (not unique or primary keys)
         """
         return tuple(field for field in self.fields
                      if field.index and not field.unique)
 
     @cached_property
     def unique_indexes(self):
-        """ -> #tuple of all unique indexes within the model """
+        """ -> (#tuple) of all unique indexes within the model """
         return tuple(field for field in self.indexes if field.unique)
 
     @cached_property
     def unique_fields(self):
-        """ -> #tuple of all unique indexes within the model """
+        """ -> (#tuple) of all unique constrainted fields within the model """
         return tuple(field for field in self.fields if field.unique)
 
     @cached_property
@@ -1916,7 +1935,7 @@ class Model(ORM):
 
     @cached_property
     def best_indexes(self):
-        """ -> #tuple of best indexes in the model in order, first best and
+        """ -> (#tuple) of best indexes in the model in order, first best and
                 worst last
         """
         indexes = []
@@ -1955,7 +1974,7 @@ class Model(ORM):
         """ Looks for the best index in the model, looking for a primary key,
             followed by unique keys, followed by any index
 
-            -> :class:cargo.Field object
+            -> (:class:cargo.Field) object
         """
         return self.best_indexes[0]
 
@@ -1965,7 +1984,7 @@ class Model(ORM):
             field has a value, looking for a primary key, followed by unique
             keys, followed by any index
 
-            -> :class:cargo.Expression object |index_field.eq(index_value)|
+            -> (:class:cargo.Expression) object |index_field.eq(index_value)|
         """
         _zero = {0, 0.0}
 
@@ -1993,7 +2012,7 @@ class Model(ORM):
 
         # Unique Indexes
         _unique_index = None
-        for index in list(self.unique_indexes) + self.foreign_keys:
+        for index in list(self.unique_indexes):
             if indexable(index):
                 exp = index.eq(index.value)
                 if _unique_index:
@@ -2021,7 +2040,7 @@ class Model(ORM):
         """ Looks for the best available index in the model where the index
             field has a value, and the index is unique.
 
-            -> :class:cargo.Expression object |index_field.eq(index_value)|
+            -> (:class:cargo.Expression) object |index_field.eq(index_value)|
         """
         best_available = self.best_available_index
         if best_available is not None:
@@ -2049,6 +2068,7 @@ class Model(ORM):
         """ Resets all :class:Relationship(s) within the model """
         for relationship in self.relationships:
             relationship.clear()
+        return self
 
     def clear(self):
         """ Sets all of the :class:Field values within the model to |None|,
@@ -2060,31 +2080,32 @@ class Model(ORM):
         return self
 
     def _is_naked(self):
+        """ -> (#bool) |True| if the cursor factory in :prop:_cursor_factory
+                should be used as opposed to :class:ModelCursor
+        """
         return self._naked if self._naked is not None else self._always_naked
+
+    def get_cursor(self, conn, *args, **kwargs):
+        """ Gets a database cursor from @conn
+            -> (:class:psycopg2.cursor)
+        """
+        if not self._is_naked():
+            cursor = conn.cursor(*args, cursor_factory=ModelCursor, **kwargs)
+            cursor._cargo_model = self
+            return cursor
+        else:
+            return conn.cursor(*args, cursor_factory=self._cursor_factory,
+                               **kwargs)
 
     def run_iter(self, *queries, **kwargs):
         """ :see::meth:ORM.run_iter
             -> yields :prop:_cursor_factory if this isn't a :meth:many query
                 or :prop:_naked is |True|, otherwise returns :class:Model
         """
-        multi = self._multi
-        if multi:
+        if self._multi:
             self.new()
-        for x in ORM.run_iter(self, *queries, **kwargs):
+        for x in super().run_iter(*queries, **kwargs):
             yield x
-
-    def run(self, *queries):
-        """ :see::meth:ORM.run
-
-            -> #list of raw :prop:_cursor_factory query results if :prop:_naked
-                is |True|, otherwise :class:Model
-        """
-        results = [result
-                   for result in self.run_iter(*queries, fetch=True)]
-        if len(results) == 1:
-            return results[0]
-        else:
-            return results
 
     def add(self, *args, **kwargs):
         """ Adds a new record to the DB without affecting the current model.
@@ -2122,6 +2143,8 @@ class Model(ORM):
             self.one()
         return self.returning().new().insert(*fields)
 
+    __call__ = add
+
     def save(self, *fields, **kwargs):
         """ Inserts a single record into the DB if it doesn't already exist
             and a unique key is not empty, otherwise updates the record in
@@ -2134,10 +2157,6 @@ class Model(ORM):
         """
         best_index = self.best_unique_index
         if best_index is not None:
-            '''if not self.unique_indexes and self.primary_key is not None\
-               and self.primary_key.value in {None, self.primary_key.empty}:
-                raise ORMIndexError("Could not find a unique index in `{}`"
-                                    .format(self.table))'''
             exists = self.copy().reset_dry().naked().where(best_index).get()
             if exists:
                 #: UPDATE
@@ -2153,7 +2172,7 @@ class Model(ORM):
 
             See also: :meth:_insert
         """
-        return self._insert(*(fields or self.fields))
+        return super().insert(*(fields or self.fields))
 
     def select(self, *fields, **kwargs):
         """ Selects records from the DB based on the
@@ -2170,7 +2189,7 @@ class Model(ORM):
         """
         if not self.state.has('WHERE'):
             self.where(self.best_available_index or True)
-        return self._select(*fields, **kwargs)
+        return super().select(*fields, **kwargs)
 
     def get(self, *fields, **kwargs):
         """ Gets a single record from the DB based on the
@@ -2184,7 +2203,7 @@ class Model(ORM):
                 :prop:_cursor_factory. Will return :class:Select object
                 if :prop:_dry is |True|.
         """
-        return self.one().select(*fields, **kwargs)
+        return super().one().select(*fields, **kwargs)
 
     get_one = get
 
@@ -2213,7 +2232,7 @@ class Model(ORM):
         self._explicit_where()
         if not self.state.has('RETURNING'):
             self.returning()
-        return self._delete(*args, **kwargs)
+        return super().delete(*args, **kwargs)
 
     def remove(self, *args, **kwargs):
         """ :see::meth:_delete
@@ -2255,13 +2274,18 @@ class Model(ORM):
             return_fields = filter(lambda x: isinstance(x, Field), fields)
             self.returning(*return_fields)
         self._explicit_where()
-        return self._update(*fields, **kwargs)
+        return super().update(*fields, **kwargs)
 
-    def pull(self, *args, dry=False, **kwargs):
-        """ :see::meth:Relationship.pull """
-        return [
-            relationship.pull(*args, dry=dry, **kwargs)
-            for relationship in self.relationships]
+    def pull_all(self, *args, dry=False, **kwargs):
+        """ Pulls all the relationships in the model.
+            :see::meth:Relationship.pull
+
+            -> (#dict) |{relationship_name: results}|
+        """
+        return {
+            relationship._owner_attr:
+                relationship.pull(*args, dry=dry, **kwargs)
+            for relationship in self.relationships}
 
     def iternaked(self, offset=0, limit=0, buffer=100, order_field=None,
                   reverse=False):
@@ -2302,7 +2326,7 @@ class Model(ORM):
         self.offset(offset)
         if limit:
             self.limit(limit)
-        q = self.dry()._select().execute()
+        q = super().dry().select().execute()
         while True:
             results = q.fetchmany(buffer)
             if not results:
@@ -2311,24 +2335,30 @@ class Model(ORM):
                 yield result
         self.reset()
 
-    def copy(self):
+    def copy(self, *args, clear=False, **kwargs):
         """ Returns a safe copy of the model """
-        cls = copy.copy(self)
-        cls._fields = []
-        add_field = cls._fields.append
-        setattr_ = cls.__setattr__
-        setattr_('db', self.db)
-        setattr_('queries', self.queries.copy())
-        setattr_('_state', self._state.copy())
-        for field in self.fields:
-            field = field.copy()
-            setattr_(field.field_name, field)
-            add_field(field)
-        for relationship in self.relationships:
-            setattr_(relationship._owner_attr, relationship.copy())
-        for foreign_key in self.foreign_keys:
-            setattr_(foreign_key.field_name, foreign_key.copy())
+        cls = ORM.copy(self, *args, __nocompile__=True, clear=clear, **kwargs)
+        cls.db = self.db
+        cls.field_names = self.field_names
+        cls.names = self.names
+        cls._alias = self._alias
+        cls._always_naked = self._always_naked
+        cls._fields = list(map(
+            lambda x: getattr(cls, x.field_name)
+            if not setattr(cls, x.field_name, x.copy()) else None,
+            self._fields))
+        cls._relationships = []
+        for rel in self._relationships:
+            rel.forge(cls, rel._owner_attr)
         return cls
+
+    def clear_copy(self, *args, **kwargs):
+        """ Returns a safe and cleared copy of the model """
+        cls = self.copy(*args, clear=True, **kwargs)
+        cls.reset_fields()
+        return cls
+
+    __copy__ = copy
 
 
 class RestModel(Model):

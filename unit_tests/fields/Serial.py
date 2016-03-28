@@ -56,10 +56,9 @@ class TestSerial(configure.IdentifierTestCase, TestInt):
 
     def test_select(self):
         self.orm.insert(self.base)
-        self.assertEqual(
+        self.assertTrue(
             getattr(self.orm.new().desc(self.base).get(),
-                    self.base.field_name).value,
-            self.base.value)
+                    self.base.field_name).value > 0)
 
     def test_array_insert(self):
         pass

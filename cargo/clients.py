@@ -23,6 +23,7 @@ from multiprocessing import cpu_count
 
 from vital.cache import DictProperty, local_property
 from vital.tools.dicts import merge_dict
+from vital.tools.lists import unique_list
 from vital.debug import prepr
 
 from cargo.cursors import CNamedTupleCursor, ModelCursor
@@ -70,6 +71,7 @@ class BasePostgresClient(object):
             return res.oid
 
     _ext_map = {'hstore': psycopg2.extras.register_hstore,
+                'uuid': psycopg2.extras.register_uuid,
                 'composite': psycopg2.extras.register_composite}
 
     def register(self, extension, *args, cursor=None, **kwargs):
@@ -83,8 +85,13 @@ class BasePostgresClient(object):
                 given cursor rather than the local connection
             @**kwargs: keyword arguments to pass ot hte extension function
         """
-        conn_or_curs = self.connection if cursor is None else cursor
-        return self._ext_map[extension](conn_or_curs, *args, **kwargs)
+        conn_or_curs = self.get().connection if cursor is None else cursor
+        r = self._ext_map[extension](conn_or_curs, *args, **kwargs)
+        try:
+            self.put(conn_or_curs)
+        except:
+            pass
+        return r
 
     def _load_from_str(self, name):
         return objects.Object.import_from(name)
@@ -114,6 +121,15 @@ class BasePostgresClient(object):
         """
         self._search_paths.remove(path)
 
+    def get_search_paths(self, schema=None):
+        """ Gets all of the search paths currently set in the client """
+        schema = schema or self.schema
+        if schema:
+            paths = [schema]
+            paths.extend(self._search_paths)
+            return unique_list(paths)
+        return []
+
     def set_schema(self, schema):
         """ Sets the default schema used by the client. """
         self._schema = schema
@@ -123,6 +139,7 @@ class BasePostgresClient(object):
         """ Sets @schemas to the cursor search path.
             @schemas: (#str) one or several schema search paths
         """
+        schemas = schemas
         return cursor.execute('SET search_path TO %s' % ", ".join(schemas))
 
     @staticmethod
@@ -231,7 +248,8 @@ class Postgres(BasePostgresClient):
                 If None, the default is the encoding defined by the database.
             @schema: (#str) schema to set the postgres search path to
             @search_paths: (#list) additional search paths to set aside
-                from the default @schema
+                from the default @schema, |public| is added by default.
+                It can be removed by calling :meth:remove_search_path
             @events: (#dict) |{'[before, after] event_name': action}}|
                 available events are: :see::attr:Postgres.EVENTS
                 ..
@@ -261,7 +279,7 @@ class Postgres(BasePostgresClient):
         try:
             self._search_paths = list(search_paths)
         except TypeError:
-            self._search_paths = []
+            self._search_paths = ['public']
         self.encoding = encoding
 
         # Cursor options
@@ -293,14 +311,11 @@ class Postgres(BasePostgresClient):
             self.connect()
         return self._connection
 
-    def cursor(self, *args, model=None, cursor_factory=None, schema=None,
-               **kwargs):
+    def cursor(self, *args, cursor_factory=None, **kwargs):
         """ Creates a new cursor object with given options, defaulting to
             configured options.
 
             @name: (#str) name of the cursor
-            @model: (:class:Model|:class:ORM) to bind the cursor to if
-                this is a :class:ModelCursor
             @cursor_factory: :mod:psycopg2 cursor factory passed to
                 :prop:cursor
             @scrollable: (#bool) specifies if a named cursor is declared
@@ -317,27 +332,14 @@ class Postgres(BasePostgresClient):
 
             -> :mod:psycopg2 cursor object
         """
-        if model is not None and not model._is_naked():
-            cursor_factory = ModelCursor
-        elif cursor_factory is not None and \
-                cursor_factory != self.cursor_factory:
-            pass
-        elif self.cursor_factory != self.connection.cursor_factory:
+        if cursor_factory is None and \
+           self.cursor_factory != self.connection.cursor_factory:
             cursor_factory = self.cursor_factory
         self._apply_before("new cursor")
         cursor = self.connection.cursor(*args,
                                         cursor_factory=cursor_factory,
                                         **kwargs)
         self._apply_after("new cursor", cursor)
-        try:
-            cursor._cargo_model = model
-        except AttributeError:
-            pass
-        schema = schema or self.schema
-        if schema:
-            paths = [schema]
-            paths.extend(self._search_paths)
-            self.apply_schema(cursor, *paths)
         return cursor
 
     def connect(self, dsn=None, **options):
@@ -529,12 +531,13 @@ class _db(object):
     engine = None
 
     def __init__(self):
-        self.engine = local_property()
+        # self.engine = local_property()
+        self.engine = None
 
     def __getattr__(self, name):
         if name != 'engine':
             try:
-                return self.engine.__getattribute__(name)
+                return self.__getattribute__('engine').__getattribute__(name)
             except AttributeError:
                 pass
         return self.__getattribute__(name)

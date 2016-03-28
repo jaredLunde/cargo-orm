@@ -47,10 +47,8 @@ class Char(Field, StringLogic):
     def type_name(self):
         return '%s(%s)' % (OID_map[self.OID], self.maxlen)
 
-    def copy(self, *args, **kwargs):
-        cls = self._copy(maxlen=self.maxlen, minlen=self.minlen, *args,
-                         **kwargs)
-        return cls
+    def copy(self):
+        return Field.copy(self, maxlen=self.maxlen, minlen=self.minlen)
 
     __copy__ = copy
 

@@ -74,13 +74,8 @@ class SmallInt(Field, NumericLogic):
         return humanize.to_apnumber(self.value)
 
     def copy(self, *args, **kwargs):
-        cls = self._copy(*args, **kwargs)
-        cls.minval = self.minval
-        cls.maxval = self.maxval
-        cls.locale = self.locale
-        return cls
-
-    __copy__ = copy
+        return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,
+                          locale=self.locale, **kwargs)
 
 
 class Int(SmallInt):
