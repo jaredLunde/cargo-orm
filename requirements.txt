@@ -13,5 +13,5 @@ phonenumbers
 psycopg2
 pycrypto
 slugify
-vital
+vital-tools
 yapf
