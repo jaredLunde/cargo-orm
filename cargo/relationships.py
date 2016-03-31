@@ -12,7 +12,6 @@ from functools import lru_cache
 
 from pydoc import locate, ErrorDuringImport
 
-from docr import Docr
 from vital.cache import cached_property
 from vital.debug import prepr, get_obj_name
 

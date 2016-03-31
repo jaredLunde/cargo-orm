@@ -9,8 +9,8 @@
 """
 import re
 import copy
-import docr
 import yapf
+import inspect
 from collections import OrderedDict
 
 try:
@@ -680,16 +680,20 @@ class Build(object):
         """
         self.plans = plans
 
-    def get_plans(self, path):
+    def _get_classes(self, obj):
+        for _name, _obj in inspect.getmembers(obj):
+            if inspect.isclass(_obj):
+                yield _name, _obj
+
+    def get_plans(self, base_obj):
         return [obj.obj()
-                for name, obj in docr.Docr(path).classes.items()
+                for name, obj in self._get_classes(base_obj)
                 if issubclass(obj.obj, Plan)]
 
     def _run_plans(self, plans, debug=False):
         for plan in plans:
             if isinstance(plan, str):
-                plan = docr.Docr(plan)
-                if plan.type == plan.MODULE:
+                if inspect.ismodule(plan):
                     self._run_plans(self.get_plans(plan.obj), debug=debug)
             elif debug:
                 plan.debug()

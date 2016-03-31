@@ -11,8 +11,6 @@ try:
 except ImportError:
     import json
 
-from docr import objects
-
 from collections import defaultdict
 
 import psycopg2
@@ -29,6 +27,7 @@ from vital.debug import prepr
 from cargo.cursors import CNamedTupleCursor, ModelCursor
 from cargo.etc.types import reg_array_type, reg_type
 from cargo.etc.translator.postgres import OID_map
+from cargo.relationships import _import_from
 
 
 __all__ = (
@@ -94,7 +93,7 @@ class BasePostgresClient(object):
         return r
 
     def _load_from_str(self, name):
-        return objects.Object.import_from(name)
+        return _import_from(name)
 
     @DictProperty('_cache', 'cursor_factory', read_only=False)
     def cursor_factory(self):
