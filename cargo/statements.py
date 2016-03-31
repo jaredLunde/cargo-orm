@@ -41,7 +41,6 @@ __all__ = (
     "Select",
     "Union",
     "Update",
-    "With"
 )
 
 
@@ -54,8 +53,8 @@ class BaseQuery(StringLogic, NumericLogic):
     """ Base query object, provides several common methods for the
         various query statement types
     """
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with',
-                 'recursive', 'one', 'string', 'result')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'result')
     newline_re = re.compile(r"""\n+""")
 
     def __init__(self, query=None, params=None, orm=None):
@@ -64,58 +63,16 @@ class BaseQuery(StringLogic, NumericLogic):
             self.params = params or self.orm.state.params
             self.is_subquery = self.orm.state.is_subquery
             self.one = self.orm.state.one
-            self._with = self.orm._with
         except AttributeError:
             self.params = params or {}
             self.is_subquery = False
             self.one = False
-            self._with = False
         self.alias = None
-        self.recursive = None
         self.string = query.strip() if query else query
 
     def __str__(self):
         return self.query if self.query else self.__repr__()
 
-    def __enter__(self):
-        """ Creates a :class:WITH statement
-
-            -> |self.orm|
-            ===================================================================
-            ``Usage Example``
-            ..
-                tn = safe('tn')
-                n = safe('n')
-                with (
-                  Raw(ORM().values(1), alias=tn, recursive=(n,)) +
-                  Select(ORM().use(tn), n+1)
-                ) as sub:
-                    sub.use(tn).limit(10).select(n)
-                    '''
-                    WITH RECURSIVE tn(n) AS (
-                        VALUES (1)
-                        UNION ALL
-                        SELECT n + 1 FROM tn
-                    )
-                    SELECT n FROM tn LIMIT 10
-                    '''
-                print(sub.result)
-            ..
-            |[{'n': 1}, {'n': 2}, {'n': 3}, {'n': 4}, {'n': 5},   |
-            |   {'n': 6}, {'n': 7}, {'n': 8}, {'n': 9}, {'n': 10}]|
-        """
-        if not isinstance(self, WITH):
-            With(self.orm, self)
-            return self.orm
-        else:
-            return self.orm
-
-    def __exit__(self, type=None, value=None, tb=None):
-        """ Executes the :class:WITH statement, creates a 'result'
-            attribute in |self| with access to the fetched data.
-        """
-        self.result = self.orm.result = self.execute().fetchall()
-        self.orm.reset()
 
     def _filter_empty(self, els):
         return filter(lambda x: x is not _empty, els)
@@ -136,12 +93,8 @@ class BaseQuery(StringLogic, NumericLogic):
 
     def execute(self):
         """ Executes :prop:query in the :prop:orm """
-        if self.orm._with:
-            query = " ".join(q.query for q in self.orm.queries)
-            params = merge_dict(*list(q.params for q in self.orm.queries))
-        else:
-            query = self.query
-            params = self.params
+        query = self.query
+        params = self.params
         return self.orm.execute(query, params)
 
     def debug(self):
@@ -164,20 +117,15 @@ class Query(BaseQuery):
         ..
         |{......}|
     """
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string')
 
-    def __init__(self, query=None, params=None, alias=None, recursive=None,
-                 orm=None,):
+    def __init__(self, query=None, params=None, alias=None, orm=None):
         """`Query Statement`
             @query: (#str) raw query string
             @params: (#dict) for parameterizing the query
                 |"SELECT %(abc)" % {'abc': 123}|
             @alias: (#str) query alias name if it's a :class:WITH or
                 :class:SetOperations query
-            @recursive: (#list) or #tuple used for :class:WITH and
-                :class:SetOperations queries, creates a |RECURSIVE|
-                clause
             @orm: (:class:ORM) object
         """
         super().__init__(query, params, orm=orm)
@@ -186,7 +134,6 @@ class Query(BaseQuery):
         else:
             self.alias = alias
         self.alias = str(self.alias) if self.alias else None
-        self.recursive = recursive
 
     @prepr('query', 'params', _no_keys=True)
     def __repr__(self): return
@@ -202,8 +149,8 @@ class SetOperations(Query):
     """ Base structure for :class:UNION, :class:EXCEPT and :class:INTERSECTION
         queries.
     """
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *args, all=None, distinct=None, **kwargs):
         super().__init__(orm=orm, **kwargs)
@@ -489,12 +436,10 @@ class SetOperations(Query):
         return intersection_str.rstrip() + ' '
 
     def _attach_alias(self):
-        """ Attaches alias and |RECURSIVE| statement when specified """
+        """ Attaches alias when specified """
         for intersection in self.operations:
             self.alias = intersection.alias if hasattr(intersection, 'alias') \
                 else None
-            self.recursive = intersection.recursive \
-                if hasattr(intersection, 'recursive') else None
             if self.alias:
                 break
 
@@ -517,7 +462,7 @@ class SetOperations(Query):
         self.params = merge_dict(
             self.params, *[q.params for q in self.operations])
         self._attach_alias()
-        self.orm.reset()
+        # self.orm.reset()
         return self.string
 
 
@@ -540,8 +485,8 @@ class Union(SetOperations):
         ..
     """
     __querytype__ = "UNION"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *unions, all=False, distinct=False, **kwargs):
         """ `UNION`
@@ -552,17 +497,10 @@ class Union(SetOperations):
             @distinct: #bool True if |UNION DISTINCT|
             @alias: #str query alias name if it's a :class:WITH or
                 :class:SetOperations query
-            @recursive: #list or #tuple used for :class:WITH and
-                :class:SetOperations queries, creates a |RECURSIVE|
-                clause
         """
         super().__init__(orm, *unions, all=all, distinct=distinct,
                          **kwargs)
         self.compile()
-
-
-# PEP 8 compliance
-UNION = Union
 
 
 class Intersect(SetOperations):
@@ -586,8 +524,8 @@ class Intersect(SetOperations):
         ..
     """
     __querytype__ = "INTERSECT"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *intersects, all=False, distinct=False, **kwargs):
         """ `INTERSECT`
@@ -598,17 +536,10 @@ class Intersect(SetOperations):
             @distinct: #bool True if |INTERSECT DISTINCT|
             @alias: #str query alias name if it's a :class:WITH or
                 :class:SetOperations query
-            @recursive: #list or #tuple used for :class:WITH and
-                :class:SetOperations queries, creates a |RECURSIVE|
-                clause
         """
         super().__init__(orm, *intersects, all=all, distinct=distinct,
                          **kwargs)
         self.compile()
-
-
-# PEP 8 compliance
-INTERSECT = Intersect
 
 
 class Except(SetOperations):
@@ -631,8 +562,8 @@ class Except(SetOperations):
         ..
     """
     __querytype__ = "EXCEPT"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'operations', 'all', 'distinct')
 
     def __init__(self, orm, *excepts, all=False, distinct=False, **kwargs):
         """ `INTERSECT`
@@ -643,17 +574,10 @@ class Except(SetOperations):
             @distinct: #bool True if |EXCEPT DISTINCT|
             @alias: #str query alias name if it's a :class:WITH or
                 :class:SetOperations query
-            @recursive: #list or #tuple used for :class:WITH and
-                :class:SetOperations queries, creates a |RECURSIVE|
-                clause
         """
         super().__init__(orm, *excepts, all=all, distinct=distinct,
                          **kwargs)
         self.compile()
-
-
-# PEP 8 compliance
-EXCEPT = Except
 
 
 class Raw(SetOperations):
@@ -670,8 +594,8 @@ class Raw(SetOperations):
         |   params={'c5R053jXaKT4': 1}):0x7f5f022ddf60>                       |
     """
     __querytype__ = "RAW"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'operations', 'all', 'distinct')
 
     def __init__(self, *args, **kwargs):
         """ `RAW`
@@ -733,8 +657,7 @@ class Insert(Query):
         |[{'username': 'FriskyWolf'}]|
     """
     __querytype__ = "INSERT"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string')
 
     def __init__(self, orm, **kwargs):
         """ `INSERT`
@@ -768,9 +691,6 @@ class Insert(Query):
         """ :see::meth:SELECT.compile """
         self.string = "INSERT %s" % " ".join(self.evaluate_state())
         return self.string
-
-
-INSERT = Insert
 
 
 class Select(SetOperations):
@@ -819,8 +739,8 @@ class Select(SetOperations):
         |[{'username': 'FriskyWolf'}]|
     """
     __querytype__ = "SELECT"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'operations', 'all', 'distinct')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
+                 'operations', 'all', 'distinct')
 
     def __init__(self, orm, **kwargs):
         """ `SELECT`
@@ -839,7 +759,7 @@ class Select(SetOperations):
         update_params = self.params.update
         for field in self.orm.state.fields:
             if isinstance(field, Field):
-                yield field.name
+                yield aliased(field).string
             elif isinstance(field, BaseLogic):
                 yield str(field)
                 try:
@@ -877,9 +797,6 @@ class Select(SetOperations):
         return self.string
 
 
-SELECT = Select
-
-
 class Update(Query):
     """ =======================================================================
         ``Usage Example``
@@ -909,8 +826,7 @@ class Update(Query):
         | WHERE username = 'FriskyWolf'"          |
     """
     __querytype__ = "UPDATE"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string')
 
     def __init__(self, orm, **kwargs):
         """ `UPDATE`
@@ -942,9 +858,6 @@ class Update(Query):
         return self.string
 
 
-UPDATE = Update
-
-
 class Delete(Query):
     """ =======================================================================
         ``Usage Example``
@@ -971,8 +884,7 @@ class Delete(Query):
         |"DELETE FROM users WHERE username = 'TurkeyTom'"|
     """
     __querytype__ = "DELETE"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string')
+    __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string')
 
     def __init__(self, orm, **kwargs):
         """ `DELETE`
@@ -997,82 +909,3 @@ class Delete(Query):
         """ :see::meth:SELECT.compile """
         self.string = "DELETE %s" % (" ".join(self.evaluate_state()).strip())
         return self.string
-
-
-DELETE = Delete
-
-
-class With(Query):
-    """ Creates a |WITH| statement
-        =======================================================================
-        ``Usage Examples``
-        ..
-            t = safe('t')
-            n = safe('n')
-            q = With(
-                self.orm,
-                Raw(ORM().values(1), alias=t, recursive=(n,)) +
-                Select(ORM().use(t), n+1))
-            q.orm.use(t).limit(10).select(n)
-            result = q.execute().fetchall()
-        ..
-        |[{'n': 1}, {'n': 2}, {'n': 3}, {'n': 4}, {'n': 5},   |
-        |   {'n': 6}, {'n': 7}, {'n': 8}, {'n': 9}, {'n': 10}]|
-
-        ..
-            t = safe('t')
-            n = safe('n')
-            with (
-              Raw(ORM().values(1), alias=t, recursive=(n,)) +
-              Select(ORM().use(t), n+1)
-            ) as orm:
-                orm.use(t).limit(10).select(n)
-            print(sub.result)
-        ..
-        |[{'n': 1}, {'n': 2}, {'n': 3}, {'n': 4}, {'n': 5},   |
-        |   {'n': 6}, {'n': 7}, {'n': 8}, {'n': 9}, {'n': 10}]|
-
-    """
-    __querytype__ = "WITH"
-    __slots__ = ('orm', 'params', 'alias', 'is_subquery', '_with', 'recursive',
-                 'one', 'string', 'queries')
-
-    def __init__(self, orm, *queries, **kwargs):
-        """ `WITH`
-            :see::meth:Query.__init__
-        """
-        recursive = None
-        for r in queries:
-            try:
-                recursive = r.recursive
-            except AttributeError:
-                continue
-        super().__init__(orm=orm, recursive=recursive, **kwargs)
-        self.queries = queries
-        self.orm._with = True
-        self.orm.alias = kwargs.get('alias') or self.alias
-        self.compile()
-
-    def __str__(self):
-        return self.query if self.query else ""
-
-    def compile(self):
-        """ :see::meth:SELECT.compile """
-        as_ = []
-        add_as = as_.append
-        for query in self.queries:
-            alias = query.alias
-            recursive = ""
-            if isinstance(self.recursive, (list, tuple)):
-                recursive = ", ".join(map(str, self.recursive))
-            add_as("{}{} AS (\n{}\n)".format(
-              alias, "({})".format(recursive), query.query
-            ))
-            self.params.update(query.params)
-        recursive = ""
-        if self.recursive:
-            recursive = "RECURSIVE "
-        self.string = "WITH {}{}".format(recursive, ", ".join(as_))
-        self.orm.add_query(self)
-
-WITH = With

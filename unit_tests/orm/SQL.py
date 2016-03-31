@@ -51,7 +51,6 @@ class TestORM(configure.BaseTestCase):
         self.assertIsNone(orm._client)
         self.assertFalse(orm._multi)
         self.assertIsInstance(orm._state, QueryState)
-        self.assertFalse(orm._with)
         self.assertEqual(orm._debug, False)
         orm = ORM(client=self.client, debug=True)
         self.assertTrue(orm._debug)
@@ -628,6 +627,7 @@ class TestORM(configure.BaseTestCase):
 
         # Multi UPDATE
         self.orm.multi()
+        self.orm.into('foo')
         res = self.orm.update(f1 == random.randint(1, 100000),
                               f2 == 'textfield')
         self.assertIs(res, self.orm)
@@ -801,16 +801,13 @@ class TestORM(configure.BaseTestCase):
         self.assertEqual(len(self.orm.state.clauses), 0)
 
     def test_reset(self):
-        self.orm._with = True
         self.orm.queries = [1, 2]
         self.orm._multi = True
         self.orm.state.add(new_clause())
 
         self.orm.reset()
 
-        self.assertFalse(self.orm._with)
         self.assertTrue(self.orm._multi)
-        self.assertFalse(self.orm._with)
         self.assertEqual(len(self.orm.queries), 2)
         self.assertEqual(len(self.orm.state.clauses), 0)
 

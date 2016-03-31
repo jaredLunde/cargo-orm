@@ -183,6 +183,7 @@ class BaseLogic(object):
         return Expression(self, operators.IN, others)
 
     __rshift__ = in_
+    is_in = in_
 
     def not_in(self, *others):
         """ Creates a |NOT IN| SQL expression
@@ -898,7 +899,12 @@ class BaseExpression(BaseLogic):
                 exp = item.string
             except AttributeError:
                 #: Fields
-                exp = str(item.name if not use_field_name else item.field_name)
+                if item._alias:
+                    exp = item._alias
+                elif use_field_name:
+                    exp = item.field_name
+                else:
+                    exp = item.name
         elif item is _empty:
             #: Empty item
             return ""
@@ -2404,12 +2410,12 @@ class aliased(NumericLogic, StringLogic):
     """
     __slots__ = ('string', 'field')
 
-    def __init__(self, field):
+    def __init__(self, field, use_field_name=False):
         self.field = field
         if field._alias is not None:
             self.string = field._alias
         else:
-            self.string = field.name
+            self.string = field.field_name if use_field_name else field.name
 
     @prepr('field', 'string', _no_keys=True)
     def __repr__(self): return

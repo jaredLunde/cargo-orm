@@ -308,6 +308,8 @@ class Column(BaseCreator):
             params = map(self._cast_safe, params)
         if params is not None:
             self._unique = Clause('UNIQUE', *params)
+        else:
+            self._unique = None
         return self
 
     def primary(self, *params):
@@ -324,6 +326,8 @@ class Column(BaseCreator):
             params = map(self._cast_safe, params)
         if params is not None:
             self._primary = Clause('PRIMARY KEY', *params)
+        else:
+            self._primary = None
         return self
 
     def timing(self, when):

@@ -7,6 +7,7 @@
    http://github.com/jaredlunde/cargo-orm
 
 """
+import re
 import copy
 from collections import OrderedDict
 
@@ -70,7 +71,6 @@ class ORM(object):
         self._state = QueryState()
         self._join = Joins(self)
         self._multi = False
-        self._with = False
         self._dry = False
         self._naked = None
         self._new = False
@@ -190,9 +190,6 @@ class ORM(object):
             self.add_query(q)
             self.reset()
             return self
-        elif q._with:
-            self.add_query(q)
-            return self
         else:
             self.add_query(q)
             return self.run()
@@ -233,7 +230,7 @@ class ORM(object):
                 is True
         """
         if not self.state.has('FROM'):
-            self.from_()
+            self.from_(alias=self._alias if hasattr(self, '_alias') else None)
         self.state.fields = fields
         return self._cast_query(Select(self, **kwargs))
 
@@ -281,7 +278,7 @@ class ORM(object):
                 is |True|
         """
         if not self.state.has('FROM'):
-            self.from_()
+            self.from_(alias=self._alias if hasattr(self, '_alias') else None)
         return self._cast_query(Delete(self, **kwargs))
 
     remove = delete
@@ -1102,7 +1099,6 @@ class ORM(object):
         """ Resets the query :prop:state, many mode and optionally
             multi-mode if @multi is set to |True|
         """
-        self._with = False
         if not self._multi:
             self.queries = []
             self.reset_dry()
@@ -1118,12 +1114,16 @@ class ORM(object):
             :prop:params, and :prop:queries
         """
         if self._debug:
+            pre = re.compile(r'''(%\(0x[0-9a-f]+\)s)''')
             line('—')
             logg().warning("Cargo Query")
             line('—')
-            l = logg(query, params)
+            l = logg(pre.sub(r'\033[1m\1\033[1;m',
+                             query.replace('; ', ';\n')),
+                     params)
             l.log("Parameterized", force=True)
-            mog = cursor.mogrify(query, params).decode()
+            line('—')
+            mog = cursor.mogrify(query.replace('; ', ';\n'), params).decode()
             l = logg(mog)
             l.log("Mogrified", force=True)
             line('—')
@@ -1141,7 +1141,6 @@ class ORM(object):
             if self.state:
                 cls._state = self.state.copy()
             cls._multi = self._multi
-            cls._with = self._with
             cls._dry = self._dry
             cls._naked = self._naked
             cls._new = self._new
@@ -1426,8 +1425,12 @@ class Joins(object):
                             use_field_name=True)
         else:
             if on:
+                #: Auto-sets aliases when they exist on models
+                if not alias and a._alias is not None:
+                    alias = a._alias
                 table, on = self.with_on(a, on, alias)
             else:
+                table = None
                 if b is not None:
                     #: 'a' and 'b' are given, they are assumed to be related
                     # fields
@@ -1438,7 +1441,10 @@ class Joins(object):
                     # to join the first occurence of the same field type
                     if isinstance(a, Field):
                         table, on = self.with_field(a, alias)
-                    elif isinstance(a, (Model, Relationship)):
+                    elif isinstance(a, (Model, Relationship, Reference)):
+                        #: Auto-sets aliases when they exist on models
+                        if not alias and a._alias is not None:
+                            alias = a._alias
                         #: Only a :class:Model was provided
                         table, on = self.with_model(a, alias)
                     elif isinstance(a, BaseExpression):
@@ -2061,7 +2067,7 @@ class Model(ORM):
             defaults.
         """
         for field in self.fields:
-            field.clear()
+            field.reset()
         return self
 
     def reset_relationships(self):
@@ -2069,6 +2075,11 @@ class Model(ORM):
         for relationship in self.relationships:
             relationship.clear()
         return self
+
+    def reset(self, *args, **kwargs):
+        """ :see::meth:ORM.reset """
+        self._alias = None
+        return super().reset(*args, **kwargs)
 
     def clear(self):
         """ Sets all of the :class:Field values within the model to |None|,
@@ -2091,11 +2102,14 @@ class Model(ORM):
         """
         if not self._is_naked():
             cursor = conn.cursor(*args, cursor_factory=ModelCursor, **kwargs)
-            cursor._cargo_model = self
-            return cursor
         else:
-            return conn.cursor(*args, cursor_factory=self._cursor_factory,
-                               **kwargs)
+            cursor = conn.cursor(*args, cursor_factory=self._cursor_factory,
+                                 **kwargs)
+        try:
+            cursor._cargo_model = self
+        except:
+            pass
+        return cursor
 
     def run_iter(self, *queries, **kwargs):
         """ :see::meth:ORM.run_iter

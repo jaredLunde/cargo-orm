@@ -13,7 +13,7 @@ from vital.debug import prepr
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
 from cargo.exceptions import *
-from cargo.expressions import BaseLogic, Expression, _empty
+from cargo.expressions import BaseLogic, Expression, _empty, safe
 from cargo.validators import NullValidator
 
 
@@ -164,13 +164,10 @@ class Field(BaseLogic):
         else:
             self._alias = None
 
-    def alias(self, val, use_field_name=False):
+    def alias(self, val=None, **kwargs):
         """ Creates an :class:aliased for the field name
-            @use_field_name: (#bool) |True| to alias the name of the field
-                rather than both the table name and field name, i.e.,
-                given a field named 'bar' in a table named 'foo' with an
-                alias 'foobar', |use_field_name=True| outputs |bar AS foobar|
-                as opposed to |foo.bar AS foobar|
+            @val: (#str) alias name, if |None| :prop:_alias will be used,
+                if that is |None| a |ValueError| will be raised
             -> :class:aliased object
 
             ===================================================================
@@ -180,7 +177,11 @@ class Field(BaseLogic):
             ..
             |field AS better_field|
         """
-        return Expression(self, "AS", val, use_field_name=use_field_name)
+        if val is None:
+            val = self._alias
+        if val is None:
+            raise ValueError('Alias for `%s` cannot be `None`' % self.name)
+        return Expression(self, "AS", safe(val), **kwargs)
 
     def _should_insert(self):
         if not (self.validate() or self.default is not None):
@@ -230,4 +231,12 @@ class Field(BaseLogic):
     def clear(self):
         """ Sets the value of the field to :prop:empty """
         self.value = self.empty
+        return self
+
+    def reset(self):
+        """ Sets the value of the field to :prop:empty and the alias of the
+            field to |None
+        """
+        self.value = self.empty
+        self._alias = None
         return self
