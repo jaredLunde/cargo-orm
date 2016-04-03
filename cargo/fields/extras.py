@@ -859,7 +859,7 @@ class _DurationTemplate(string.Formatter):
             spec, cases = spec.split('(')
             sing, *plural = cases.strip(')').split(',')
             plural = "".join(plural)
-        value = super(_DurationTemplate, self).format_field(value, spec)
+        value = super().format_field(value, spec)
         if sing or plural:
             if value == '1' or value.lstrip('0') == '1' or not plural:
                 value = value + sing
@@ -905,6 +905,7 @@ class _DurationDelta(datetime.timedelta):
 
 class Duration(Double):
     __slots__ = Double.__slots__
+    _formatter = _DurationTemplate()
 
     def __init__(self, *args, validator=NullValidator, **kwargs):
         """`Duration`
@@ -1068,7 +1069,7 @@ class Duration(Double):
         dt = self.to_namedtuple()
         if fmt is None:
             return self._std_format(dt)
-        return _DurationTemplate().format(fmt, **dt._asdict()).strip()
+        return self._formatter.format(fmt, **dt._asdict()).strip()
 
 
 class PhoneNumber(Field, StringLogic):

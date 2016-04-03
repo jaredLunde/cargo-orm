@@ -13,5 +13,6 @@ phonenumbers
 psycopg2
 pycrypto
 slugify
+sqlparse
 vital-tools
 yapf

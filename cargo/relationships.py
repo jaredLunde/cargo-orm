@@ -150,6 +150,17 @@ class Reference(object):
         field = getattr(self.model, self.field_name)
         return field
 
+    def copy(self):
+        cls = self.__class__(self.model, self.field_name, self.constraints)
+        try:
+            cls.model = self.model.copy()
+        except AttributeError:
+            pass
+        cls._forged = self._forged
+        return cls
+
+    __copy__ = copy
+
 
 class ForeignKeyState(object):
     """ State object for pickling and unpickling """
@@ -236,6 +247,8 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                 'Field `{}` not found in `{}`'.format(field_name, string))
         if isinstance(obj, Field):
             return obj
+        elif isinstance(obj, ForeignKey):
+            return obj.get_field()
         else:
             self._raise_forge_error(string,
                                     'The object found was not a Field.')
@@ -291,7 +304,10 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
             def copy(self):
                 cls = _class.copy(self)
-                cls.ref = Reference(_ref_model, _ref_attr)
+                try:
+                    cls.ref = self.ref.copy()
+                except AttributeError:
+                    cls.ref = Reference(_ref_model, _ref_attr)
                 cls._state = self._state
                 return cls
 
@@ -318,7 +334,6 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         self._owner_attr = attribute
         self._forged = True
         field = self.get_field()
-        field.field_name = attribute
         owner._add_field(field)
         if self._relation:
             self._create_relation()

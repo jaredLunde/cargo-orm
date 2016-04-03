@@ -18,6 +18,8 @@ except ImportError:
 import psycopg2
 import psycopg2.extras
 
+import sqlparse
+
 from vital.cache import local_property
 from vital.debug import Logg as logg
 from vital.tools.dicts import merge_dict
@@ -86,7 +88,8 @@ class BaseQuery(StringLogic, NumericLogic):
     def mogrified(self):
         """ -> (#str) the query post-parameterization """
         cur = self.orm.db.cursor()
-        return cur.mogrify(self.string, self.params).decode()
+        return sqlparse.format(cur.mogrify(self.string, self.params).decode(),
+                               reindent=True)
 
     def compile(self):
         return self.query

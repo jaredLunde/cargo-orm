@@ -37,7 +37,7 @@ class TestORM(configure.BaseTestCase):
         self.orm.use('foo').where(True).delete()
 
     def populate(self):
-        self.orm.use('foo').delete()
+        self.orm.use('foo').where(True).delete()
         f1 = new_field('int', name='uid', table='foo')
         f2 = new_field('text', name='textfield', table='foo')
         self.orm.values(12345, 'bar')
@@ -642,16 +642,18 @@ class TestORM(configure.BaseTestCase):
         self.orm.use('foo')
         self.orm.where(f1 == 12345)
         self.orm.returning()
-        res = self.orm.delete()
+        res = self.orm.where(True).delete()
         self.assertIsInstance(res, list)
         self.assertTrue(len(res) > 0)
         self.assertEqual(len(res[0]), 2)
+        with self.assertRaises(QueryError):
+            self.orm.delete()
 
         # Non-executing DELETE
         self.orm.use('foo')
         self.orm.where(f1 == 12345)
         self.orm.returning()
-        res = self.orm.dry().delete()
+        res = self.orm.dry().where(True).delete()
         self.assertIsInstance(res, Query)
         self.assertFalse(len(self.orm.queries))
         self.assertFalse(len(self.orm.state.clauses))
@@ -662,7 +664,7 @@ class TestORM(configure.BaseTestCase):
 
         # Multi DELETE
         self.orm.multi()
-        res = self.orm.use('foo').delete()
+        res = self.orm.use('foo').where(True).delete()
         self.assertIs(res, self.orm)
         self.assertEqual(len(self.orm.queries), 1)
         self.orm.reset_multi()

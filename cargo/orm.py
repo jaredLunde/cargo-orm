@@ -9,6 +9,7 @@
 """
 import re
 import copy
+import sqlparse
 from collections import OrderedDict
 
 try:
@@ -279,6 +280,11 @@ class ORM(object):
         """
         if not self.state.has('FROM'):
             self.from_(alias=self._alias if hasattr(self, '_alias') else None)
+        if not self.state.has('WHERE'):
+            raise QueryError('Deleting all table rows must be done explicitly '
+                             'by creating a `WHERE true` statement. This is '
+                             'for your own protection. e.g. '
+                             '`MyModel.where(True).delete()`')
         return self._cast_query(Delete(self, **kwargs))
 
     remove = delete
@@ -1119,11 +1125,14 @@ class ORM(object):
             logg().warning("Cargo Query")
             line('—')
             l = logg(pre.sub(r'\033[1m\1\033[1;m',
-                             query.replace('; ', ';\n')),
+                             sqlparse.format(query.replace('; ', ';\n'),
+                                             reindent=True)),
                      params)
             l.log("Parameterized", force=True)
             line('—')
-            mog = cursor.mogrify(query.replace('; ', ';\n'), params).decode()
+            mog = sqlparse.format(
+                cursor.mogrify(query.replace('; ', ';\n'), params).decode(),
+                reindent=True)
             l = logg(mog)
             l.log("Mogrified", force=True)
             line('—')

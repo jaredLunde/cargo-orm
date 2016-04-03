@@ -538,6 +538,42 @@ class BaseNumericLogic(BaseLogic):
             self, "{} {}".format(operators.NOT, operators.BETWEEN),
             Expression(a, operators.AND, b))
 
+    def incr(self, by=1, **kwargs):
+        """ Creates a SQL expression for incrementing numeric values
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field.incr(2)
+                model.where(condition)
+            ..
+            |field = field + 2|
+        """
+        return Expression(self,
+                          operators.EQ,
+                          Expression(self, operators.ADD, by),
+                          **kwargs)
+
+    def decr(self, by=1, **kwargs):
+        """ Creates a SQL expression for decrementing numeric values
+
+            -> SQL :class:Expression object
+            ===================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field.decr(2)
+                model.where(condition)
+            ..
+            |field = field - 2|
+        """
+        return Expression(self,
+                          operators.EQ,
+                          Expression(self, operators.SUB, by),
+                          **kwargs)
+
 
 class NumericLogic(BaseNumericLogic):
     __slots__ = tuple()
@@ -2430,7 +2466,7 @@ class aliased(NumericLogic, StringLogic):
             return self.field.__getattr__(name)
 
     def alias(self, alias):
-        return safe(str(self) + ' AS ' + alias)
+        return safe('%s AS "%s"' %(str(self), alias))
 
     def compile(self):
         return self.string

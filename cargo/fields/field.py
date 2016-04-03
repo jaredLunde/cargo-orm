@@ -181,7 +181,7 @@ class Field(BaseLogic):
             val = self._alias
         if val is None:
             raise ValueError('Alias for `%s` cannot be `None`' % self.name)
-        return Expression(self, "AS", safe(val), **kwargs)
+        return Expression(self, "AS", safe('"%s"' % val), **kwargs)
 
     def _should_insert(self):
         if not (self.validate() or self.default is not None):
