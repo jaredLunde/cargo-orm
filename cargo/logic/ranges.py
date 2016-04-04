@@ -43,3 +43,5 @@ class RangeLogic(NumericLogic):
     upper_inf(anyrange)	boolean	is the upper bound infinite?
         upper_inf('(,)'::daterange)	true
     '''
+
+    

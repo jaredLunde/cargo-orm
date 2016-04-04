@@ -44,6 +44,12 @@ class Bit(Field, BitLogic):
             self.value = value
         return self.value
 
+    def to_json(self):
+        try:
+            return self.value.bytes.decode()
+        except AttributeError:
+            return None
+
     @property
     def type_name(self):
         return '%s(%s)' % (OID_map[self.OID], self.length)

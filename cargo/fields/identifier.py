@@ -217,6 +217,10 @@ class UID(Field, NumericLogic):
     def __int__(self):
         return int(self.value)
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return int(self)
+        return None
 
 _ascii_letters = ''.join(letter
                          for letter in string.ascii_letters
@@ -340,6 +344,11 @@ class StrUID(UID):
         if self.value is not None:
             return len(self.value)
         return 0
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return str(self)
+        return None
 
     @staticmethod
     def register_adapter():

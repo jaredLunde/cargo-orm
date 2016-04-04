@@ -134,7 +134,7 @@ class _DateFields(Field):
         """ :see::meth:arrow.Arrow.toordinal """
         return self._arrow.toordinal(*args, **kwargs)
 
-    def for_json(self, *args, **kwargs):
+    def to_json(self, *args, **kwargs):
         """ :see::meth:arrow.Arrow.for_json """
         return self._arrow.for_json(*args, **kwargs)
 

@@ -59,6 +59,9 @@ class BaseDecimal(Field, NumericLogic):
             self.value = value
         return self.value
 
+    def to_json(self):
+        return float(self)
+
     def copy(self, *args, **kwargs):
         return Field.copy(self, *args, decimal_places=self.decimal_places,
                           minval=self.minval, maxval=self.maxval,
@@ -181,6 +184,9 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
                     value = float(value)
             self.value = value
         return self.value
+
+    def to_json(self):
+        return float(self)
 
     def copy(self, *args, **kwargs):
         return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,

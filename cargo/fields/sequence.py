@@ -74,6 +74,11 @@ class OneOf(Field, EnumLogic):
                 raise ValueError("`{}` not in {}".format(value, self.types))
         return self.value
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return type(self.types)(self.value)
+        return None
+
     def register_type(self, db):
         try:
             typ, atyp = db.get_type_OID(self.type_name)
@@ -267,6 +272,11 @@ class Array(Field, ArrayLogic):
     def to_fields(self):
         """ Wraps the values in the array with :prop:type """
         return self._to_fields(self.value)
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return [field.to_json() for field in self.to_fields()]
+        return None
 
     def clear(self):
         self.value = self.empty

@@ -183,6 +183,11 @@ class Field(BaseLogic):
             raise ValueError('Alias for `%s` cannot be `None`' % self.name)
         return Expression(self, "AS", safe('"%s"' % val), **kwargs)
 
+    def to_json(self):
+        if self.value_is_null:
+            return None
+        return str(self)
+
     def _should_insert(self):
         if not (self.validate() or self.default is not None):
             raise self.validator.raises(self.validator.error,

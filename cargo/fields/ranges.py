@@ -134,6 +134,9 @@ class IntRange(Field, RangeLogic):
             self.__call__(self._range_cls(lower=lower))
         return
 
+    def to_json(self):
+        return (self.lower, self.upper)
+        
     @staticmethod
     def register_adapter():
         register_adapter(_NumericRange, IntRange.to_db)

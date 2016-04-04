@@ -73,6 +73,9 @@ class SmallInt(Field, NumericLogic):
     def to_apnumber(self):
         return humanize.to_apnumber(self.value)
 
+    def to_json(self):
+        return int(self)
+
     def copy(self, *args, **kwargs):
         return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,
                           locale=self.locale, **kwargs)

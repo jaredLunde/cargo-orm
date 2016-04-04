@@ -163,11 +163,10 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
         """ Loads @value from Json and inserts it as the value of the field """
         return self.__call__(json.loads(value))
 
-    def to_json(self, *opt, **opts):
-        """ Dumps :prop:value to Json and returns it
-            -> (#str)
-        """
-        return json.dumps(value, *opt, **opts)
+    def to_json(self):
+        if self.value_is_not_null:
+            return self.value
+        return None
 
     @staticmethod
     def to_python(value, cur):
@@ -213,6 +212,11 @@ class HStore(Field, KeyValueOps, HStoreLogic):
         if value is not Field.empty:
             self.value = dict(value) if value is not None else None
         return self.value
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return self.value
+        return None
 
     @staticmethod
     def register_type(db):

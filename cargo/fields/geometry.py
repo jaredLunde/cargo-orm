@@ -58,6 +58,11 @@ class Point(Field, GeometryLogic):
         except AttributeError:
             return Field.empty
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return tuple(self.value)
+        return None
+
     @staticmethod
     def to_db(point):
         p = b"(%s, %s)" % (adapt(point.x).getquoted(),
@@ -97,6 +102,11 @@ class Box(Field, GeometryLogic):
             return self.__getattribute__(name)
         except AttributeError:
             return self.value.__getattribute__(name)
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return tuple(tuple(point) for point in self.points)
+        return None
 
     @property
     def points(self):
@@ -150,6 +160,11 @@ class Circle(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattribute__(name)
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return (tuple(self.value[0]), self.value[1])
+        return None
+
     @staticmethod
     def to_db(circle):
         circ = b"((%s, %s), %s)" % (
@@ -197,6 +212,11 @@ class Line(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattribute__(name)
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return tuple(self.value)
+        return None
+
     @staticmethod
     def to_db(line):
         return AsIs("'{%s, %s, %s}'::line" % (
@@ -236,6 +256,11 @@ class LSeg(Box):
                                    PointRecord(value[1][0], value[1][1]))
             self.value = value
         return self.value
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return tuple(tuple(point) for point in self.value)
+        return None
 
     @staticmethod
     def to_db(box):
@@ -325,6 +350,11 @@ class Path(Field, GeometryLogic):
     def close(self):
         self._closed = True
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return tuple(self.value)
+        return None
+
     @staticmethod
     def to_db(line):
         points = (b"(%s, %s)" % (adapt(point.x).getquoted(),
@@ -397,6 +427,11 @@ class Polygon(Field, GeometryLogic):
                   for point in poly)
         points = "(%s)" % b", ".join(points).decode()
         return AsIs("%s::path" % adapt(points).getquoted().decode())
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return tuple(tuple(point) for point in self.value)
+        return None
 
     @staticmethod
     def to_python(val, cur):

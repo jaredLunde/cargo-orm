@@ -33,3 +33,8 @@ class Bool(Field):
 
     def __bool__(self):
         return self.value
+
+    def to_json(self):
+        if self.value in {True, False}:
+            return self.value.decode()
+        return None

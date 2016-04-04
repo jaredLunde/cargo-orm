@@ -1043,6 +1043,11 @@ class Duration(Double):
                 add_out(string_tools.to_plural(val, *fmts[f]))
         return separator.join(out)
 
+    def to_json(self):
+        if self.value_is_not_null:
+            return float(self.value)
+        return None
+
     def format(self, fmt=None):
         """ @fmt: (#str) string for formatting in Python 3 style |str.format|
                 with optional singular and plural formats included.
@@ -1105,6 +1110,11 @@ class PhoneNumber(Field, StringLogic):
 
     def format(self, format=NATIONAL):
         return phonenumbers.format_number(self.value, format)
+
+    def to_json(self):
+        if self.value_is_not_null:
+            return self.value.to_html()
+        return None
 
     def to_html(self):
         return phonenumbers.format_number(self.value, self.RFC3966)
