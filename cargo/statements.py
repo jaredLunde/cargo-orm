@@ -102,8 +102,8 @@ class BaseQuery(StringLogic, NumericLogic):
 
     def debug(self):
         """ Prints the query string with its parameters """
-        logg("\n" + self.string).notice('Query')
-        logg(self.params).notice('Query Params')
+        cur = self.orm.db.cursor()
+        self.orm.debug(cur, self.string, self.params)
 
 
 class Query(BaseQuery):

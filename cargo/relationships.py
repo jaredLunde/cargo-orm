@@ -317,8 +317,9 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         """ Creates the :class:Relationship object in the parent model
             at the attribute specified in :prop:_relation
         """
-        objname = "{}.{}".format(self._owner.__class__.__name__,
-                                 self._owner_attr)
+        _owner = '%s.%s' % (self._owner.__class__.__module__,
+                            self._owner.__class__.__name__)
+        objname = "%s.%s" % (_owner, self._owner_attr)
         setattr(self.ref_model, self._relation, Relationship(objname))
 
     def forge(self, owner, attribute):
@@ -477,8 +478,7 @@ class Relationship(BaseRelationship):
                 query by
             @*args and @**kwargs get passed to the :meth:Model.select query
         """
-        if self.join_field.value is self.join_field.empty or \
-           self.join_field.value is None and not self.state.has('WHERE'):
+        if self.join_field.value_is_null and not self.state.has('WHERE'):
             raise PullError(('Required field `{}` was empty and no explicit ' +
                              'WHERE clause was specified.')
                             .format(self.join_field.name))
