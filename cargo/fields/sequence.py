@@ -264,14 +264,18 @@ class Array(Field, ArrayLogic):
         self.value.sort(key=key, reverse=reverse)
 
     def _to_fields(self, value):
-        return [self.type.copy(value=val)
-                if not isinstance(val, list)
-                else self._to_fields(val)
-                for val in value]
+        for val in value:
+            if not isinstance(val, list):
+                field = self.type.copy()
+                field(val)
+                yield field
+            else:
+                for field in self._to_fields(val):
+                    yield field
 
     def to_fields(self):
         """ Wraps the values in the array with :prop:type """
-        return self._to_fields(self.value)
+        return list(self._to_fields(self.value))
 
     def to_json(self):
         if self.value_is_not_null:
