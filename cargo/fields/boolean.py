@@ -31,8 +31,8 @@ class Bool(Field):
             self.value = bool(value) if value is not None else value
         return self.value
 
-    def __bool__(self):
-        return self.value
+    def __int__(self):
+        return 1 if self.value is True else 0
 
     def to_json(self):
         if self.value in {True, False}:

@@ -1,7 +1,7 @@
 from cargo.expressions import *
 from cargo.statements import *
 from cargo.orm import ORM
-from vital.debug import Compare, Timer, RandData
+from vital.debug import Compare
 
 
 orm = ORM()
@@ -41,4 +41,4 @@ def insert(orm=None, iorm=None):
     Insert(iorm)
 
 c = Compare(select, pselect, raw, update, delete, insert)
-c.time(100000, orm=orm, iorm=iorm)
+c.time(1E6, orm=orm, iorm=iorm)

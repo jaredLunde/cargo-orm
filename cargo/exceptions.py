@@ -13,6 +13,7 @@ __all__ = (
   'BuildError',
   'RelationshipImportError',
   'PullError',
+  'FieldError',
   'TranslationError',
   'ValidationError',
   'ValidationValueError',
@@ -24,42 +25,42 @@ __all__ = (
 # TODO: Create error codes to pass to the exceptions
 
 
-class QueryError(Exception):
+class QueryError(BaseException):
     """ Raised when there was an error executing a :class:cargo.Query """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class BuildError(Exception):
+class BuildError(BaseException):
     """ Raised when tables fail to build with :class:cargo.builder.Build """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class ORMIndexError(Exception):
+class ORMIndexError(BaseException):
     """ Raised when there was an error saving a record """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class RelationshipImportError(Exception):
+class RelationshipImportError(BaseException):
     """ Raised when a relationship could not be forged """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class PullError(Exception):
+class PullError(BaseException):
     """ Raised when a relationship could not be pulled """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class TranslationError(Exception):
+class TranslationError(BaseException):
     """ Raised when a native sql type could not be translated automatically
         to a vital sql :class:Field type
     """
@@ -68,14 +69,21 @@ class TranslationError(Exception):
         self.code = code
 
 
-class SchemaError(Exception):
+class SchemaError(BaseException):
     """ Raised when errors related to the database schema happen. """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class ValidationError(Exception):
+class FieldError(BaseException):
+    """ Raised when errors related to :class:Field(s) happen. """
+    def __init__(self, message, code=None):
+        self.message = message
+        self.code = code
+
+
+class ValidationError(BaseException):
     """ Raised when there was an error validating one of your
         :class:cargo.Field objects with
         :class:cargo.validators.Validate

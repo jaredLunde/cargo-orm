@@ -117,6 +117,9 @@ class Field(BaseLogic):
     def __len__(self):
         return self.value.__len__()
 
+    def __bool__(self):
+        return True
+
     def set_name(self, field_name):
         """ @field_name: (#str) name of the field """
         self.field_name = field_name

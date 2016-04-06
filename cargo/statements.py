@@ -42,8 +42,7 @@ __all__ = (
     "Raw",
     "Select",
     "Union",
-    "Update",
-)
+    "Update")
 
 
 #
@@ -57,7 +56,6 @@ class BaseQuery(StringLogic, NumericLogic):
     """
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string',
                  'result')
-    newline_re = re.compile(r"""\n+""")
 
     def __init__(self, query=None, params=None, orm=None):
         self.orm = orm or db
@@ -75,14 +73,15 @@ class BaseQuery(StringLogic, NumericLogic):
     def __str__(self):
         return self.query if self.query else self.__repr__()
 
-
     def _filter_empty(self, els):
         return filter(lambda x: x is not _empty, els)
 
     @property
     def query(self):
-        if self.string:
+        try:
             return self.string.strip()
+        except AttributeError:
+            pass
 
     @property
     def mogrified(self):
@@ -96,9 +95,7 @@ class BaseQuery(StringLogic, NumericLogic):
 
     def execute(self):
         """ Executes :prop:query in the :prop:orm """
-        query = self.query
-        params = self.params
-        return self.orm.execute(query, params)
+        return self.orm.execute(self.query, self.params)
 
     def debug(self):
         """ Prints the query string with its parameters """
@@ -132,11 +129,11 @@ class Query(BaseQuery):
             @orm: (:class:ORM) object
         """
         super().__init__(query, params, orm=orm)
-        if orm:
-            self.alias = alias or self.orm.state.alias
-        else:
-            self.alias = alias
-        self.alias = str(self.alias) if self.alias else None
+        try:
+            alias = alias or self.orm.state.alias
+        except AttributeError:
+            pass
+        self.alias = alias
 
     @prepr('query', 'params', _no_keys=True)
     def __repr__(self): return
@@ -462,8 +459,8 @@ class SetOperations(Query):
             intersection_str if self.string else "",
             new_intersection_str
         )
-        self.params = merge_dict(
-            self.params, *[q.params for q in self.operations])
+        self.params = merge_dict(self.params,
+                                 *[q.params for q in self.operations])
         self._attach_alias()
         # self.orm.reset()
         return self.string
@@ -609,13 +606,12 @@ class Raw(SetOperations):
 
     def evaluate_state(self):
         """ :see::meth:SELECT.evaluate_state """
-        self.params.update(self.orm.state.params)
         for state in self.orm.state:
-            if isinstance(state, list):
+            try:
+                yield state.string
+            except AttributeError:
                 for s in state:
                     yield s.string
-            else:
-                yield state.string
 
     def compile(self):
         """ :see::meth:SELECT.compile """
@@ -670,24 +666,24 @@ class Insert(Query):
         super().__init__(orm=orm, **kwargs)
         self.compile()
 
-    clauses = ('INTO', '_FIELDS', 'VALUES', 'RETURNING', 'ON')
+    clauses = ('INTO', 'VALUES', 'RETURNING', 'ON')
 
     def evaluate_state(self):
         """ :see::meth:SELECT.evaluate_state """
-        vals = []
         query_clauses = [_empty] * len(self.clauses)
+        values = []
         for state in self.orm.state:
-            if isinstance(state, list):
-                vals = state
-            else:
+            try:
                 query_clauses[self.clauses.index(state.clause)] = state.string
-        # Insert fields
-        query_clauses[1] = "(%s)" % ", ".join(f.field_name
-                                              for f in self.orm.state.fields)
+            except AttributeError:
+                values = state
         # Insert VALUES
-        query_clauses[2] = "VALUES %s" % ", ".join(
-            val.string.replace("VALUES ", "", 1) for val in vals)
-        self.params.update(self.orm.state.params)
+        query_clauses[1] = "(%s) VALUES %s" % (
+                           ", ".join(f.field_name
+                                     for f in self.orm.state.fields),
+                           ", ".join(val.string.replace("VALUES ", "", 1)
+                                     for val in values))
+        # self.params.update(self.orm.state.params)
         return self._filter_empty(query_clauses)
 
     def compile(self):
@@ -749,7 +745,6 @@ class Select(SetOperations):
         """ `SELECT`
             ``Query Statement``
             @orm: :class:ORM object
-            @fields: :class:Field fields to SELECT from the table
         """
         super().__init__(orm=orm, **kwargs)
         self.compile()
@@ -780,16 +775,14 @@ class Select(SetOperations):
     def evaluate_state(self):
         """ Evaluates the :class:Clause objects in :class:QueryState """
         query_clauses = [_empty] * len(self.clauses)
-        joins = []
+        joins = None
         for state in self.orm.state:
             try:
                 query_clauses[self.clauses.index(state.clause)] = state.string
             except (ValueError, AttributeError):
-                joins = (c.string for c in state)
-
-        if joins:
-            query_clauses[1] = " ".join(joins)
-        self.params.update(self.orm.state.params)
+                joins = state
+        if joins is not None:
+            query_clauses[1] = " ".join(c.string for c in joins)
         return self._filter_empty(query_clauses)
 
     def compile(self):
@@ -845,10 +838,9 @@ class Update(Query):
         """ :see::meth:SELECT evaluate_state """
         get_state = self.orm.state.get
         for clause in self.clauses:
-            v = get_state(clause, _empty).string
-            if v is not _empty:
-                yield v
-        self.params.update(self.orm.state.params)
+            v = get_state(clause, None)
+            if v is not None:
+                yield v.string
 
     def compile(self):
         """ :see::meth:SELECT.compile """
@@ -856,8 +848,8 @@ class Update(Query):
             table = self.orm.state.get('INTO').args[0]
         except AttributeError:
             table = self.orm.table
-        self.string = (
-            "UPDATE %s %s" % (table, " ".join(self.evaluate_state()))).strip()
+        self.string = ("UPDATE %s %s" %
+                       (table, " ".join(self.evaluate_state()))).strip()
         return self.string
 
 
@@ -903,10 +895,9 @@ class Delete(Query):
         """ :see::meth:SELECT.evaluate_state """
         get_state = self.orm.state.get
         for clause in self.clauses:
-            v = get_state(clause, _empty).string
-            if v is not _empty:
-                yield v
-        self.params.update(self.orm.state.params)
+            v = get_state(clause, None)
+            if v is not None:
+                yield v.string
 
     def compile(self):
         """ :see::meth:SELECT.compile """
