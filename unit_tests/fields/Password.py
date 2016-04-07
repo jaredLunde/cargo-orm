@@ -13,7 +13,7 @@ class FakeHasher(Hasher):
 
 
 class HasherTests(object):
-    base = Hasher()
+    base = Hasher(raises=False)
 
     def test_register_scheme(self):
         self.base.register_scheme(FakeHasher)
@@ -42,38 +42,40 @@ class HasherTests(object):
         self.base.raises = True
         with self.assertRaises(IncorrectPasswordError):
             self.base.verify('fooo', self.base.hash('foo'))
+        self.assertTrue(self.base.verify('foo', self.base.hash('foo')))
 
 
 class TestArgon2Hasher(unittest.TestCase, HasherTests):
     def setUp(self):
-        self.base = self.base.__class__()
-    base = Argon2Hasher()
+        self.base = self.base.__class__(raises=False)
+    base = Argon2Hasher(raises=False)
 
 
 class TestBcrypt256Hasher(TestArgon2Hasher):
-    base = BcryptHasher()
+    base = BcryptHasher(raises=False)
 
 
 class TestBcryptHasher(TestArgon2Hasher):
-    base = BcryptHasher()
+    base = BcryptHasher(raises=False)
 
 
 class TestPBKDF2Hasher(TestArgon2Hasher):
-    base = PBKDF2Hasher()
+    base = PBKDF2Hasher(raises=False)
 
 
 class TestSHA256Hasher(TestArgon2Hasher):
-    base = SHA256Hasher()
+    base = SHA256Hasher(raises=False)
 
 
 class TestSHA512Hasher(TestArgon2Hasher):
-    base = SHA512Hasher()
+    base = SHA512Hasher(raises=False)
 
 
 class TestPassword(configure.ExtrasTestCase, TestField):
 
     @property
     def base(self):
+        self.orm.password.hasher.raises = False
         return self.orm.password
 
     def test_init(self):
@@ -116,12 +118,12 @@ class TestPassword(configure.ExtrasTestCase, TestField):
 
     def test_migrate(self):
         for h1, h2 in zip(self.hashes, reversed(self.hashes)):
-            base = Password(h1())
+            base = Password(h1(raises=False))
             hsh = base('somepassword')
             self.assertIsInstance(base._get_hasher_for(hsh), h1)
             self.assertTrue(base.verify('somepassword'))
 
-            base.hasher = h2()
+            base.hasher = h2(raises=False)
             self.assertTrue(base.verify_and_migrate('somepassword'))
             self.assertIsInstance(base._get_hasher_for(base.value), h2)
             self.assertTrue(base.verify('somepassword'))
@@ -134,12 +136,12 @@ class TestPassword(configure.ExtrasTestCase, TestField):
 
     def test_refresh(self):
         for h1, h2 in zip(self.hashes, reversed(self.hashes)):
-            base = Password(h1())
+            base = Password(h1(raises=False))
             hsh = base('somepassword')
             self.assertIsInstance(base._get_hasher_for(hsh), h1)
             self.assertTrue(base.verify('somepassword'))
 
-            base.hasher = h2()
+            base.hasher = h2(raises=False)
             self.assertTrue(base.verify_and_refresh('somepassword'))
             self.assertIsInstance(base._get_hasher_for(base.value), h1)
             self.assertTrue(base.verify('somepassword'))
@@ -153,6 +155,13 @@ class TestPassword(configure.ExtrasTestCase, TestField):
         self.base('bar')
         self.assertTrue(self.base.verify('foo', self.base.hash('foo')))
         self.assertFalse(self.base.verify('fooo', self.base.hash('foo')))
+
+    def test_verify_and_change(self):
+        self.assertFalse(self.base.verify_and_change('foo', 'bar'))
+        self.base('foo')
+        self.assertIsNotNone(self.base.verify_and_change('foo', 'bar'))
+        self.assertFalse(self.base.verify_and_change('baz', 'bar'))
+        self.assertIsNotNone(self.base.verify_and_change('bar', 'baz'))
 
     def test_insert(self):
         self.base('somepassword')
@@ -192,6 +201,7 @@ class TestEncPassword(TestPassword):
 
     @property
     def base(self):
+        self.orm.enc_password.hasher.raises = False
         return self.orm.enc_password
 
     def test_init(self):

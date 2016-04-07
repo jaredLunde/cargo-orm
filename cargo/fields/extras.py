@@ -289,7 +289,7 @@ class HashIdentifier(object):
 class Hasher(HashIdentifier):
     __slots__ = ('rounds', 'context', 'raises')
 
-    def __init__(self, rounds=None, raises=False, context=None):
+    def __init__(self, rounds=None, raises=True, context=None):
         """ ```Password Hasher```
             @rounds: (#int) Defines the amount of computation realized and
                 therefore the execution time, given in number of iterations
@@ -341,7 +341,8 @@ class Hasher(HashIdentifier):
             verify = self._verify(value, hash)
         except (argon2.exceptions.VerificationError, ValueError):
             verify = False
-        self._raise_if(self.raises)
+        if verify is False:
+            self._raise_if(self.raises)
         return verify
 
     @property
@@ -376,7 +377,7 @@ class Argon2Hasher(Hasher):
     __slots__ = ('rounds', 'context', 'raises')
     scheme = 'argon2i'
 
-    def __init__(self, rounds=2, raises=False, salt_size=16,
+    def __init__(self, rounds=2, raises=True, salt_size=16,
                  memory_cost=1 << 12, parallelism=2, length=32,
                  encoding='utf8', context=None):
         """ `Argon2i`
@@ -411,7 +412,7 @@ class BcryptHasher(Hasher):
     __slots__ = Hasher.__slots__
     scheme = 'bcrypt'
 
-    def __init__(self, rounds=6, raises=False, context=None):
+    def __init__(self, rounds=6, raises=True, context=None):
         """ `Bcrypt`
             :see::meth:Hasher.__init__
 
@@ -425,7 +426,7 @@ class Bcrypt256Hasher(Hasher):
     __slots__ = Hasher.__slots__
     scheme = 'bcrypt_sha256'
 
-    def __init__(self, rounds=6, raises=False, context=None):
+    def __init__(self, rounds=6, raises=True, context=None):
         """ `Bcrypt with SHA-256`
             :see::meth:Hasher.__init__
 
@@ -439,7 +440,7 @@ class PBKDF2Hasher(Hasher):
     __slots__ = Hasher.__slots__
     scheme = 'pbkdf2_sha512'
 
-    def __init__(self, rounds=6400, raises=False, context=None):
+    def __init__(self, rounds=6400, raises=True, context=None):
         """ `PBKDF2-SHA-512`
             :see::meth:Hasher.__init__
 
@@ -453,7 +454,7 @@ class SHA512Hasher(Hasher):
     __slots__ = Hasher.__slots__
     scheme = 'sha512_crypt'
 
-    def __init__(self, rounds=9600, raises=False, context=None):
+    def __init__(self, rounds=9600, raises=True, context=None):
         """ `Bcrypt with SHA-256`
             :see::meth:Hasher.__init__
 
@@ -467,7 +468,7 @@ class SHA256Hasher(Hasher):
     __slots__ = Hasher.__slots__
     scheme = 'sha256_crypt'
 
-    def __init__(self, rounds=12800, raises=False, context=None):
+    def __init__(self, rounds=12800, raises=True, context=None):
         """ `Bcrypt with SHA-256`
             :see::meth:Hasher.__init__
 
@@ -548,7 +549,9 @@ class Password(Field, StringLogic):
         """
         hasher = HashIdentifier.identify(self.value, find_class=True)
         try:
-            return hasher()
+            hasher = hasher()
+            hasher.raises = self.hasher.raises
+            return hasher
         except TypeError:
             return self.hasher
 
@@ -610,6 +613,14 @@ class Password(Field, StringLogic):
         if verified:
             self.__call__(hasher.hash(value))
         return verified
+
+    def verify_and_change(self, password, new_password):
+        """ Verifies @password against the local hash and changes the the
+            password to @new_password.
+        """
+        if self.verify(password):
+            return self.__call__(new_password)
+        return False
 
     @staticmethod
     def generate(size=256, keyspace=string.ascii_letters+string.digits+'/.#+'):
