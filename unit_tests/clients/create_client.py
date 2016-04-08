@@ -8,13 +8,14 @@
 """
 import unittest
 
-from cargo.clients import create_client, local_client, Postgres
+from cargo.clients import db, create_client, local_client, Postgres
 
 
 class Testcreate_client(unittest.TestCase):
     @staticmethod
     def tearDownClass():
         local_client.clear()
+        db.open()
 
     def test_create_with_opt(self):
         local_client.clear()

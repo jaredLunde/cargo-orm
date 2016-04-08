@@ -52,19 +52,23 @@ class TestORM(configure.BaseTestCase):
         self.assertFalse(orm._multi)
         self.assertIsInstance(orm._state, QueryState)
         self.assertEqual(orm._debug, False)
+        orm.close()
         orm = ORM(client=self.client, debug=True)
         self.assertTrue(orm._debug)
         self.assertIs(orm._client, self.client)
+        orm.close()
 
     def test_client(self):
         if local_client.get('db'):
             del local_client['db']
         orm = ORM(client=None)
         self.assertIsInstance(orm.db, Postgres)
-        self.assertIsNot(orm.db, local_client.get('db'))
+        self.assertIs(orm.db, local_client.get('db'))
         self.assertIsNot(orm.db, self.client)
+        orm.close()
         orm = ORM(client=self.client)
         self.assertIs(orm.db, self.client)
+        orm.close()
 
     def test_close(self):
         # Client
@@ -585,6 +589,7 @@ class TestORM(configure.BaseTestCase):
         self.assertIsInstance(res, list)
         self.assertEqual(len(res), 2)
         self.assertTrue(hasattr(res[0], '_asdict'))
+        orm.close()
 
         orm = ORM(cursor_factory=psycopg2.extras.RealDictCursor,
                   schema='cargo_tests')
@@ -599,6 +604,7 @@ class TestORM(configure.BaseTestCase):
         self.assertIsInstance(res, list)
         self.assertEqual(len(res), 2)
         self.assertIsInstance(res[0], dict)
+        orm.close()
 
     def test_update(self):
         self.populate()

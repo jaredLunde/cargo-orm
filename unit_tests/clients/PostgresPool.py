@@ -10,7 +10,7 @@ import unittest
 import psycopg2
 
 from cargo.cursors import *
-from cargo.clients import PostgresPool, local_client
+from cargo.clients import db, PostgresPool, local_client
 
 from unit_tests import configure
 
@@ -28,6 +28,7 @@ class TestPostgresPool(unittest.TestCase):
         db = configure.db
         configure.drop_schema(db, 'cargo_tests', cascade=True, if_exists=True)
         local_client.clear()
+        db.open()
 
     def test_connect(self):
         client = PostgresPool()

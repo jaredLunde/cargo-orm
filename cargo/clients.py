@@ -43,6 +43,9 @@ __all__ = (
 class BasePostgresClient(object):
     __slots__ = tuple()
 
+    def __del__(self):
+        self.close()
+
     def get_type_OID(self, typname):
         """ -> (#tuple) |(OID, ARRAY_OID)| """
         q = """SELECT t.oid AS OID, t.typname AS name
@@ -441,7 +444,7 @@ class PostgresPoolConnection(Postgres):
 
     def put(self, *args, **kwargs):
         """ Returns the connection to the pool """
-        self.pool.put(self, *args, **kwargs)
+        self.pool.put(self._connection, *args, **kwargs)
 
 
 class PostgresPool(BasePostgresClient):

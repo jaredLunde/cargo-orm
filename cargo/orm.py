@@ -86,7 +86,7 @@ class ORM(object):
 
     @cached_property
     def db(self):
-        return self._client or local_client.get('db') or Postgres()
+        return self._client or local_client.get('db') or create_client()
 
     client = db
 
@@ -1146,10 +1146,10 @@ class ORM(object):
     def copy(self, *args, clear=False, **kwargs):
         """ -> a safe copy of the model """
         cls = self.__class__(*args,
-                             client=self._client,
                              cursor_factory=self._cursor_factory,
                              schema=self.schema,
                              debug=self._debug,
+                             client=self.db,
                              **kwargs)
         if not clear:
             cls.queries = self.queries.copy()
@@ -1790,6 +1790,12 @@ class Model(ORM):
         for field in self.fields:
             field.set_alias(table=alias)
 
+    @cached_property
+    def db(self):
+        return self._client or local_client.get('db') or Postgres()
+
+    client = db
+
     def _register_field(self, field):
         try:
             confield = (self.db, field.__class__)
@@ -2368,7 +2374,6 @@ class Model(ORM):
     def copy(self, *args, clear=False, **kwargs):
         """ Returns a safe copy of the model """
         cls = ORM.copy(self, *args, __nocompile__=True, clear=clear, **kwargs)
-        cls.db = self.db
         cls.field_names = self.field_names
         cls.names = self.names
         cls._alias = self._alias

@@ -9,7 +9,7 @@
 import unittest
 from multiprocessing import cpu_count
 
-from cargo.clients import create_pool, local_client, PostgresPool
+from cargo.clients import db, create_pool, local_client, PostgresPool
 
 
 class Testcreate_pool(unittest.TestCase):
@@ -20,6 +20,7 @@ class Testcreate_pool(unittest.TestCase):
     @staticmethod
     def tearDownClass():
         local_client.clear()
+        db.open()
 
     def test_create_with_opt(self):
         pool = create_pool(host='localhost', password='')

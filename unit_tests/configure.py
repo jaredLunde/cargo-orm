@@ -566,8 +566,6 @@ class KeyValueTestCase(BaseTestCase):
     def setUpClass(cls):
         setup()
         KeyValuePlan().execute()
-        db.db.register('hstore')
-
 
     @classmethod
     def tearDownClass(cls):

@@ -16,6 +16,7 @@ class TestDb(unittest.TestCase):
     @staticmethod
     def tearDownClass():
         local_client.clear()
+        db.open()
 
     def test_create_db(self):
         db.open()
