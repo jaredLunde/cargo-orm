@@ -205,10 +205,13 @@ class ORM(object):
 
             -> result of :class:Insert query
         """
-        if not len(self.state.get('VALUES', [])):
+        len_values = len(self.state.get('VALUES', []))
+        if not len_values:
             self.values(*fields)
             if not self._multi:
                 self.one()
+        elif len_values == 1 and not self._multi:
+            self.one()
         if not self.state.has('RETURNING'):
             self.returning(*fields)
         if fields and all(isinstance(f, Field) for f in fields):
@@ -924,6 +927,7 @@ class ORM(object):
                     conn.commit()
                 except psycopg2.ProgrammingError as e:
                     conn.rollback()
+                    self.db.put(conn)
                     raise QueryError(e.args[0].strip())
         self.db.put(conn)
 
@@ -993,6 +997,8 @@ class ORM(object):
                 psycopg2.InternalError) as e:
             #: Rolls back the transaction in the event of a failure
             _conn.rollback()
+            if conn is None:
+                self.db.put(_conn)
             raise QueryError(e.args[0].strip())
         #: Puts a client connection away if it is a pool and no connection
         #  was passed in arguments. If a connection object is passed,
@@ -1786,9 +1792,10 @@ class Model(ORM):
 
     def _register_field(self, field):
         try:
-            if field.__class__ not in _adapted_fields:
+            confield = (self.db, field.__class__)
+            if confield not in _adapted_fields:
                 field.register_adapter()
-                _adapted_fields.add(field.__class__)
+                _adapted_fields.add(confield)
         except AttributeError:
             pass
         try:

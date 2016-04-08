@@ -125,7 +125,6 @@ _jsontypes = (((collections.Mapping, collections.ItemsView, dict), jsondict),
 def _get_json(val, oid):
     for instance, typ in _jsontypes:
         if isinstance(val, instance):
-            t = typ(val)
             return typ(val)
     raise TypeError('Could not adapt type `%s` to json.' % type(val))
 
@@ -213,10 +212,19 @@ class HStore(Field, KeyValueOps, HStoreLogic):
             self.value = dict(value) if value is not None else None
         return self.value
 
+    @property
+    def type_name(self):
+        return 'hstore'
+
     def to_json(self):
         if self.value_is_not_null:
             return self.value
         return None
+
+    @staticmethod
+    def register_adapter():
+        psycopg2.extensions.register_adapter(dict,
+                                             psycopg2.extras.HstoreAdapter)
 
     @staticmethod
     def register_type(db):

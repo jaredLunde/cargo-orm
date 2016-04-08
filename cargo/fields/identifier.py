@@ -54,6 +54,10 @@ class UUID(Field, StringLogic):
         self.__call__(uuid.uuid4())
         return self
 
+    @property
+    def type_name(self):
+        return 'uuid'
+
     @staticmethod
     def to_python(uuid_, cur):
         try:

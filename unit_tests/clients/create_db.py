@@ -20,9 +20,12 @@ class TestDb(unittest.TestCase):
     def test_create_db(self):
         db.open()
         self.assertIsInstance(db.engine, ORM)
+        #self.assertIsInstance(db.engine.client, PostgresPool)
+        db.open(client=Postgres())
         self.assertIsInstance(db.engine.client, Postgres)
         db.open(client=PostgresPool())
         self.assertIsInstance(db.engine.client, PostgresPool)
+        db.open()
 
 if __name__ == '__main__':
     # Unit test

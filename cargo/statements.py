@@ -86,9 +86,12 @@ class BaseQuery(StringLogic, NumericLogic):
     @property
     def mogrified(self):
         """ -> (#str) the query post-parameterization """
-        cur = self.orm.db.cursor()
-        return sqlparse.format(cur.mogrify(self.string, self.params).decode(),
-                               reindent=True)
+        client = self.orm.db.get()
+        cur = client.cursor()
+        res = sqlparse.format(cur.mogrify(self.string, self.params).decode(),
+                              reindent=True)
+        client.put()
+        return res
 
     def compile(self):
         return self.query
@@ -99,8 +102,10 @@ class BaseQuery(StringLogic, NumericLogic):
 
     def debug(self):
         """ Prints the query string with its parameters """
-        cur = self.orm.db.cursor()
+        client = self.orm.db.get()
+        cur = client.cursor()
         self.orm.debug(cur, self.string, self.params)
+        client.put()
 
 
 class Query(BaseQuery):

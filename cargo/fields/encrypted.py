@@ -593,8 +593,7 @@ class Encrypted(Field):
     def validate(self):
         return self.type.validate()
 
-    @staticmethod
-    def register_adapter():
+    def register_adapter(self):
         register_adapter(encint, encint.to_db)
         register_adapter(encstr, encstr.to_db)
         register_adapter(encfloat, encfloat.to_db)
@@ -608,6 +607,7 @@ class Encrypted(Field):
         register_adapter(encip, encip.to_db)
         register_adapter(encipnet, encipnet.to_db)
         register_adapter(enceui, enceui.to_db)
+        self.type.register_adapter()
 
     def copy(self, *args, **kwargs):
         return self.__class__(self._secret,

@@ -53,7 +53,7 @@ class BasePostgresClient(object):
         cur = conn.cursor(cursor_factory=CNamedTupleCursor)
         cur.execute(q, ('_%s' % typname, typname))
         res = cur.fetchall()
-        self.put(conn)
+        conn.put()
         return tuple(r.oid for r in res)
 
     def get_type_name(self, OID):
@@ -64,9 +64,11 @@ class BasePostgresClient(object):
             q = """SELECT t.oid AS OID, t.typname AS name
                    FROM pg_catalog.pg_type t
                    WHERE t.oid = %s;"""
-            cur = self.cursor(cursor_factory=CNamedTupleCursor)
+            conn = self.get()
+            cur = conn.cursor(cursor_factory=CNamedTupleCursor)
             cur.execute(q, OID)
             res = cur.fetchall()
+            conn.put()
             return res.oid
 
     _ext_map = {'hstore': psycopg2.extras.register_hstore,
@@ -75,16 +77,31 @@ class BasePostgresClient(object):
 
     def register(self, extension, *args, cursor=None, **kwargs):
         """ Shortcut for registering extensions in :prop:_ext_map to the
-            local connection or cursor, currently only 'composite' and
+            local connection or cursor, currently only 'uuid', 'composite' and
             'hstore' are supported.
 
             @extension: (#str) name of the extension
             @*args: arguments to pass to the extension function
             @cursor: (:class:psycopg2.extensions.cursor) apply to the
                 given cursor rather than the local connection
-            @**kwargs: keyword arguments to pass ot hte extension function
+            @**kwargs: keyword arguments to pass ot the extension function
         """
-        conn_or_curs = self.get().connection if cursor is None else cursor
+        if cursor is None:
+            conn_or_curs = self.get().connection
+            seen = set()
+            while True:
+                try:
+                    conn_or_curs_ = self.get().connection
+                except psycopg2.pool.PoolError:
+                    break
+                if conn_or_curs_ is conn_or_curs:
+                    break
+                self._ext_map[extension](conn_or_curs_, *args, **kwargs)
+                seen.add(conn_or_curs_)
+            for c in seen:
+                self.put(c)
+        else:
+            conn_or_curs = cursor
         r = self._ext_map[extension](conn_or_curs, *args, **kwargs)
         try:
             self.put(conn_or_curs)
@@ -122,12 +139,14 @@ class BasePostgresClient(object):
 
     def get_search_paths(self, schema=None):
         """ Gets all of the search paths currently set in the client """
-        schema = schema or self.schema
+        paths = []
         if schema:
             paths = [schema]
+        if self.schema:
+            paths.append(self.schema)
+        if self._search_paths:
             paths.extend(self._search_paths)
-            return unique_list(paths)
-        return []
+        return unique_list(paths)
 
     def set_schema(self, schema):
         """ Sets the default schema used by the client. """
@@ -228,8 +247,9 @@ class Postgres(BasePostgresClient):
                  '_search_paths', '_events')
 
     def __init__(self, dsn=None, cursor_factory=CNamedTupleCursor,
-                 connection=None, autocommit=False, encoding=None, schema=None,
-                 search_paths=None, events=None, **connection_options):
+                 connection=None, autocommit=False, encoding=None,
+                 schema=None, search_paths=None, events=None,
+                 **connection_options):
         """ `Postgres Client`
 
             This is a thin wrapper for the :mod:psycopg2 connection object
@@ -421,7 +441,7 @@ class PostgresPoolConnection(Postgres):
 
     def put(self, *args, **kwargs):
         """ Returns the connection to the pool """
-        self.pool.putconn(self._connection, *args, **kwargs)
+        self.pool.put(self, *args, **kwargs)
 
 
 class PostgresPool(BasePostgresClient):
@@ -448,7 +468,10 @@ class PostgresPool(BasePostgresClient):
         self._events = events or defaultdict(dict)
         self._connection_options = connection_options or {}
         self._schema = schema
-        self._search_paths = search_paths or []
+        try:
+            self._search_paths = list(search_paths)
+        except TypeError:
+            self._search_paths = ['public']
         self.encoding = encoding
         self._pool = pool
         self.minconn = minconn

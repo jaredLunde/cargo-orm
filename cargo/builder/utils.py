@@ -62,7 +62,7 @@ class BaseCreator(object):
                                              self.query.params)
             except AttributeError:
                 return "<{}:`{}`>".format(self.__class__.__name__,
-                                             self.query)
+                                          self.query)
 
     def _add(self, *clauses):
         for clause in clauses:
@@ -94,6 +94,6 @@ class BaseCreator(object):
         return self.query.params
 
     def execute(self):
-        return self.query.execute()
+        return self.orm.execute(self.query.string, self.query.params)
 
     create = execute

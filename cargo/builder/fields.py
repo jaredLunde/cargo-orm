@@ -439,7 +439,7 @@ class ArrayColumn(Column):
             return safe(self._datatype)
         field = self.field
         maxlen = field.maxlen
-        dims = "[]".format(maxlen if maxlen > 0 else '')
+        dims = "[]"
         if field.dimensions > 1:
             maxlen = field.maxlen
             dims = ''.join('[]' for _ in range(field.dimensions))
@@ -546,7 +546,7 @@ def find_column(field, translator=postgres):
         # Serial
         return SerialColumn(field, translator)
     if isinstance(field, (Encrypted)):
-        # Serial
+        # Encrypted
         return EncryptedColumn(field, translator)
     elif field.OID in types.category.ARRAYS:
         # Array
