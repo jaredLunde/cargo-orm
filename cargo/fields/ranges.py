@@ -69,11 +69,13 @@ class IntRange(Field, RangeLogic):
     _cast = int
 
     def __init__(self, *args, **kwargs):
-        """ `Integer Range`
+        """`Integer Range`
+            ==================================================================
             @value: (#tuple (lower_bound, upper_bound) or
                 :class:psycopg2.extras.Range)
+            ==================================================================
             :see::meth:Field.__init__
-
+            ==================================================================
             See also: :class:Range and
                 http://initd.org/psycopg/docs/extras.html#range-data-types
         """

@@ -17,7 +17,7 @@ __all__ = ('Char', 'Varchar', 'Text')
 
 
 class Char(Field, StringLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |CHAR|
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -26,13 +26,14 @@ class Char(Field, StringLogic):
     OID = CHAR
 
     def __init__(self, maxlen, minlen=0,  validator=CharValidator,  **kwargs):
-        """ `Char`
+        """`Char`
+            ==================================================================
             Fixed-length, blank-padded character field
-
-            :see::meth:Field.__init__
             @maxlen: (#int) blank-padded length of string value - this is the
                 exact length of the field in the SQL table
             @minlen: (#int) minimum length of string value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(validator=validator, **kwargs)
         self.maxlen = maxlen
@@ -54,19 +55,20 @@ class Char(Field, StringLogic):
 
 
 class Varchar(Char):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |VARCHAR|
     """
     __slots__ = Char.__slots__
     OID = VARCHAR
 
     def __init__(self, maxlen=-1, minlen=0, **kwargs):
-        """ `Varchar`
+        """`Varchar`
             Variable-length character field with 10485760 byte maximum limit.
-
-            :see::meth:Field.__init__
+            ==================================================================
             @maxlen: (#int) maximum length of string value
             @minlen: (#int) minimum length of string value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
 
@@ -79,19 +81,20 @@ class Varchar(Char):
 
 
 class Text(Char):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |TEXT|
     """
     __slots__ = Char.__slots__
     OID = TEXT
 
     def __init__(self, maxlen=-1, minlen=0, **kwargs):
-        """ `Text`
+        """`Text`
             Variable unlimited-length character field.
-
-            :see::meth:Field.__init__
+            ==================================================================
             @maxlen: (#int) maximum length of string value
             @minlen: (#int) minimum length of string value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minlen=minlen, maxlen=maxlen, **kwargs)
 

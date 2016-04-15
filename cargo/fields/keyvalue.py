@@ -130,7 +130,7 @@ def _get_json(val, oid):
 
 
 class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |JSON|
 
         The value given to this field must be Json serializable. It is
@@ -141,10 +141,12 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
     OID = JSON
 
     def __init__(self, cast=None, *args, **kwargs):
-        """ `Json`
-            :see::meth:Field.__init__
+        """`Json`
+            ==================================================================
             @cast: type cast for specifying the type of data should be expected
                 for the value property, e.g. |dict| or |list|
+            ==================================================================
+            :see::meth:Field.__init__
         """
         self.cast = cast
         super().__init__(*args, **kwargs)
@@ -181,7 +183,7 @@ JSONBARRAYTYPE = reg_array_type('JSONBARRAYTYPE', JSONBARRAY, JSONTYPE)
 
 
 class JsonB(Json, JsonBLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |JSONB|
 
         The value given to this field must be able Json serializable. It is
@@ -191,7 +193,8 @@ class JsonB(Json, JsonBLogic):
     OID = JSONB
 
     def __init__(self, *args, **kwargs):
-        """ `JsonB`
+        """`JsonB`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)
@@ -202,7 +205,8 @@ class HStore(Field, KeyValueOps, HStoreLogic):
     OID = HSTORE
 
     def __init__(self, *args, **kwargs):
-        """ `HStore`
+        """`HStore`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)

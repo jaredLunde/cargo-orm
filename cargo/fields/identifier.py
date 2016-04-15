@@ -27,14 +27,15 @@ __all__ = ('UUID', 'UID', 'SmallSerial', 'Serial', 'BigSerial', 'StrUID')
 
 
 class UUID(Field, StringLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |UUID|
     """
     __slots__ = Field.__slots__
     OID = UUIDTYPE
 
     def __init__(self, *args, default=Field.empty, primary=True, **kwargs):
-        """ `UUID`
+        """`UUID`
+            ==================================================================
             :see::meth:Field.__init__
         """
         default = default if default is not Field.empty else \
@@ -84,7 +85,7 @@ class UUID(Field, StringLogic):
 
 
 class SmallSerial(SmallInt):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT2| with an
         |AUTO_INCREMENT|-like interface. It is always assumed that this field
         is the |PRIMARY| key.
@@ -101,15 +102,17 @@ class SmallSerial(SmallInt):
     OID = SMALLSERIAL
 
     def __init__(self, minval=1, maxval=32767, *args, primary=True, **kwargs):
-        """ `SmallSerial`
-            :see::meth:Field.__init__
+        """`SmallSerial`
+            ==================================================================
             @maxval: (#int) maximum integer value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minval, maxval, *args, primary=primary, **kwargs)
 
 
 class Serial(SmallSerial):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT4| with an
         |AUTO_INCREMENT|-like interface. It is always assumed that this field
         is the |PRIMARY| key.
@@ -129,14 +132,16 @@ class Serial(SmallSerial):
     def __init__(self, minval=1, maxval=2147483647, *args,
                  primary=True, **kwargs):
         """ `Serial`
-            :see::meth:Field.__init__
+            ==================================================================
             @maxval: (#int) maximum integer value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minval, maxval, *args, primary=primary, **kwargs)
 
 
 class BigSerial(Serial):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT8| with an
         |AUTO_INCREMENT|-like interface. It is always assumed that this field
         is the |PRIMARY| key.
@@ -155,14 +160,16 @@ class BigSerial(Serial):
     def __init__(self, minval=1, maxval=9223372036854775807, *args,
                  primary=True, **kwargs):
         """ `BigSerial`
-            :see::meth:Field.__init__
+            ==================================================================
             @maxval: (#int) maximum integer value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minval, maxval, *args, primary=primary, **kwargs)
 
 
 class UID(Field, NumericLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT8|. It is always
         assumed that this field is the |PRIMARY| key.
 
@@ -207,6 +214,7 @@ class UID(Field, NumericLogic):
 
     def __init__(self, *args, primary=True, default=Field.empty, **kwargs):
         """ `UID`
+            ==================================================================
             :see::meth:Field.__init__
         """
         default = default if default is not Field.empty else \
@@ -253,7 +261,7 @@ class strint(int):
 
 
 class StrUID(UID):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT8|. It is always
         assumed that this field is the |PRIMARY| key.
 
@@ -327,6 +335,7 @@ class StrUID(UID):
 
     def __init__(self, *args, **kwargs):
         """ `StrUID`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)

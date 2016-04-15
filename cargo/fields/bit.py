@@ -22,7 +22,7 @@ __all__ = ('Bit', 'Varbit',)
 
 
 class Bit(Field, BitLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |BIT|.
     """
     OID = BIT
@@ -31,7 +31,10 @@ class Bit(Field, BitLogic):
         'default', 'validator', '_alias', 'table', 'length')
 
     def __init__(self, length, *args, validator=BitValidator, **kwargs):
-        """ `Bit`
+        """`Bit`
+            ==================================================================
+            @length: (#int) number of bits to allocate
+            ==================================================================
             :see::meth:Field.__init__
         """
         self.length = length
@@ -76,14 +79,17 @@ class Bit(Field, BitLogic):
 
 
 class Varbit(Bit):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |VARBIT|.
     """
     OID = VARBIT
     __slots__ = Bit.__slots__
 
     def __init__(self, length, *args, validator=VarbitValidator, **kwargs):
-        """ `Bit Varying`
+        """`Bit Varying`
+            ==================================================================
+            @length: (#int) maximum number of bits to allocate
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(length, *args, validator=validator, **kwargs)

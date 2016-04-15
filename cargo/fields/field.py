@@ -45,7 +45,7 @@ class Field(BaseLogic):
                  unique=None, index=None, default=None,
                  validator=NullValidator, name=None, table=None):
         """``SQL Field``
-
+            ==================================================================
             @value: value to populate the field with
             @not_null: (#bool) True if the field cannot be |Null|
             @primary: (#bool) True if this field is the primary key in your

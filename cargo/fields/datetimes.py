@@ -231,7 +231,7 @@ def _get_arrow(typ, value):
 
 
 class Time(_TimeFields, TimeLogic, DateLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |TIME|
         backed by :class:arrow.Arrow
     """
@@ -241,7 +241,8 @@ class Time(_TimeFields, TimeLogic, DateLogic):
     _arrow_type = ArrowTime
 
     def __init__(self, *args, **kwargs):
-        """ `Time`
+        """`Time`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)
@@ -276,7 +277,7 @@ class Time(_TimeFields, TimeLogic, DateLogic):
 
 
 class TimeTZ(Time):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |TIMETZ|.
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -285,7 +286,8 @@ class TimeTZ(Time):
     _arrow_type = ArrowTimeTZ
 
     def __init__(self, *args, **kwargs):
-        """ `Time WITH timezone`
+        """`Time WITH timezone`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)
@@ -296,7 +298,7 @@ class TimeTZ(Time):
 
 
 class Date(_DateFields, DateLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |DATE|
         backed by :class:arrow.Arrow
     """
@@ -306,7 +308,8 @@ class Date(_DateFields, DateLogic):
     _arrow_type = ArrowDate
 
     def __init__(self, value=Field.empty, **kwargs):
-        """ `Date`
+        """`Date`
+            ==================================================================
             :see::meth:Field.__init__
         """
         self._arrow = None
@@ -324,7 +327,7 @@ class Date(_DateFields, DateLogic):
 
 
 class Timestamp(Time):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |TIMESTAMP|
         backed by :class:arrow.Arrow
     """
@@ -334,7 +337,8 @@ class Timestamp(Time):
     _arrow_type = ArrowTimestamp
 
     def __init__(self, value=Field.empty, **kwargs):
-        """ `Timestamp`
+        """`Timestamp`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(value=value, **kwargs)
@@ -345,7 +349,7 @@ class Timestamp(Time):
 
 
 class TimestampTZ(Time):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |TIMESTAMPTZ|
         backed by :class:arrow.Arrow
     """
@@ -355,7 +359,8 @@ class TimestampTZ(Time):
     _arrow_type = ArrowTimestampTZ
 
     def __init__(self, value=Field.empty, **kwargs):
-        """ `Timestamp WITH timezone`
+        """`Timestamp WITH timezone`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(value=value, **kwargs)

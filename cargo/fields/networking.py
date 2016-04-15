@@ -22,7 +22,7 @@ __all__ = ('IP', 'Inet', 'Cidr', 'MacAddress')
 
 
 class IP(Field, NetworkingLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INET|.
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -30,9 +30,11 @@ class IP(Field, NetworkingLogic):
     OID = IPTYPE
 
     def __init__(self, request=None, *args, **kwargs):
-        """ `IP Address`
-            :see::meth:Field.__init__
+        """`IP Address`
+            ==================================================================
             @request: Django, Flask or Bottle-like request object
+            ==================================================================
+            :see::meth:Field.__init__
         """
         self._request = request
         super().__init__(*args, **kwargs)
@@ -108,7 +110,7 @@ Inet = IP
 
 
 class Cidr(Field, StringLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |CIDR|.
     """
     __slots__ = Field.__slots__
@@ -154,7 +156,7 @@ class Cidr(Field, StringLogic):
 
 
 class MacAddress(Cidr):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |MACADDR|.
     """
     OID = MACADDR

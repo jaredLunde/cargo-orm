@@ -41,6 +41,7 @@ class Binary(Field, BinaryLogic):
 
     def __init__(self, *args, **kwargs):
         """ `Binary`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)

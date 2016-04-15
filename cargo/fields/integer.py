@@ -19,7 +19,7 @@ __all__ = ('SmallInt', 'Int', 'BigInt')
 
 
 class SmallInt(Field, NumericLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT2|
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -33,11 +33,13 @@ class SmallInt(Field, NumericLogic):
                  validator=IntValidator, locale=babel.numbers.LC_NUMERIC,
                  **kwargs):
         """ `SmallInt`
-            :see::meth:Field.__init__
+            ==================================================================
             @minval: (#int) minimum interger value
             @maxval: (#int) maximum integer value
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(validator=validator, **kwargs)
         self.minval = minval
@@ -82,7 +84,7 @@ class SmallInt(Field, NumericLogic):
 
 
 class Int(SmallInt):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT4|
     """
     __slots__ = SmallInt.__slots__
@@ -91,18 +93,20 @@ class Int(SmallInt):
     MAXVAL = 2147483647
 
     def __init__(self, minval=MINVAL, maxval=MAXVAL,  **kwargs):
-        """ `Int`
-            :see::meth:Field.__init__
+        """`Int`
+            ==================================================================
             @minval: (#int) minimum interger value
             @maxval: (#int) maximum integer value
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minval=minval, maxval=maxval, **kwargs)
 
 
 class BigInt(SmallInt):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |INT8|
     """
     __slots__ = SmallInt.__slots__
@@ -112,11 +116,13 @@ class BigInt(SmallInt):
 
     def __init__(self, minval=-9223372036854775808, maxval=9223372036854775807,
                  **kwargs):
-        """ `BigInt`
-            :see::meth:Field.__init__
+        """`BigInt`
+            ==================================================================
             @minval: (#int) minimum interger value
             @maxval: (#int) maximum integer value
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minval=minval, maxval=maxval, **kwargs)

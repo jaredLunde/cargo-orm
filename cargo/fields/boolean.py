@@ -21,7 +21,8 @@ class Bool(Field):
     OID = BOOL
 
     def __init__(self, *args, validator=BooleanValidator, **kwargs):
-        """ `Bool`
+        """`Bool`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, validator=validator, **kwargs)
