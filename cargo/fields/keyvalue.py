@@ -162,7 +162,7 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
         """ Loads @value from Json and inserts it as the value of the field """
         return self.__call__(json.loads(value))
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return self.value
         return None
@@ -216,7 +216,7 @@ class HStore(Field, KeyValueOps, HStoreLogic):
     def type_name(self):
         return 'hstore'
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return self.value
         return None

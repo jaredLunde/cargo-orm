@@ -113,7 +113,8 @@ class TestModel(configure.BaseTestCase):
         self.model.multi()
         for x in range(num):
             self.model.add(uid=1234567 + x, textfield='bar')
-        self.model.run()
+        self.model.naked().run()
+        self.model.clear()
 
     def test___getitem__(self):
         self.model.uid.value = 12345
@@ -228,6 +229,7 @@ class TestModel(configure.BaseTestCase):
         self.model.add(uid=1234569103, textfield='bar')
         ret = self.model.run()
         self.assertIsInstance(ret, list)
+        self.assertEqual(len(ret), 3)
         for r in ret:
             self.assertEqual(r.textfield.value, 'bar')
             self.assertIsInstance(r, self.model.__class__)

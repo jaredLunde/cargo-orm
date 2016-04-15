@@ -26,17 +26,14 @@ class IP(Field, NetworkingLogic):
         Field object for the PostgreSQL field type |INET|.
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
-                 'value', 'validator', '_alias', '_default', 'table',
-                 '_request')
+                 'value', 'validator', '_alias', 'table', '_request')
     OID = IPTYPE
-    current = -1
 
-    def __init__(self, request=None, *args, default=None, **kwargs):
+    def __init__(self, request=None, *args, **kwargs):
         """ `IP Address`
             :see::meth:Field.__init__
             @request: Django, Flask or Bottle-like request object
         """
-        self._default = default
         self._request = request
         super().__init__(*args, **kwargs)
 
@@ -48,8 +45,6 @@ class IP(Field, NetworkingLogic):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            if value == self.current:
-                value = self.request_ip
             if value is not None:
                 value = IPAddress(value)
             self.value = value
@@ -58,25 +53,25 @@ class IP(Field, NetworkingLogic):
     def __int__(self):
         return int(self.value)
 
-    @property
-    def request_ip(self):
-        if self._request is None:
+    def from_request(self, request):
+        """ Gets an IP address from a typical WSGI request object """
+        return self.__call__(self._request_to_ip(request))
+
+    def _request_to_ip(self, request):
+        if request is None:
             return None
-        if hasattr(self._request, 'remote_addr'):
-            return self._request.remote_addr
-        elif hasattr(self._request, 'META'):
-            x_forwarded_for = self._request.META.get('HTTP_X_FORWARDED_FOR')
+        if hasattr(request, 'remote_addr'):
+            return request.remote_addr
+        elif hasattr(request, 'META'):
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
             if x_forwarded_for:
                 return x_forwarded_for.split(',')[-1].strip()
             else:
-                return self._request.META.get('REMOTE_ADDR')
-        return None
+                return request.META.get('REMOTE_ADDR')
 
     @property
-    def default(self):
-        if self._default == self.current:
-            return self.request_ip
-        return self._default
+    def request_ip(self):
+        return self._request_to_ip(self._request)
 
     def __getstate__(self):
         return dict((slot, getattr(self, slot))
@@ -104,9 +99,7 @@ class IP(Field, NetworkingLogic):
         reg_array_type('IPARRAYTYPE', IPARRAY, IPTYPE_)
 
     def copy(self, *args, **kwargs):
-        cls = Field.copy(self, self._request, *args, **kwargs)
-        cls._default = self._default
-        return cls
+        return super().copy(*args, request=self._request, **kwargs)
 
     __copy__ = copy
 

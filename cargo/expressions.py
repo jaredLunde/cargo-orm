@@ -977,8 +977,14 @@ class __empty(object):
     def string(self):
         return self
 
+    def __str__(self):
+        return ""
+        
     def __len__(self):
         return 0
+
+    def __bool__(self):
+        return False
 
     @staticmethod
     def to_db(val):

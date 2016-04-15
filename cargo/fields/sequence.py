@@ -74,11 +74,6 @@ class OneOf(Field, EnumLogic):
                 raise ValueError("`{}` not in {}".format(value, self.types))
         return self.value
 
-    def to_json(self):
-        if self.value_is_not_null:
-            return type(self.types)(self.value)
-        return None
-
     def register_type(self, db):
         try:
             typ, atyp = db.get_type_OID(self.type_name)
@@ -132,7 +127,7 @@ class Array(Field, ArrayLogic):
     OID = ARRAY
 
     def __init__(self, type=None, dimensions=1, minlen=0, maxlen=-1,
-                 default=None, validator=ArrayValidator, **kwargs):
+                 validator=ArrayValidator, **kwargs):
         """ `Array`
             :see::meth:Field.__init__
             @type: (initialized :class:Field) the data type represented by
@@ -145,7 +140,6 @@ class Array(Field, ArrayLogic):
         self.type = type.copy() if type is not None else Text()
         self.dimensions = dimensions
         super().__init__(validator=validator, **kwargs)
-        self.default = default
 
     @prepr('type.__class__.__name__', 'name', 'value', _no_keys=True)
     def __repr__(self): return
@@ -277,9 +271,9 @@ class Array(Field, ArrayLogic):
         """ Wraps the values in the array with :prop:type """
         return list(self._to_fields(self.value))
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
-            return [field.to_json() for field in self.to_fields()]
+            return [field.for_json() for field in self.to_fields()]
         return None
 
     def clear(self):

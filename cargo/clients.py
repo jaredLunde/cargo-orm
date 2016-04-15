@@ -547,7 +547,7 @@ class PostgresPool(BasePostgresClient):
 
 
 #: Storage for connection clients/pools
-#  local_client = local_property()
+local_client = local_property()
 local_client = {}
 
 

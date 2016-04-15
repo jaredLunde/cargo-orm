@@ -73,7 +73,7 @@ class SmallInt(Field, NumericLogic):
     def to_apnumber(self):
         return humanize.to_apnumber(self.value)
 
-    def to_json(self):
+    def for_json(self):
         return int(self)
 
     def copy(self, *args, **kwargs):

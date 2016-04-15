@@ -24,6 +24,5 @@ find ./ -type f -exec sed -i -e 's/Bloom/Cargo/g' {} \;;
 find ./ -type f -exec sed -i -e 's/bloom/cargo/g' {} \;;
 find ./ -type f -exec sed -i -e 's/\/bloom-orm/\/cargo-orm/g' {} \;;
 
-psycopg2cffi
 
-find ./ -type f -exec sed -i -e 's/\/psycopg2/\/psycopg2cffi/g' {} \;;
+find ./ -type f -exec sed -i -e 's/psycopg2cffi/psycopg2/g' {} \;;

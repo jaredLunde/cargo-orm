@@ -44,7 +44,7 @@ class Bit(Field, BitLogic):
             self.value = value
         return self.value
 
-    def to_json(self):
+    def for_json(self):
         try:
             return self.value.bytes.decode()
         except AttributeError:

@@ -68,7 +68,7 @@ class Binary(Field, BinaryLogic):
         except (TypeError, binascii.Error):
             return psycopg2.BINARY(value, cur)
 
-    def to_json(self):
+    def for_json(self):
         try:
             return self.value.decode()
         except AttributeError:

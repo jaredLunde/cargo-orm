@@ -59,7 +59,7 @@ class BaseDecimal(Field, NumericLogic):
             self.value = value
         return self.value
 
-    def to_json(self):
+    def for_json(self):
         return float(self)
 
     def copy(self, *args, **kwargs):
@@ -114,7 +114,7 @@ class BaseDecimalFormat(object):
 
 
 class Decimal(BaseDecimal, BaseDecimalFormat):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |DECIMAL|. Use this
         field as opposed to :class:Float or :class:Double when exact digits
         is necessary.
@@ -126,8 +126,8 @@ class Decimal(BaseDecimal, BaseDecimalFormat):
     def __init__(self, decimal_places=None, digits=-1,
                  minval=BaseDecimal.MINVAL, maxval=BaseDecimal.MAXVAL,
                  context=None, rounding=decimal.ROUND_UP, **kwargs):
-        """ `Decimal`
-            :see::meth:SmallInt.__init__
+        """`Decimal`
+            ==================================================================
             @decimal_places: (#int) number of fixed decimal_places to quantize
                 :class:decimal.Decimal to, will also be used as |scale| in
                 the db if @digits is provided
@@ -138,6 +138,8 @@ class Decimal(BaseDecimal, BaseDecimalFormat):
             @rounding: (:attr:decimal.ROUND_UP or :attr:decimal.ROUND_DOWN)
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
+            ==================================================================
+            :see::meth:SmallInt.__init__
         """
         super().__init__(minval=minval, maxval=maxval, context=context,
                          rounding=rounding, digits=digits,
@@ -148,7 +150,7 @@ class Decimal(BaseDecimal, BaseDecimalFormat):
 
 
 class Float(Field, NumericLogic, BaseDecimalFormat):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |FLOAT4|
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -161,12 +163,14 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
     def __init__(self, decimal_places=6, minval=MINVAL, maxval=MAXVAL,
                  locale=babel.numbers.LC_NUMERIC, validator=NumericValidator,
                  **kwargs):
-        """ `Float`
-            :see::meth:SmallInt.__init__
+        """`Float`
+            ==================================================================
             @decimal_places: (#int) number of digits after the decimal point to
                 round to
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
+            ==================================================================
+            :see::meth:SmallInt.__init__
         """
         self.decimal_places = decimal_places
         self.minval = minval
@@ -185,7 +189,7 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
             self.value = value
         return self.value
 
-    def to_json(self):
+    def for_json(self):
         return float(self)
 
     def copy(self, *args, **kwargs):
@@ -197,7 +201,7 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
 
 
 class Double(Float):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |FLOAT8|
     """
     __slots__ = Float.__slots__
@@ -211,7 +215,7 @@ class Double(Float):
 
 
 class Currency(BaseDecimal):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |DECIMAL| with
         currency formatting options. There is no strict fixed 2-digit
         digits with this field type, the digits can be mutable.
@@ -226,10 +230,12 @@ class Currency(BaseDecimal):
 
     def __init__(self, decimal_places=2, digits=-1, code='USD',
                  minval=MINVAL, maxval=MAXVAL, **kwargs):
-        """ `Currency`
-            :see::meth:Decimal.__init__
+        """`Currency`
+            ==================================================================
             @code: (#str) the currency code e.g., |BTC| for Bitcoin
                 or |GBP| British pounds.
+            ==================================================================
+            :see::meth:Decimal.__init__
         """
         self.code = code
         super().__init__(minval=minval, maxval=maxval, digits=digits,
@@ -271,7 +277,7 @@ class Currency(BaseDecimal):
 
 
 class Money(Currency):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |MONEY| with
         currency formatting options. There is a strict fixed 2-digit
         digits with this field type.
@@ -280,13 +286,15 @@ class Money(Currency):
     OID = MONEY
 
     def __init__(self, *args, **kwargs):
-        """ `Money`
-            :see::meth:SmallInt.__init__
+        """`Money`
+            ==================================================================
             @currency: (#str) the currency code e.g., |BTC| for Bitcoin
                 or |GBP| British pounds.
             @rounding: (:attr:decimal.ROUND_DOWN or :attr:decimal.ROUND_UP)
             @locale: (#str) LC locale, .e.g., |en_DE|,
                 see::class:babel.core.Locale, defaults to |en_US|
+            ==================================================================
+            :see::meth:SmallInt.__init__
         """
         super().__init__(*args, decimal_places=2, **kwargs)
 

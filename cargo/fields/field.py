@@ -7,7 +7,10 @@
 
 """
 import copy
-
+try:
+    import ujson as json
+except:
+    import json
 from vital.debug import prepr
 
 from cargo.etc.types import *
@@ -186,10 +189,13 @@ class Field(BaseLogic):
             raise ValueError('Alias for `%s` cannot be `None`' % self.name)
         return Expression(self, "AS", safe('"%s"' % val), **kwargs)
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_null:
             return None
         return str(self)
+
+    def to_json(self):
+        return json.dumps(self.for_json())
 
     def _should_insert(self):
         if not (self.validate() or self.default is not None):

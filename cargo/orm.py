@@ -54,7 +54,8 @@ class ORM(object):
 
     def __init__(self, client=None, cursor_factory=None, schema=None,
                  table=None, debug=False):
-        """ `SQL ORM`
+        """`SQL ORM`
+            =======================================================================
             The base model which interacts with :class:Postgres
             and provides the basic ORM interface.
 
@@ -67,6 +68,7 @@ class ORM(object):
                 well, debugging purposes.
         """
         self._client = client
+        self.__client = None
         self.queries = []
         self.schema = schema
         self._state = QueryState()
@@ -84,9 +86,15 @@ class ORM(object):
 
     # ``Connection handing``
 
-    @cached_property
+    @property
+    def _impldb(self):
+        if not self.__client:
+            self.__client = local_client.get('db', create_client())
+        return self.__client
+
+    @property
     def db(self):
-        return self._client or local_client.get('db') or create_client()
+        return self._client or self._impldb
 
     client = db
 
@@ -1149,7 +1157,7 @@ class ORM(object):
                              cursor_factory=self._cursor_factory,
                              schema=self.schema,
                              debug=self._debug,
-                             client=self.db,
+                             client=self._client,
                              **kwargs)
         if not clear:
             cls.queries = self.queries.copy()
@@ -1544,14 +1552,15 @@ class Model(ORM):
 
     def __init__(self, client=None, cursor_factory=None, naked=None,
                  schema=None, debug=False, **field_data):
-        """ `Basic Model`
+        """`Basic Model`
+            =======================================================================
             A basic model for Postgres tables.
-
-            :see::class:ORM
             @naked: (#bool) True to default to raw query results in the form
                 of the :prop:_cursor_factory, rather than the default which
                 is to return query results as copies of the current model.
             @**field_data: |field_name=field_value| key/value pairs
+            =======================================================================
+            :see::class:ORM
         """
         if schema is None and hasattr(self, 'schema'):
             schema = self.schema
@@ -1738,7 +1747,8 @@ class Model(ORM):
 
             @*args and @**kwargs are passed to :func:dumps
         """
-        return dumps(self.to_dict(), *args, **kwargs)
+        return dumps(dict((field.field_name, field.for_json())
+                          for field in self.fields), *args, **kwargs)
 
     def from_json(self, val):
         """ JSON loads @val into the current model.
@@ -1792,7 +1802,7 @@ class Model(ORM):
 
     @cached_property
     def db(self):
-        return self._client or local_client.get('db') or Postgres()
+        return self._client or local_client.get('db') or create_client()
 
     client = db
 
@@ -2164,20 +2174,21 @@ class Model(ORM):
                 # INSERT INTO my_model (f1, f2) VALUES (1, 2)
             ..
         """
-        if args:
-            fields = self.fields
-            for cargo in grouped(args, len(fields)):
-                self.payload(*cargo)
+        if self._multi:
+            model = self.reset_fields()
         else:
-            fields = []
-            add_field = fields.append
+            model = self.copy().reset_fields()
+            self.reset()
+        if args:
+            for cargo in grouped(args, len(model.fields)):
+                model.payload(*cargo)
+            if len(model.state.get('VALUES')) <= 1:
+                model.one()
+        else:
             for name, val in kwargs.items():
-                field = getattr(self, name).copy()
-                field(val)
-                add_field(field)
-        if len(self.state.get('VALUES')) <= 1:
-            self.one()
-        return self.returning().new().insert(*fields)
+                model[name] = val
+            model.one()
+        return model.returning().insert()
 
     __call__ = add
 
@@ -2249,7 +2260,7 @@ class Model(ORM):
             if best_index is not None:
                 self.where(best_index)
             else:
-                raise ORMIndexError('WHERE clauses on DELETE queries must ' +
+                raise ORMIndexError('WHERE clauses on Model queries must ' +
                                     'be explicit. No WHERE clause was found ' +
                                     'and no unique index was found.')
 
@@ -2399,10 +2410,11 @@ class Model(ORM):
 class RestModel(Model):
 
     def __init__(self, *args, **kwargs):
-        """ `RESTful Model`
+        """`RESTful Model`
+            =======================================================================
             An implementation of :class:Model with a REST-like interface. Also
             provides the :meth:patch feature.
-
+            =======================================================================
             :see::class:Model
         """
         super().__init__(*args, **kwargs)

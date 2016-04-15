@@ -26,12 +26,6 @@ class TestIP(configure.NetTestCase, TestField):
         self.assertEqual(base.value, base.empty)
         base(request.remote_addr)
         self.assertIsInstance(base.value, netaddr.IPAddress)
-        base(IP.current)
-        self.assertEqual(str(base.value), request.remote_addr)
-
-    def test_default(self):
-        base = IP(request=request, default=IP.current)
-        self.assertEqual(str(base.default), request.remote_addr)
 
     def test_insert(self):
         self.base('127.0.0.1')

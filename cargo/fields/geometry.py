@@ -58,7 +58,7 @@ class Point(Field, GeometryLogic):
         except AttributeError:
             return Field.empty
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return tuple(self.value)
         return None
@@ -103,7 +103,7 @@ class Box(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattribute__(name)
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return tuple(tuple(point) for point in self.points)
         return None
@@ -160,7 +160,7 @@ class Circle(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattribute__(name)
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return (tuple(self.value[0]), self.value[1])
         return None
@@ -212,7 +212,7 @@ class Line(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattribute__(name)
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return tuple(self.value)
         return None
@@ -257,7 +257,7 @@ class LSeg(Box):
             self.value = value
         return self.value
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return tuple(tuple(point) for point in self.value)
         return None
@@ -350,7 +350,7 @@ class Path(Field, GeometryLogic):
     def close(self):
         self._closed = True
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return tuple(self.value)
         return None
@@ -428,7 +428,7 @@ class Polygon(Field, GeometryLogic):
         points = "(%s)" % b", ".join(points).decode()
         return AsIs("%s::path" % adapt(points).getquoted().decode())
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return tuple(tuple(point) for point in self.value)
         return None

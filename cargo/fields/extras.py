@@ -62,7 +62,8 @@ __all__ = (
     'UniqueSlugFactory',
     'Key',
     'Duration',
-    'PhoneNumber')
+    'PhoneNumber'
+)
 
 
 class SlugFactory(object):
@@ -71,8 +72,9 @@ class SlugFactory(object):
 
     def __init__(self, **slugify_opt):
         """ `Slug Generation`
+            ==================================================================
             Turns a string into a URL-ready pretty slug.
-
+            ==================================================================
             :see::func:slugify
         """
         self.slugify_opt = slugify_opt
@@ -100,15 +102,17 @@ class UniqueSlugFactory(SlugFactory):
     __slots__ = ('slugify_opt', '_re', '_size')
     _re_pattern = '''^([a-z0-9]+)(?:%s[A-Za-z0-9]+)+$'''
 
-    def __init__(self, unique_size=8, **slugify_opt):
+    def __init__(self, size=8, **slugify_opt):
         """ `Unique Slug Generation`
+            ==================================================================
             Turns a string into a URL-ready pretty slug with a unique
             8-character string appended to the end of it.
-            @unique_size: (#int) size of the unique string to append in
+            @size: (#int) size of the unique string to append in
                 number of characters
+            ==================================================================
             :see::func:slugify
         """
-        self._size = unique_size
+        self._size = size
         super().__init__(**slugify_opt)
 
     def is_slug(self, text):
@@ -125,7 +129,7 @@ class UniqueSlugFactory(SlugFactory):
 
 
 class Slug(Field, StringLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for the PostgreSQL field type |TEXT|
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -135,9 +139,11 @@ class Slug(Field, StringLogic):
 
     def __init__(self, factory=SlugFactory(), *args, **kwargs):
         """ `Slug`
-            :see::meth:Field.__init__
+            ==================================================================
             @factory: (:class:SlugFactory) a #callable which generates
                 the slug
+            ==================================================================
+            :see::meth:Field.__init__
         """
         self.factory = factory
         super().__init__(*args, **kwargs)
@@ -163,7 +169,6 @@ class Slug(Field, StringLogic):
     def append(self, value, separator='-'):
         """ Used for appending unique values to the generated slug if that
             is a requirement for your app.
-
             ..
                 uid = UID()
                 slug = Slug()
@@ -291,6 +296,7 @@ class Hasher(HashIdentifier):
 
     def __init__(self, rounds=None, raises=True, context=None):
         """ ```Password Hasher```
+            ==================================================================
             @rounds: (#int) Defines the amount of computation realized and
                 therefore the execution time, given in number of iterations
                 (also known as time cost).
@@ -300,6 +306,8 @@ class Hasher(HashIdentifier):
                 |encrypt(passwordh)| or |hash(password)| method and
                 a |verify(password, hash)| method. e.g. :class:CryptContext
                 or :class:PasswordHasher
+            ==================================================================
+            :see::meth:Field.__init__
         """
         self.rounds = rounds
         self.raises = raises
@@ -345,13 +353,12 @@ class Hasher(HashIdentifier):
             self._raise_if(self.raises)
         return verify
 
-    @property
     def tries_per_second(self):
         """ Calculates the verification tries per second possibile on this
             machine with this :class:Hasher
             ..
                 hasher = Argon2Hasher()
-                hasher.tries_per_second
+                hasher.tries_per_second()
                 # Loading =‒‒‒‒‒↦                           ☉ (18%)
             ..
             |‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒‒|
@@ -378,10 +385,10 @@ class Argon2Hasher(Hasher):
     scheme = 'argon2i'
 
     def __init__(self, rounds=2, raises=True, salt_size=16,
-                 memory_cost=1 << 12, parallelism=2, length=32,
+                 memory_cost=1 << 9, parallelism=2, length=24,
                  encoding='utf8', context=None):
-        """ `Argon2i`
-            :see::meth:Hasher.__init__
+        """`Argon2i`
+            ==================================================================
             @salt_size: (#int) Defines the size in bytes for the hash salt.
             @memory_cost: (#int) Defines the memory usage, given in kibibytes.
             @parallelism: (#int) Defines the number of parallel threads
@@ -391,6 +398,8 @@ class Argon2Hasher(Hasher):
                 or verify() are passed a unicode string, it will be encoded
                 using this encoding.
             @context: (:class:PasswordHasher)
+            ==================================================================
+            :see::meth:Hasher.__init__
         """
         super().__init__(rounds, raises)
         self.context = context or PasswordHasher(time_cost=self.rounds,
@@ -413,11 +422,12 @@ class BcryptHasher(Hasher):
     scheme = 'bcrypt'
 
     def __init__(self, rounds=6, raises=True, context=None):
-        """ `Bcrypt`
-            :see::meth:Hasher.__init__
-
+        """`Bcrypt`
+            ==================================================================
             Salts for this :class:Hasher are automatically generated with
             the correct size.
+            ==================================================================
+            :see::meth:Hasher.__init__
         """
         super().__init__(rounds, raises, context)
 
@@ -427,11 +437,12 @@ class Bcrypt256Hasher(Hasher):
     scheme = 'bcrypt_sha256'
 
     def __init__(self, rounds=6, raises=True, context=None):
-        """ `Bcrypt with SHA-256`
-            :see::meth:Hasher.__init__
-
+        """`Bcrypt with SHA-256`
+            ==================================================================
             Salts for this :class:Hasher are automatically generated with
             the correct size.
+            ==================================================================
+            :see::meth:Hasher.__init__
         """
         super().__init__(rounds, raises, context)
 
@@ -441,11 +452,12 @@ class PBKDF2Hasher(Hasher):
     scheme = 'pbkdf2_sha512'
 
     def __init__(self, rounds=6400, raises=True, context=None):
-        """ `PBKDF2-SHA-512`
-            :see::meth:Hasher.__init__
-
+        """`PBKDF2-SHA-512`
+            ==================================================================
             Salts for this :class:Hasher are automatically generated with
             the correct size.
+            ==================================================================
+            :see::meth:Hasher.__init__
         """
         super().__init__(rounds, raises, context)
 
@@ -455,7 +467,7 @@ class SHA512Hasher(Hasher):
     scheme = 'sha512_crypt'
 
     def __init__(self, rounds=9600, raises=True, context=None):
-        """ `Bcrypt with SHA-256`
+        """`Bcrypt with SHA-256`
             :see::meth:Hasher.__init__
 
             Salts for this :class:Hasher are automatically generated with
@@ -469,24 +481,25 @@ class SHA256Hasher(Hasher):
     scheme = 'sha256_crypt'
 
     def __init__(self, rounds=12800, raises=True, context=None):
-        """ `Bcrypt with SHA-256`
-            :see::meth:Hasher.__init__
-
+        """`Bcrypt with SHA-256`
+            ==================================================================
             Salts for this :class:Hasher are automatically generated with
             the correct size.
+            ==================================================================
+            :see::meth:Hasher.__init__
         """
         super().__init__(rounds, raises, context)
 
 
 class Password(Field, StringLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field wrapper for PostgreSQL |TEXT| type.
 
         This object also validates that a password fits given requirements
         such as |minlen| and hashes plain text with supplied hash schemes
         using :class:Hasher
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
         ..
             password = Password('somepassword')
@@ -508,14 +521,16 @@ class Password(Field, StringLogic):
 
     def __init__(self, hasher=Argon2Hasher(), minlen=8, maxlen=-1,
                  validator=PasswordValidator, blacklist=_empty, **kwargs):
-        """ `Password`
-            :see::meth:Field.__init__
+        """`Password`
+            ==================================================================
             @hasher: (:class:Hasher) the password hasher to use
             @blacklist: (#set) passwords which cannot be used due to their
                 predictability and popularity, defaults to
                 :attr:cargo.etc.passwords.blacklist
             @minlen: (#int) minimum length of the password
             @maxlen: (#int) maximum length of the password
+            ==================================================================
+            :see::meth:Field.__init__
         """
         self.hasher = hasher
         super().__init__(validator=validator, **kwargs)
@@ -655,12 +670,12 @@ class Password(Field, StringLogic):
 
 
 class Key(Field, StringLogic):
-    """ =======================================================================
+    """ ======================================================================
         Field object for PostgreSQL CHAR/TEXT types.
 
         Generates random keys of @size bits of entropy.
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
         ..
             akey = Key()
@@ -676,12 +691,14 @@ class Key(Field, StringLogic):
     def __init__(self, size=256,
                  keyspace=string.ascii_letters + string.digits+'/.#+',
                  rng=None, validator=NullValidator, **kwargs):
-        """ `Key`
-            :see::meth:Field.__init__
+        """`Key`
+            ==================================================================
             @size: (#int) size in bits to generate
             @keyspace: (#str) iterable chars to include in the key
             @rng: the random number generator implementation to use.
                 :class:random.SystemRandom by default
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(validator=validator, **kwargs)
         self.size = size
@@ -735,13 +752,13 @@ class Key(Field, StringLogic):
 
 
 class Email(Text):
-    """ =======================================================================
+    """ ======================================================================
         Field object for PostgreSQL CHAR/TEXT types.
 
         Validates that a given value looks like an email address before
         inserting it into the DB.
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
         ..
             email = Email("not_a@real_email")
@@ -754,10 +771,12 @@ class Email(Text):
 
     def __init__(self, maxlen=320, minlen=6, validator=EmailValidator,
                  **kwargs):
-        """ `Email`
-            :see::meth:Field.__init__
+        """`Email`
+            ==================================================================
             @minlen: (#int) minimum length of string value
             @maxlen: (#int) minimum length of string value
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minlen=minlen, maxlen=maxlen, validator=validator,
                          **kwargs)
@@ -769,14 +788,14 @@ class Email(Text):
 
 
 class Username(Text):
-    """ =======================================================================
+    """ ======================================================================
         Field object for PostgreSQL CHAR/TEXT types.
 
         Validates that a given value looks like a username and is not
         in :attr:cargo.etc.usernames.reserved_usernames before inserting
         it into the DB.
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
         ..
             username = Username("admin")
@@ -796,14 +815,16 @@ class Username(Text):
 
     def __init__(self, maxlen=25, minlen=1, reserved_usernames=Field.empty,
                  re_pattern=None, validator=UsernameValidator, **kwargs):
-        """ `Username`
-            :see::meth:Field.__init__
+        """`Username`
+            ==================================================================
             @minlen: (#int) minimum length of string value
             @maxlen: (#int) minimum length of string value
             @reserved_usernames: (#list) lowercase list of usernames to prevent
                 from being created
             @re_pattern: (sre_compile) compiled regex pattern to validate
                 usernames with. Defautls to :var:string_tools.username_re
+            ==================================================================
+            :see::meth:Field.__init__
         """
         super().__init__(minlen=minlen, maxlen=maxlen, validator=validator,
                          **kwargs)
@@ -920,6 +941,7 @@ class Duration(Double):
 
     def __init__(self, *args, validator=NullValidator, **kwargs):
         """`Duration`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, validator=validator, **kwargs)
@@ -1054,7 +1076,7 @@ class Duration(Double):
                 add_out(string_tools.to_plural(val, *fmts[f]))
         return separator.join(out)
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return float(self.value)
         return None
@@ -1063,7 +1085,7 @@ class Duration(Double):
         """ @fmt: (#str) string for formatting in Python 3 style |str.format|
                 with optional singular and plural formats included.
                 e.g. |format("{hours:02d} {mins:(m)} {secs:(sec,secs)}")|
-                ```Available formats```
+            ```Available formats```
                 * years
                 * months
                 * days
@@ -1071,6 +1093,7 @@ class Duration(Double):
                 * mins
                 * secs
                 * msecs
+            ==================================================================
             >>> d = Duration()
             >>> d(7253)
             >>> d.format()
@@ -1079,7 +1102,7 @@ class Duration(Double):
             '02:00:53'
             >>> d.format("{hours:(h)} {mins:(m)} {secs:(sec,secs)}")
             '2h 0m 53secs'
-            >>> d.format("{hours:02d(h)} {mins:02(m)} {secs:(s)}")
+            >>> d.format("{hours:02d(h)} {mins:02d(m)} {secs:(s)}")
             '02h 00m 53s'
         """
         dt = self.to_namedtuple()
@@ -1101,14 +1124,16 @@ class PhoneNumber(Field, StringLogic):
     def __init__(self, region='US', *args, validator=PhoneNumberValidator,
                  **kwargs):
         """`Phone Number`
+            ==================================================================
             @region: (#str) 2-letter uppercase ISO 3166-1 country
                 code (e.g. "GB")
+            ==================================================================
             :see::meth:Field.__init__
         """
         self.region = region
         super().__init__(*args, validator=validator, **kwargs)
 
-    def __call__(self, value):
+    def __call__(self, value=Field.empty):
         """ @value: (#str) phone number-like string or
                 :class:phonenumbers.PhoneNumber
         """
@@ -1122,7 +1147,7 @@ class PhoneNumber(Field, StringLogic):
     def format(self, format=NATIONAL):
         return phonenumbers.format_number(self.value, format)
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             return self.value.to_html()
         return None

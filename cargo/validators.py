@@ -360,7 +360,6 @@ class BooleanValidator(NullValidator):
 
 class PasswordValidator(CharValidator):
     __slots__ = Validator.__slots__
-    types = str
     BLACKLISTED_CODE = 7801
     HASHING_CODE = 7802
 
@@ -386,7 +385,6 @@ class PasswordValidator(CharValidator):
             return True
         try:
             assert self.validate_null()
-            assert self.validate_type()
             if self.field.validation_value:
                 assert self.validate_length()
                 assert self.validate_not_blacklisted()

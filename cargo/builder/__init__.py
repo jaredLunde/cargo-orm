@@ -405,6 +405,7 @@ class Plan(Table):
         super().__init__(self.model, self.model.table)
         self.schema = schema or self.model.schema or \
             self.model.db.schema or 'public'
+        self.model.db.set_schema(self.schema)
         self.from_fields(*self.columns)
 
     def before(self):

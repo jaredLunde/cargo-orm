@@ -574,7 +574,7 @@ class Encrypted(Field):
         except (AttributeError, TypeError):
             return False
 
-    def to_json(self):
+    def for_json(self):
         if self.value_is_not_null:
             try:
                 return self.encrypted.decode()
