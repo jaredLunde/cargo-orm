@@ -48,6 +48,7 @@ class Bit(Field, BitLogic):
         return self.value
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         try:
             return self.value.bytes.decode()
         except AttributeError:

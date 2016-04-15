@@ -70,6 +70,7 @@ class Binary(Field, BinaryLogic):
             return psycopg2.BINARY(value, cur)
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         try:
             return self.value.decode()
         except AttributeError:

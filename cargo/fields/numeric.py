@@ -60,7 +60,10 @@ class BaseDecimal(Field, NumericLogic):
         return self.value
 
     def for_json(self):
-        return float(self)
+        """:see::meth:Field.for_json"""
+        if self.value_is_not_null:
+            return float(self)
+        return None
 
     def copy(self, *args, **kwargs):
         return Field.copy(self, *args, decimal_places=self.decimal_places,
@@ -189,8 +192,7 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
             self.value = value
         return self.value
 
-    def for_json(self):
-        return float(self)
+    for_json = Decimal.for_json
 
     def copy(self, *args, **kwargs):
         return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,
@@ -208,7 +210,8 @@ class Double(Float):
     OID = DOUBLE
 
     def __init__(self, decimal_places=15, **kwargs):
-        """ `Double`
+        """`Double`
+            ==================================================================
             :see::meth:Float.__init__
         """
         super().__init__(decimal_places=decimal_places, **kwargs)

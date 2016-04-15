@@ -59,6 +59,7 @@ class Point(Field, GeometryLogic):
             return Field.empty
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return tuple(self.value)
         return None
@@ -104,6 +105,7 @@ class Box(Field, GeometryLogic):
             return self.value.__getattribute__(name)
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return tuple(tuple(point) for point in self.points)
         return None
@@ -161,6 +163,7 @@ class Circle(Field, GeometryLogic):
             return self.value.__getattribute__(name)
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return (tuple(self.value[0]), self.value[1])
         return None
@@ -213,6 +216,7 @@ class Line(Field, GeometryLogic):
             return self.value.__getattribute__(name)
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return tuple(self.value)
         return None
@@ -258,6 +262,7 @@ class LSeg(Box):
         return self.value
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return tuple(tuple(point) for point in self.value)
         return None
@@ -351,6 +356,7 @@ class Path(Field, GeometryLogic):
         self._closed = True
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return tuple(self.value)
         return None
@@ -429,6 +435,7 @@ class Polygon(Field, GeometryLogic):
         return AsIs("%s::path" % adapt(points).getquoted().decode())
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return tuple(tuple(point) for point in self.value)
         return None

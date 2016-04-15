@@ -165,6 +165,7 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
         return self.__call__(json.loads(value))
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return self.value
         return None
@@ -221,6 +222,7 @@ class HStore(Field, KeyValueOps, HStoreLogic):
         return 'hstore'
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return self.value
         return None

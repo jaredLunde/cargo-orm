@@ -577,6 +577,7 @@ class Encrypted(Field):
             return False
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             try:
                 return self.encrypted.decode()

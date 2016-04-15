@@ -276,6 +276,7 @@ class Array(Field, ArrayLogic):
         return list(self._to_fields(self.value))
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return [field.for_json() for field in self.to_fields()]
         return None

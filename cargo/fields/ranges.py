@@ -137,7 +137,10 @@ class IntRange(Field, RangeLogic):
         return
 
     def for_json(self):
-        return (self.lower, self.upper)
+        """:see::meth:Field.for_json"""
+        if self.value_is_not_null:
+            return (self.lower, self.upper)
+        return None
 
     @staticmethod
     def register_adapter():

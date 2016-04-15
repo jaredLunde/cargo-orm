@@ -118,6 +118,7 @@ class Cidr(Field, StringLogic):
 
     def __init__(self, *args, **kwargs):
         """ `Cidr Addresses`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)
@@ -164,6 +165,7 @@ class MacAddress(Cidr):
 
     def __init__(self, *args, **kwargs):
         """ `Mac Addresses`
+            ==================================================================
             :see::meth:Field.__init__
         """
         super().__init__(*args, **kwargs)

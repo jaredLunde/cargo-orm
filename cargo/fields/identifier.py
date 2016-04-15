@@ -230,6 +230,7 @@ class UID(Field, NumericLogic):
         return int(self.value)
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return str(self.value)
         return None
@@ -359,6 +360,7 @@ class StrUID(UID):
         return 0
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return str(self)
         return None

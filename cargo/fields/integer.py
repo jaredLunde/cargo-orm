@@ -76,7 +76,10 @@ class SmallInt(Field, NumericLogic):
         return humanize.to_apnumber(self.value)
 
     def for_json(self):
-        return int(self)
+        """:see::meth:Field.for_json"""
+        if self.value_is_not_null:
+            return int(self)
+        return None
 
     def copy(self, *args, **kwargs):
         return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,

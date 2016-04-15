@@ -45,7 +45,6 @@ class Field(BaseLogic):
                  unique=None, index=None, default=None,
                  validator=NullValidator, name=None, table=None):
         """``SQL Field``
-            ==================================================================
             @value: value to populate the field with
             @not_null: (#bool) True if the field cannot be |Null|
             @primary: (#bool) True if this field is the primary key in your
@@ -190,11 +189,20 @@ class Field(BaseLogic):
         return Expression(self, "AS", safe('"%s"' % val), **kwargs)
 
     def for_json(self):
+        """ Prepares a value for being dumped to JSON encoding. This method
+            is called when the |to_json| method of a :class:Model is called.
+            This can also be thought of as a sort of 'for_python' method, too
+            in the sense that it is the entity as it exists outside of the
+            field class.
+        """
         if self.value_is_null:
             return None
         return str(self)
 
     def to_json(self):
+        """ Dumps the field to JSON encoding.
+            -> (#str) JSON-encoded string
+        """
         return json.dumps(self.for_json())
 
     def _should_insert(self):

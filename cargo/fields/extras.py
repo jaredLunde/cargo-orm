@@ -295,8 +295,7 @@ class Hasher(HashIdentifier):
     __slots__ = ('rounds', 'context', 'raises')
 
     def __init__(self, rounds=None, raises=True, context=None):
-        """ ```Password Hasher```
-            ==================================================================
+        """``Password Hasher``
             @rounds: (#int) Defines the amount of computation realized and
                 therefore the execution time, given in number of iterations
                 (also known as time cost).
@@ -467,11 +466,12 @@ class SHA512Hasher(Hasher):
     scheme = 'sha512_crypt'
 
     def __init__(self, rounds=9600, raises=True, context=None):
-        """`Bcrypt with SHA-256`
-            :see::meth:Hasher.__init__
-
+        """`Bcrypt with SHA-512`
+            ==================================================================
             Salts for this :class:Hasher are automatically generated with
             the correct size.
+            ==================================================================
+            :see::meth:Hasher.__init__
         """
         super().__init__(rounds, raises, context)
 
@@ -693,7 +693,7 @@ class Key(Field, StringLogic):
                  rng=None, validator=NullValidator, **kwargs):
         """`Key`
             ==================================================================
-            @size: (#int) size in bits to generate
+            @size: (#int) size in bits to entropy
             @keyspace: (#str) iterable chars to include in the key
             @rng: the random number generator implementation to use.
                 :class:random.SystemRandom by default
@@ -1077,6 +1077,7 @@ class Duration(Double):
         return separator.join(out)
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return float(self.value)
         return None

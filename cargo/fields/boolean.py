@@ -36,6 +36,7 @@ class Bool(Field):
         return 1 if self.value is True else 0
 
     def for_json(self):
+        """:see::meth:Field.for_json"""
         if self.value in {True, False}:
             return self.value
         return None
