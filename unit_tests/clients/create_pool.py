@@ -28,12 +28,6 @@ class Testcreate_pool(unittest.TestCase):
         self.assertIs(local_client['db'], pool)
         self.assertIsInstance(pool, PostgresPool)
 
-        pool2 = create_pool(name='db2')
-        self.assertIn('db2', local_client)
-        self.assertIs(local_client['db2'], pool2)
-        self.assertIn('db', local_client)
-        self.assertIs(local_client['db'], pool)
-
         self.assertEqual(cpu_count(), pool.minconn)
         self.assertEqual(cpu_count()*2, pool.maxconn)
 

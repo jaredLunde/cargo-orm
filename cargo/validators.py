@@ -33,7 +33,8 @@ __all__ = (
     'EmailValidator',
     'PasswordValidator',
     'BooleanValidator',
-    'PhoneNumberValidator')
+    'PhoneNumberValidator'
+)
 
 
 class Validator(object):
@@ -44,6 +45,13 @@ class Validator(object):
         self.field = field
         self.code = 0
         self.error = None
+
+    def __getstate__(self):
+        return {slot: getattr(self, slot) for slot in self.__slots__}
+
+    def __setstate__(self, state):
+        for k, v in state.items():
+            setattr(self, k, v)
 
     @property
     def value(self):

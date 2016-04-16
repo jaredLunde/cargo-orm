@@ -107,13 +107,6 @@ class jsondecimal(decimal.Decimal, _jsontype):
     pass
 
 
-psycopg2.extensions.register_adapter(jsondict, jsondict.to_db)
-psycopg2.extensions.register_adapter(jsonlist, jsonlist.to_db)
-psycopg2.extensions.register_adapter(jsonstr, jsonstr.to_db)
-psycopg2.extensions.register_adapter(jsonint, jsonint.to_db)
-psycopg2.extensions.register_adapter(jsonfloat, jsonfloat.to_db)
-psycopg2.extensions.register_adapter(jsondecimal, jsondecimal.to_db)
-
 _jsontypes = (((collections.Mapping, collections.ItemsView, dict), jsondict),
               (str, jsonstr),
               (int, jsonint),
@@ -169,6 +162,15 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
         if self.value_is_not_null:
             return self.value
         return None
+
+    @staticmethod
+    def register_adapter():
+        psycopg2.extensions.register_adapter(jsondict, jsondict.to_db)
+        psycopg2.extensions.register_adapter(jsonlist, jsonlist.to_db)
+        psycopg2.extensions.register_adapter(jsonstr, jsonstr.to_db)
+        psycopg2.extensions.register_adapter(jsonint, jsonint.to_db)
+        psycopg2.extensions.register_adapter(jsonfloat, jsonfloat.to_db)
+        psycopg2.extensions.register_adapter(jsondecimal, jsondecimal.to_db)
 
     @staticmethod
     def to_python(value, cur):

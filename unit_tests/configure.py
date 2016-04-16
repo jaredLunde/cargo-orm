@@ -74,8 +74,8 @@ class Model(_Model):
 
 
 class Foo(_Model):
+    ORDINAL = ('uid', 'textfield')
     schema = 'cargo_tests'
-    ordinal = ('uid', 'textfield')
     uid = Int(index=True, unique=True)
     textfield = Text()
 
@@ -572,6 +572,7 @@ class KeyValueTestCase(BaseTestCase):
         cleanup()
 
     def setUp(self):
+        KeyValueModel.hstore_field.register_type(self.orm.db)
         self.orm.clear()
 
 

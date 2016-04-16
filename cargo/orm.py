@@ -51,10 +51,11 @@ __all__ = (
 
 class ORM(object):
     table = None
+    schema = None
 
     def __init__(self, client=None, cursor_factory=None, schema=None,
                  table=None, debug=False):
-        """`SQL ORM`
+        """``SQL ORM``
             =======================================================================
             The base model which interacts with :class:Postgres
             and provides the basic ORM interface.
@@ -68,9 +69,8 @@ class ORM(object):
                 well, debugging purposes.
         """
         self._client = client
-        self.__client = None
         self.queries = []
-        self.schema = schema
+        self.schema = schema or self.schema
         self._state = QueryState()
         self._join = Joins(self)
         self._multi = False
@@ -87,14 +87,8 @@ class ORM(object):
     # ``Connection handing``
 
     @property
-    def _impldb(self):
-        if not self.__client:
-            self.__client = local_client.get('db', create_client())
-        return self.__client
-
-    @property
     def db(self):
-        return self._client or self._impldb
+        return self._client or local_client.get('db') or create_client()
 
     client = db
 
@@ -136,6 +130,10 @@ class ORM(object):
     def set_cursor_factory(self, factory):
         """ Sets the ORM default cursor factory to @factory """
         self._cursor_factory = factory
+
+    def set_schema(self, name):
+        """ Changes the default search path for this model to @name """
+        self.schema = name
 
     # Pickling and copying
 
@@ -292,10 +290,10 @@ class ORM(object):
         if not self.state.has('FROM'):
             self.from_(alias=self._alias if hasattr(self, '_alias') else None)
         if not self.state.has('WHERE'):
-            raise QueryError('Deleting all table rows must be done explicitly '
-                             'by creating a `WHERE true` statement. This is '
-                             'for your own protection. e.g. '
-                             '`MyModel.where(True).delete()`')
+            raise ORMIndexError('Deleting all table rows must be done '
+                                'explicitly by creating a `WHERE true` '
+                                'statement. This is for your own protection. '
+                                'e.g. `MyModel.where(True).delete()`')
         return self._cast_query(Delete(self, **kwargs))
 
     remove = delete
@@ -778,6 +776,8 @@ class ORM(object):
         self.state.add(CommaClause("OFFSET", offset))
         return self
 
+    skip = offset
+
     def one(self):
         """ Tells the ORM to |fetchone| result from the query as opposed to
             |fetchall|.
@@ -936,7 +936,9 @@ class ORM(object):
                 except psycopg2.ProgrammingError as e:
                     conn.rollback()
                     self.db.put(conn)
-                    raise QueryError(e.args[0].strip())
+                    raise QueryError(e.args[0].strip(),
+                                     code=ERROR_CODES.COMMIT,
+                                     root=e)
         self.db.put(conn)
 
     def run(self, *queries):
@@ -995,19 +997,27 @@ class ORM(object):
         try:
             #: Executes the cursor
             cursor.execute(query, params or tuple())
-            #: Commits if the client connection is not set to autocommit
-            #  and the 'commit' argument is true
-            if commit and not _conn.autocommit:
-                _conn.commit()
-        except (psycopg2.ProgrammingError,
-                psycopg2.IntegrityError,
-                psycopg2.DataError,
-                psycopg2.InternalError) as e:
+        except Psycopg2QueryErrors as e:
             #: Rolls back the transaction in the event of a failure
             _conn.rollback()
             if conn is None:
                 self.db.put(_conn)
-            raise QueryError(e.args[0].strip())
+            raise QueryError(e.args[0].strip(),
+                             code=ERROR_CODES.EXECUTE,
+                             root=e)
+        #: Commits if the client connection is not set to autocommit
+        #  and the 'commit' argument is true
+        if commit and not _conn.autocommit:
+            try:
+                    _conn.commit()
+            except Psycopg2QueryErrors as e:
+                #: Rolls back the transaction in the event of a failure
+                _conn.rollback()
+                if conn is None:
+                    self.db.put(_conn)
+                raise QueryError(e.args[0].strip(),
+                                 code=ERROR_CODES.COMMIT,
+                                 root=e)
         #: Puts a client connection away if it is a pool and no connection
         #  was passed in arguments. If a connection object is passed,
         #  it's the user's responsibility to put it away.
@@ -1429,8 +1439,8 @@ class Joins(object):
                 x = x.left
             d += 1
             if d > 10:
-                raise RuntimeError(
-                    'Maximum expression search depth exceeded in JOIN.')
+                raise RuntimeError('Maximum expression search depth exceeded '
+                                   'in JOIN.')
         if alias:
             a = self.expression_on_alias(a, table, alias)
         on = Clause('ON', a)
@@ -1548,13 +1558,13 @@ class Model(ORM):
         ..
     """
     table = None
-    ordinal = []
+    ORDINAL = []  # The order of the fields within the DB
+    PRIVATE = set()  # Fields which should not be exposed by :meth:for_json
 
     def __init__(self, client=None, cursor_factory=None, naked=None,
                  schema=None, debug=False, **field_data):
-        """`Basic Model`
+        """``Basic Model``
             =======================================================================
-            A basic model for Postgres tables.
             @naked: (#bool) True to default to raw query results in the form
                 of the :prop:_cursor_factory, rather than the default which
                 is to return query results as copies of the current model.
@@ -1562,8 +1572,6 @@ class Model(ORM):
             =======================================================================
             :see::class:ORM
         """
-        if schema is None and hasattr(self, 'schema'):
-            schema = self.schema
         super().__init__(client,
                          cursor_factory=cursor_factory,
                          schema=schema,
@@ -1747,8 +1755,20 @@ class Model(ORM):
 
             @*args and @**kwargs are passed to :func:dumps
         """
-        return dumps(dict((field.field_name, field.for_json())
-                          for field in self.fields), *args, **kwargs)
+        return dumps(self.for_json(), *args, **kwargs)
+
+    def for_json(self, filter=None, ignore_private=True):
+        """ Prepares the model for JSON encoding.  By default this method will
+            ignore all (#str) field names given in the :attr:PRIVATE constant.
+            -> (#dict) the model as represented by a dictionary, after calling
+               each field's |for_json| method to extract the respective JSON
+               values
+        """
+        filter = (filter if filter is not None else lambda x: True)
+        return {field.field_name: field.for_json()
+                for field in self.fields
+                if filter(field) and
+                not ignore_private or field.field_name not in self.PRIVATE}
 
     def from_json(self, val):
         """ JSON loads @val into the current model.
@@ -1760,7 +1780,7 @@ class Model(ORM):
     def to_dict(self):
         """ -> (#dict) of |{field_name: field_value}| pairs within the model
         """
-        if self.ordinal:
+        if self.ORDINAL:
             return OrderedDict((field.field_name, field())
                                for field in (self.fields or []))
         else:
@@ -1770,7 +1790,7 @@ class Model(ORM):
         """ -> (:class:namedtuple) representation of the model """
         if not hasattr(self, self.__class__.__name__ + 'Record'):
             self._make_nt()
-        if self.ordinal:
+        if self.ORDINAL:
             return getattr(self, self.__class__.__name__ + 'Record')(
                 *self.field_values)
         return getattr(self, self.__class__.__name__ + 'Record')(
@@ -1800,12 +1820,6 @@ class Model(ORM):
         for field in self.fields:
             field.set_alias(table=alias)
 
-    @cached_property
-    def db(self):
-        return self._client or local_client.get('db') or create_client()
-
-    client = db
-
     def _register_field(self, field):
         try:
             confield = (self.db, field.__class__)
@@ -1821,13 +1835,7 @@ class Model(ORM):
                 self.db.after('connect', field.register_type)
 
     def _add_field(self, field):
-        """ Adds one or several @fields to the model.
-            @**fields: |field_name=<Field>| keyword arguments
-
-            ..
-                model = Model()
-                model.add_field(city=Text())
-            ..
+        """ Adds a field to the model to the model.
         """
         field.table = self.table
         self._register_field(field)
@@ -1892,16 +1900,16 @@ class Model(ORM):
                 result = result.count
         return result
 
-    def _order_fields(self, ordinal=None):
-        ordinal = ordinal or self.ordinal
-        if ordinal:
-            self._fields = list(map(self.__getattribute__, ordinal))
+    def _order_fields(self, ORDINAL=None):
+        ORDINAL = ORDINAL or self.ORDINAL
+        if ORDINAL:
+            self._fields = list(map(self.__getattribute__, ORDINAL))
         return self._fields
 
     @property
     def fields(self):
         """ -> (#list) of the fields in the model based on :desc:__dict__ or
-                :attr:ordinal if it exists
+                :attr:ORDINAL if it exists
         """
         return self._fields
 
@@ -1911,6 +1919,12 @@ class Model(ORM):
                 model
         """
         return tuple(field.field_name for field in self.fields)
+
+    @cached_property
+    def private_fields(self):
+        return tuple(field
+                     for field in self.fields
+                     if field.field_name in self.PRIVATE)
 
     @cached_property
     def names(self):
@@ -2155,15 +2169,15 @@ class Model(ORM):
 
     def add(self, *args, **kwargs):
         """ Adds a new record to the DB without affecting the current model.
-            @*args: values to insert according to the model's ordinal
-                defined by :attr:ordinal
+            @*args: values to insert according to the model's ORDINAL
+                defined by :attr:ORDINAL
             @**kwargs: |field=value| pairs to insert, will be ignored if
                 @*args are supplied
 
             -> result of INSERT query
             ..
                 class MyModel(Model):
-                    ordinal = ['f1', 'f2']
+                    ORDINAL = ['f1', 'f2']
                     f1 = Int()
                     f2 = Int()
                     ...
@@ -2333,6 +2347,36 @@ class Model(ORM):
             relationship._owner_attr:
                 relationship.pull(*args, dry=dry, **kwargs)
             for relationship in self.relationships}
+
+    def last(self, count=1, *args, **kwargs):
+        """ Selects the last @count rows from the model based on the
+            :prop:best_index ordered |DESC|. If @count is |1| a single result
+            will be returned, otherwise a list of results will be returned.
+
+            @count: (#int) the number of results to fetch
+            @args and @kwargs are passed to :meth:select
+        """
+        self.new()
+        if count == 1:
+            self.one()
+        self.limit(count)
+        self.order_by(self.best_index.desc())
+        return super().select(*args, **kwargs)
+
+    def first(self, count=1, *args, **kwargs):
+        """ Selects the first @count rows from the model based on the
+            :prop:best_index ordered |ASC|. If @count is |1| a single result
+            will be returned, otherwise a list of results will be returned.
+
+            @count: (#int) the number of results to fetch
+            @args and @kwargs are passed to :meth:select
+        """
+        self.new()
+        if count == 1:
+            self.one()
+        self.limit(count)
+        self.order_by(self.best_index.asc())
+        return super().select(*args, **kwargs)
 
     def iternaked(self, offset=0, limit=0, buffer=100, order_field=None,
                   reverse=False):

@@ -76,9 +76,8 @@ class IP(Field, NetworkingLogic):
         return self._request_to_ip(self._request)
 
     def __getstate__(self):
-        return dict((slot, getattr(self, slot))
-                    for slot in self.__slots__
-                    if hasattr(self, slot))
+        return dict((slot, getattr(self, slot) if slot != '_request' else None)
+                    for slot in self.__slots__)
 
     def __setstate__(self, state):
         for slot, value in state.items():

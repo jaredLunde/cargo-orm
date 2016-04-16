@@ -547,8 +547,37 @@ class PostgresPool(BasePostgresClient):
 
 
 #: Storage for connection clients/pools
+class LocalClient(dict):
+
+    def get(self, name=None):
+        if name is None:
+            name = 'db'
+        return super().get(name)
+
+    def find(self, *opt, return_key=False, **opts):
+        key = self.get_key(*opt, **opts)
+        if return_key:
+            return (key, self.get(key))
+        return self.get(key)
+
+    def get_key(self, *opt, **opts):
+        return str(opt) + str(opts)
+
+    def bind(self, type='client', *opt, **opts):
+        key, client = self.find(*opt, return_key=True, **opts)
+        if not client:
+            if type == 'client':
+                client = Postgres(*opt, **opts)
+            else:
+                client = PostgresPool(*opt, **opts)
+        self['db'] = self[key] = client
+        return client
+
+    open = bind
+
+
 local_client = local_property()
-local_client = {}
+local_client = LocalClient()
 
 
 class _db(object):
@@ -556,7 +585,7 @@ class _db(object):
     engine = None
 
     def __init__(self):
-        # self.engine = local_property()
+        self.engine = local_property()
         self.engine = None
 
     def __getattr__(self, name):
@@ -571,7 +600,7 @@ class _db(object):
         self.__dict__[name] = value
 
     def __delattr__(self, name):
-        return self.engine.__detattr__(name)
+        return self.engine.__delattr__(name)
 
     def __repr__(self):
         try:
@@ -592,7 +621,7 @@ class _db(object):
         """
         from cargo.orm import ORM
         if not client:
-            client = create_client(*opt, **opts)
+            client = local_client.bind(*opt, **opts)
         self.engine = ORM(client=client)
         return self
 
@@ -608,20 +637,16 @@ class _db(object):
 db = _db()
 
 
-def create_client(*opt, name='db', **opts):
+def create_client(*opt, **opts):
     """ Creates a connection client in the :attr:local_client thread which
         will be used as the default client in the ORM.
 
-        @name: (#str) name in the :attr:local_client thread dictionary to cache
-            the client within
-
         See also: :class:Postgres
     """
-    local_client[name] = Postgres(*opt, **opts)
-    return local_client[name]
+    return local_client.bind('client', *opt, **opts)
 
 
-def create_pool(minconn=None, maxconn=None, name='db', *args, **kwargs):
+def create_pool(minconn=None, maxconn=None, *opt, **opts):
     """ Creates a connection pool in the :attr:local_client thread which
         will be used as the default client in the ORM.
 
@@ -632,5 +657,4 @@ def create_pool(minconn=None, maxconn=None, name='db', *args, **kwargs):
     """
     minconn = minconn or cpu_count()
     maxconn = maxconn or (cpu_count() * 2)
-    local_client[name] = PostgresPool(minconn, maxconn, *args, **kwargs)
-    return local_client[name]
+    return local_client.bind('pool', minconn, maxconn, *opt, **opts)

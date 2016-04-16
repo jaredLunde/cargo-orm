@@ -390,7 +390,7 @@ class Plan(Table):
         |   implementation.'                                                  |
     """
     model = None
-    ordinal = None
+    ORDINAL = None
 
     def __init__(self, model=None, schema=None):
         """ `Table Plan`
@@ -524,9 +524,9 @@ class Plan(Table):
                 autonomously.
         """
         fields = self.model.fields
-        if self.ordinal:
+        if self.ORDINAL:
             fields = [self.model.__getattribute__(name)
-                      for name in self.ordinal]
+                      for name in self.ORDINAL]
         return PlanItems(find_column,
                          ((field.field_name, find_column(field))
                           for field in fields), plan=self)

@@ -6,30 +6,27 @@
    http://github.com/jaredlunde/cargo-orm
 
 """
-__all__ = (
-  'QueryError',
-  'SchemaError',
-  'ORMIndexError',
-  'BuildError',
-  'RelationshipImportError',
-  'PullError',
-  'FieldError',
-  'TranslationError',
-  'ValidationError',
-  'ValidationValueError',
-  'ValidationTypeError',
-  'IncorrectPasswordError',
-)
+import psycopg2 as _psycopg2
+from collections import namedtuple as _namedtuple
 
 
-# TODO: Create error codes to pass to the exceptions
+_ErrorCodes = _namedtuple('_ErrorCodes', 'EXECUTE COMMIT')
+ERROR_CODES = _ErrorCodes(EXECUTE=10001, COMMIT=10002)
+
+
+#: Catchable exceptions raised by pscyopg2
+Psycopg2QueryErrors= (_psycopg2.ProgrammingError,
+                      _psycopg2.IntegrityError,
+                      _psycopg2.DataError,
+                      _psycopg2.InternalError)
 
 
 class QueryError(BaseException):
     """ Raised when there was an error executing a :class:cargo.Query """
-    def __init__(self, message, code=None):
+    def __init__(self, message, code=None, root=None):
         self.message = message
         self.code = code
+        self.root = root
 
 
 class BuildError(BaseException):
@@ -94,11 +91,11 @@ class ValidationError(BaseException):
         self.field = field
 
 
-class ValidationValueError(ValidationError, ValueError):
+class ValidationValueError(ValidationError):
     pass
 
 
-class ValidationTypeError(ValidationError, TypeError):
+class ValidationTypeError(ValidationError):
     pass
 
 

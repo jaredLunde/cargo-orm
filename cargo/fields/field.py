@@ -87,13 +87,20 @@ class Field(BaseLogic):
     def __repr__(self): return
 
     def __getstate__(self):
-        return dict((slot, getattr(self, slot))
-                    for slot in self.__slots__
-                    if hasattr(self, slot))
+        state = {}
+        if hasattr(self, '__dict__'):
+            state = self.__dict__
+        if hasattr(self, '__slots__'):
+            state.update({slot: getattr(self, slot)
+                          for slot in self.__slots__})
+        return state
 
     def __setstate__(self, state):
         for slot, value in state.items():
-            setattr(self, slot, value)
+            if not isinstance(value, self.empty.__class__):
+                setattr(self, slot, value)
+            else:
+                setattr(self, slot, _empty)
 
     def __call__(self, value=empty):
         """ Sets the value of the field to @value and returns @value
@@ -105,7 +112,10 @@ class Field(BaseLogic):
         return self.value
 
     def __str__(self):
-        return self.value.__str__()
+        try:
+            return self.value.__str__()
+        except AttributeError:
+            return self.__repr__()
 
     def __int__(self):
         return self.value.__int__()
@@ -208,7 +218,7 @@ class Field(BaseLogic):
     def _should_insert(self):
         if not (self.validate() or self.default is not None):
             raise self.validator.raises(self.validator.error,
-                                        self.field_name,
+                                        self,
                                         code=self.validator.code)
         return self.value is not self.empty
 
@@ -219,12 +229,10 @@ class Field(BaseLogic):
                                         code=self.validator.code)
         return self.value is not self.empty
 
-    def _validate(self):
+    def validate(self):
         if self.validator is not None:
             return self.validator.validate()
         return True
-
-    validate = _validate
 
     def copy(self, *args, **kwargs):
         vc = None

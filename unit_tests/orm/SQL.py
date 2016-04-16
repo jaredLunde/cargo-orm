@@ -652,7 +652,7 @@ class TestORM(configure.BaseTestCase):
         self.assertIsInstance(res, list)
         self.assertTrue(len(res) > 0)
         self.assertEqual(len(res[0]), 2)
-        with self.assertRaises(QueryError):
+        with self.assertRaises(ORMIndexError):
             self.orm.delete()
 
         # Non-executing DELETE

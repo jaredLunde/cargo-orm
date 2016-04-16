@@ -136,7 +136,9 @@ class _DateFields(Field):
 
     def for_json(self, *args, **kwargs):
         """ :see::meth:arrow.Arrow.for_json """
-        return self._arrow.for_json(*args, **kwargs)
+        if self.value_is_not_null:
+            return self._arrow.for_json(*args, **kwargs)
+        return None
 
     def utcoffset(self, *args, **kwargs):
         """ :see::meth:arrow.Arrow.utcoffset """

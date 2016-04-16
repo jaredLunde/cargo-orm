@@ -24,12 +24,6 @@ class Testcreate_client(unittest.TestCase):
         self.assertIs(local_client['db'], client)
         self.assertIsInstance(client, Postgres)
 
-        client2 = create_client(name='db2')
-        self.assertIn('db2', local_client)
-        self.assertIs(local_client['db2'], client2)
-        self.assertIn('db', local_client)
-        self.assertIs(local_client['db'], client)
-
 
 if __name__ == '__main__':
     # Unit test
