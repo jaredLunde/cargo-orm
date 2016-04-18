@@ -419,10 +419,9 @@ class Postgres(BasePostgresClient):
 
 
 class PostgresPoolConnection(Postgres):
-    __slots__ = (list(Postgres.__slots__) + ['pool'])
+    __slots__ = ('pool', '_connection')
 
     def __init__(self, pool, connection):
-        super().__init__()
         self.pool = pool
         self._connection = connection
         self._set_conn_options()
@@ -436,7 +435,7 @@ class PostgresPoolConnection(Postgres):
     def __getattr__(self, name):
         try:
             return self.pool.__getattribute__(name)
-        except AttributeError:
+        except AttributeError as e:
             return self.__getattribute__(name)
 
     @property
@@ -567,7 +566,7 @@ class LocalClient(dict):
     def get_key(self, *opt, **opts):
         return str(opt) + str(opts)
 
-    def bind(self, type='pool', *opt, **opts):
+    def bind(self, type='client', *opt, **opts):
         key, client = self.find(*opt, return_key=True, **opts)
         if not client:
             if type == 'client':
