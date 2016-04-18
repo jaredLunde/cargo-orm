@@ -435,7 +435,7 @@ class PostgresPoolConnection(Postgres):
     def __getattr__(self, name):
         try:
             return self.pool.__getattribute__(name)
-        except AttributeError as e:
+        except AttributeError:
             return self.__getattribute__(name)
 
     @property
