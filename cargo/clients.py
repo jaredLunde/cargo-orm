@@ -22,6 +22,7 @@ from multiprocessing import cpu_count
 from vital.cache import DictProperty, local_property
 from vital.tools.dicts import merge_dict
 from vital.tools.lists import unique_list
+from vital.security import randkey
 from vital.debug import preprX
 
 from cargo.cursors import CNamedTupleCursor, ModelCursor
@@ -42,9 +43,6 @@ __all__ = (
 
 class BasePostgresClient(object):
     __slots__ = tuple()
-
-    def __del__(self):
-        self.close()
 
     def get_type_OID(self, typname):
         """ -> (#tuple) |(OID, ARRAY_OID)| """
@@ -381,12 +379,11 @@ class Postgres(BasePostgresClient):
             self._apply_after('connect')
         return self._connection
 
-    def _set_conn_options(self, seen=False):
-        if not seen:
-            if self.autocommit:
-                self._connection.set_session(autocommit=self.autocommit)
-            if self.encoding:
-                self._connection.set_client_encoding(encoding=self.encoding)
+    def _set_conn_options(self):
+        if self.autocommit:
+            self._connection.set_session(autocommit=self.autocommit)
+        if self.encoding:
+            self._connection.set_client_encoding(encoding=self.encoding)
 
     def commit(self):
         """ Commits a transaction """
@@ -422,9 +419,10 @@ class Postgres(BasePostgresClient):
 
 
 class PostgresPoolConnection(Postgres):
-    __slots__ = ('pool', '_connection')
+    __slots__ = (list(Postgres.__slots__) + ['pool'])
 
     def __init__(self, pool, connection):
+        super().__init__()
         self.pool = pool
         self._connection = connection
         self._set_conn_options()
@@ -437,13 +435,17 @@ class PostgresPoolConnection(Postgres):
 
     def __getattr__(self, name):
         try:
-            return self.__getattribute__(name)
-        except AttributeError:
             return self.pool.__getattribute__(name)
+        except AttributeError:
+            return self.__getattribute__(name)
+
+    @property
+    def connection(self):
+        return self._connection
 
     def put(self, *args, **kwargs):
         """ Returns the connection to the pool """
-        self.pool.put(self._connection, *args, **kwargs)
+        self.pool.put(self, *args, **kwargs)
 
 
 class PostgresPool(BasePostgresClient):
@@ -510,15 +512,16 @@ class PostgresPool(BasePostgresClient):
 
             -> :mod:psycopg2 connection object
         """
-        if not self._pool or self._pool.closed or dsn or options:
+        if self._pool is None or self._pool.closed or dsn or options:
             dsn = dsn or self._dsn
             opt = merge_dict(self._connection_options, options)
             if not dsn:
                 dsn = self.to_dsn(opt)
             minconn = opt.get('minconn', self.minconn)
             maxconn = opt.get('maxconn', self.maxconn)
-            self._pool = psycopg2.pool.ThreadedConnectionPool(
-                minconn, maxconn, dsn)
+            self._pool = psycopg2.pool.ThreadedConnectionPool(minconn,
+                                                              maxconn,
+                                                              dsn)
         return self._pool
 
     @property
@@ -564,7 +567,7 @@ class LocalClient(dict):
     def get_key(self, *opt, **opts):
         return str(opt) + str(opts)
 
-    def bind(self, type='client', *opt, **opts):
+    def bind(self, type='pool', *opt, **opts):
         key, client = self.find(*opt, return_key=True, **opts)
         if not client:
             if type == 'client':
@@ -647,7 +650,7 @@ def create_client(*opt, **opts):
     return local_client.bind('client', *opt, **opts)
 
 
-def create_pool(minconn=None, maxconn=None, *opt, **opts):
+def create_pool(minconn=None, maxconn=None, **opts):
     """ Creates a connection pool in the :attr:local_client thread which
         will be used as the default client in the ORM.
 
@@ -658,4 +661,7 @@ def create_pool(minconn=None, maxconn=None, *opt, **opts):
     """
     minconn = minconn or cpu_count()
     maxconn = maxconn or (cpu_count() * 2)
-    return local_client.bind('pool', minconn, maxconn, *opt, **opts)
+    return local_client.bind('pool',
+                             minconn=minconn,
+                             maxconn=maxconn,
+                             **opts)

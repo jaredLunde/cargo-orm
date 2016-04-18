@@ -1,45 +1,51 @@
 """
 
   `Cargo ORM`
-  ``A lightweight, easy to use PostgreSQL ORM``
 
   ===================
   ``Getting Started``
 
-  * Initiate a SQL connection pool
+  * Initiate a global thread-local :class:Postgres connection using
+    :func:create_client
+  * Alternatively initiate a global thread-local :class:ORM using
+    :meth:db.open
   ..
-    from cargo import *
+    from cargo import db
 
     #: Creates a thread-safe connection pool which all local SQL queries
     #  will use
-    create_pool(minconn=2, maxconn=10)
+    db.open()
   ..
-  * Create your first Model with :class:Model or :class:Model
-  * Add fields to the model with :mod:cargo.fields
-  * Add relationships to the model with :class:Relationship and
-    :class:ForeignKey ..
-    from cargo import *
-    from cool_app.models import Images
+  * Design your first :class:Model
+  * Write your first :class:Model to the DB using :class:cargo.builder.Plan
+  * Add :mod:fields to the model
+  ..
+      from cargo import *
 
-    class Users(Model):
-        username = Username(primary=True)
-        password = Password(unique=True, minlen=8, not_null=True)
-        authkey = AuthKey(size=256, unique=True, not_null=True)
-        images = Relationship('Images.uploader_id', backref="uploader")
+      class Users(Model):
+          uid = UID()  # Special cargo universally unique ID type
+          username = Username(unique=True, index=True, not_null=True)
+          email = Email(unique=True, index=True, not_null=True)
+          password = Password(unique=True, minlen=8, not_null=True)
+          private_key = Key(256, unique=True, not_null=True)
   ..
-
-  * Manipulate the model, see :meth:Model.save and :meth:Model.select
+  * Forge relationships in the model with :class:Relationship and
+    :class:ForeignKey
+  * Manipulate the model with :meth:Model.add, :meth:Model.save,
+    :meth:Model.get and :meth:Model.remove
   ..
-    u = Users(username="jared", password="coolpasswordbrah")
-    u.save()
-
-    u.where(u.username == 'jared')
-    u.select(u.authkey)
-  ..
-
-  * Delete a model record, see :meth:Model.delete
-  ..
-    u.delete()
+    User = Users()
+    #: Adds the user 'Jared' to the DB, returns the Jared model
+    Jared = User.add(username="Jared",
+                     password="coolpasswordbrah",
+                     private_key=Users.private_key.generate())
+    #: Updates the private key and password for Jared
+    Jared.private_key.new()
+    Jared['password'] = 'newcoolpassword'
+    #: Persists the changes to Jared to the DB
+    Jared.save()
+    #: Removes Jared from the DB
+    Jared.remove()
   ..
 
 --·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--·--

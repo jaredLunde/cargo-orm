@@ -383,6 +383,7 @@ class ExtrasTestCase(BaseTestCase):
     def setUpClass(cls):
         setup()
         ExtrasPlan().execute()
+        ExtrasModel.username.register_type(cls.orm.db)
 
 
 #: Binary setup

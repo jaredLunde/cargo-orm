@@ -56,17 +56,21 @@ class ORM(object):
     def __init__(self, client=None, cursor_factory=None, schema=None,
                  table=None, debug=False):
         """``SQL ORM``
-            =======================================================================
-            The base model which interacts with :class:Postgres
-            and provides the basic ORM interface.
-
+            ==================================================================
+            The base structure which interacts with :class:Postgres
+            and provides the ORM interface. This object stores and maintains
+            the :class:QueryState which is parsed by the :mod:cargo.statements
+            objects to create your individual SQL queries. Its methods add
+            SQL :class:Clause(s) and :class:Expression(s) to your
+            :class:QueryState.
+            ==================================================================
             @client: (:class:Postgres or :class:PostgresPool)
             @cursor_factory: :mod:psycopg2.extras cursor factories
             @schema: (#str) the name of the schema search path
             @table: (#str) default table
-            @debug: (#bool) prints mogrified queries when queries are executed,
-                severely hampers performance and should only be used for,
-                well, debugging purposes.
+            @debug: (#bool) prints mogrified queries when queries are
+                executed, severely hampers performance and should only be
+                used for, well, debugging purposes.
         """
         self._client = client
         self.queries = []
@@ -87,7 +91,8 @@ class ORM(object):
 
     @property
     def db(self):
-        return self._client or local_client.get('db') or create_client()
+        client = self._client or local_client.get('db') or create_client()
+        return client
 
     client = db
 
@@ -934,11 +939,11 @@ class ORM(object):
                     conn.commit()
                 except psycopg2.ProgrammingError as e:
                     conn.rollback()
-                    self.db.put(conn)
+                    conn.put()
                     raise QueryError(e.args[0].strip(),
                                      code=ERROR_CODES.COMMIT,
                                      root=e)
-        self.db.put(conn)
+        conn.put()
 
     def run(self, *queries):
         """ Runs all of the queries in @*qs or in :prop:queries,
@@ -987,7 +992,9 @@ class ORM(object):
             -> :mod:psycopg2 cursor or None
         """
         #: Gets a client connection if one wasn't passed as an argument
-        _conn = conn or self.db.get()
+        _conn = conn
+        if conn is None:
+            _conn = self.db.get()
         cursor = self.get_cursor(_conn)
         #: Sets the search path to the locally defined schema
         query = self._prepend_search_path_to(query)
@@ -1000,7 +1007,7 @@ class ORM(object):
             #: Rolls back the transaction in the event of a failure
             _conn.rollback()
             if conn is None:
-                self.db.put(_conn)
+                _conn.put()
             raise QueryError(e.args[0].strip(),
                              code=ERROR_CODES.EXECUTE,
                              root=e)
@@ -1008,12 +1015,12 @@ class ORM(object):
         #  and the 'commit' argument is true
         if commit and not _conn.autocommit:
             try:
-                    _conn.commit()
+                _conn.commit()
             except Psycopg2QueryErrors as e:
                 #: Rolls back the transaction in the event of a failure
                 _conn.rollback()
                 if conn is None:
-                    self.db.put(_conn)
+                    _conn.put()
                 raise QueryError(e.args[0].strip(),
                                  code=ERROR_CODES.COMMIT,
                                  root=e)
@@ -1021,7 +1028,7 @@ class ORM(object):
         #  was passed in arguments. If a connection object is passed,
         #  it's the user's responsibility to put it away.
         if conn is None:
-            self.db.put(_conn)
+            _conn.put()
         return cursor
 
     def subquery(self, alias=None):

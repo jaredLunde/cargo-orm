@@ -356,9 +356,9 @@ class Plan(Table):
 
 
             class UsersPlan(Plan):
+                ORDINAL = ('uid', 'username', 'email', 'password')
                 model = Users()
-                ordinal = ('uid', 'username', 'email', 'password')
-
+                
                 def after(self):
                     self.comment_on(self.columns.uid,
                                     'A universally unique identifier '+
