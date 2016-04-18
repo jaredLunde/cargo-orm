@@ -474,7 +474,7 @@ class SetOperations(Query):
 class Union(SetOperations):
     """ Creates a UNION statement between multiple :class:BaseQuery objects
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
         Creates the |UNION|
         ..
@@ -494,8 +494,8 @@ class Union(SetOperations):
                  'operations', 'all', 'distinct')
 
     def __init__(self, orm, *unions, all=False, distinct=False, **kwargs):
-        """ `UNION`
-            ``Query Statement``
+        """`UNION`
+            ==================================================================
             @orm: :class:ORM object
             @*unions: :class:BaseQuery objects
             @all: #bool True if |UNION ALL|
@@ -512,7 +512,7 @@ class Intersect(SetOperations):
     """ Creates an |INTERSECT| statement between multiple :class:BaseQuery
         objects
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
 
         Creates the |INTERSECT|
@@ -533,8 +533,8 @@ class Intersect(SetOperations):
                  'operations', 'all', 'distinct')
 
     def __init__(self, orm, *intersects, all=False, distinct=False, **kwargs):
-        """ `INTERSECT`
-            ``Query Statement``
+        """`INTERSECT`
+            ==================================================================
             @orm: :class:ORM object
             @*intersects: :class:BaseQuery objects
             @all: #bool True if |INTERSECT ALL|
@@ -550,7 +550,7 @@ class Intersect(SetOperations):
 class Except(SetOperations):
     """ Creates an |EXCEPT| statement between multiple :class:BaseQuery objects
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
 
         Creates the |EXCEPT|
@@ -571,8 +571,8 @@ class Except(SetOperations):
                  'operations', 'all', 'distinct')
 
     def __init__(self, orm, *excepts, all=False, distinct=False, **kwargs):
-        """ `INTERSECT`
-            ``Query Statement``
+        """`EXCEPT`
+            ==================================================================
             @orm: :class:ORM object
             @*excepts: :class:BaseQuery objects
             @all: #bool True if |EXCEPT ALL|
@@ -590,7 +590,7 @@ class Raw(SetOperations):
         in the order in which they are declared, does not attempt to
         self-order at all.
 
-        =======================================================================
+        ======================================================================
         ``Usage Example``
         ..
             Raw(ORM().values(1))
@@ -603,7 +603,8 @@ class Raw(SetOperations):
                  'operations', 'all', 'distinct')
 
     def __init__(self, *args, **kwargs):
-        """ `RAW`
+        """`RAW`
+            ==================================================================
             :see::meth:Query.__init__
         """
         super().__init__(*args, **kwargs)
@@ -630,7 +631,7 @@ class Raw(SetOperations):
 
 
 class Insert(Query):
-    """ =======================================================================
+    """ ======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -641,7 +642,7 @@ class Insert(Query):
             orm.add_field(username=Username())
         ..
 
-        =======================================================================
+        ======================================================================
 
         Creates and executes a simple |INSERT| query
         ..
@@ -664,8 +665,8 @@ class Insert(Query):
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string')
 
     def __init__(self, orm, **kwargs):
-        """ `INSERT`
-            ``Query Statement``
+        """`INSERT`
+            ==================================================================
             @orm: :class:ORM object
         """
         super().__init__(orm=orm, **kwargs)
@@ -698,7 +699,7 @@ class Insert(Query):
 
 
 class Select(SetOperations):
-    """ =======================================================================
+    """ ======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -709,7 +710,7 @@ class Select(SetOperations):
             orm.add_field(username=Username())
         ..
 
-        =======================================================================
+        ======================================================================
         Creates and executes a simple |SELECT| query
         ..
             # Selects the field 'username' from the users model
@@ -724,7 +725,7 @@ class Select(SetOperations):
         ..
         |[{'username': 'FriskyWolf'}, {'username': 'test'}]|
 
-        =======================================================================
+        ======================================================================
         Creates and executes a simple |SELECT| query with a |WHERE| clause
         ..
             # Sets the 'WHERE' clause
@@ -747,8 +748,8 @@ class Select(SetOperations):
                  'operations', 'all', 'distinct')
 
     def __init__(self, orm, **kwargs):
-        """ `SELECT`
-            ``Query Statement``
+        """`SELECT`
+            ==================================================================
             @orm: :class:ORM object
         """
         super().__init__(orm=orm, **kwargs)
@@ -799,7 +800,7 @@ class Select(SetOperations):
 
 
 class Update(Query):
-    """ =======================================================================
+    """ ======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -810,7 +811,7 @@ class Update(Query):
             orm.add_field(username=Username())
         ..
 
-        =======================================================================
+        ======================================================================
         Creates and executes a simple |UPDATE| query
         ..
             # Tells the ORM which fields to update
@@ -859,7 +860,7 @@ class Update(Query):
 
 
 class Delete(Query):
-    """ =======================================================================
+    """ ======================================================================
         ``Usage Example``
 
         Creates a simple 'users' :class:Model with a :class:Username
@@ -870,7 +871,7 @@ class Delete(Query):
             orm.add_field(username=Username())
         ..
 
-        =======================================================================
+        ======================================================================
         Creates and executes a simple |DELETE| query
         ..
             # Tells the ORM to set a WHERE clause
@@ -887,8 +888,8 @@ class Delete(Query):
     __slots__ = ('orm', 'params', 'alias', 'is_subquery', 'one', 'string')
 
     def __init__(self, orm, **kwargs):
-        """ `DELETE`
-            ``Query Statement``
+        """`DELETE`
+            ==================================================================
             @orm: :class:ORM object
         """
         super().__init__(orm=orm, **kwargs)

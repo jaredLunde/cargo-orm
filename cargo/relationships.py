@@ -78,7 +78,8 @@ class BaseRelationship(object):
 class Reference(object):
 
     def __init__(self, model, field_name, constraints=None):
-        """ `Reference`
+        """`Reference`
+            ==================================================================
             This object is added to :class:ForeignKey fields as
             the |ref| property. It provides accessed to the model
             and field objects which the foreign key is a reference to.
@@ -209,8 +210,8 @@ class ForeignKey(BaseRelationship, _ForeignObject):
     """
 
     def __init__(self, ref, *args, relation=None, **kwargs):
-        """ `Foreign Keys`
-
+        """`Foreign Keys`
+            ==================================================================
             @ref: (#str) python path to the :class:Field which
                 this foreign key is a reference to e.g.
                 |coolapp.model.User.uid|
@@ -345,7 +346,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
 
 class Relationship(BaseRelationship):
-    """ ===============================================================
+    """ ======================================================================
         ``Usage Example``
 
         Forge a |JOIN| relationship between two models.
@@ -378,7 +379,7 @@ class Relationship(BaseRelationship):
                                    relation="images")
         ..
 
-        ===============================================================
+        ======================================================================
         ``Pull data from a relationship``
         ..
             user = Users(uid=1761)
@@ -397,7 +398,8 @@ class Relationship(BaseRelationship):
         |1761|
     """
     def __init__(self, foreign_key):
-        """ `Relationships`
+        """`Relationships`
+            ==================================================================
             This class must be used with :class:ForeignKey. It inherits the
             the :class:Model which the foreign key belongs to and has access
             to all methods and properties of the model. The foreign key can

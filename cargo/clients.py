@@ -229,7 +229,7 @@ class BasePostgresClient(object):
 
 
 class Postgres(BasePostgresClient):
-    """ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """ ======================================================================
         ``Usage Example``
 
         Creates a new :class:cargo.Model with a customized
@@ -253,8 +253,8 @@ class Postgres(BasePostgresClient):
                  connection=None, autocommit=False, encoding=None,
                  schema=None, search_paths=None, events=None,
                  **connection_options):
-        """ `Postgres Client`
-
+        """`Postgres Client`
+            ==================================================================
             This is a thin wrapper for the :mod:psycopg2 connection object
             returned by :func:psycopg2.connect, it's purpose being to
             standardize a client object in the event that other SQL backends
@@ -456,13 +456,16 @@ class PostgresPool(BasePostgresClient):
                  cursor_factory=CNamedTupleCursor, pool=None,
                  autocommit=False, encoding=None, schema=None,
                  search_paths=None, events=None, **connection_options):
-        """ :see::class:Postgres
+        """`Postgres Pool`
+            ==================================================================
             @minconn: (#int) minimum number of connections to establish
                 within the pool
             @maxconn: (#int) maximum number of connections to establish
                 within the pool
             @pool: (:class:psycopg2.pool.ThreadedConnectionPool) initialized
                 pyscopg2 connection pool object
+            ==================================================================
+            :see::class:Postgres
         """
         self._cache = {}
         # Connection options

@@ -49,7 +49,7 @@ class BaseLogic(object):
         """ Creates an |AND| SQL expression
 
             -> (SQL) :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
 
@@ -71,7 +71,7 @@ class BaseLogic(object):
         """ Creates an |OR| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
 
@@ -93,7 +93,7 @@ class BaseLogic(object):
         """ Creates an |=| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -110,7 +110,7 @@ class BaseLogic(object):
         """ Creates a |<>| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -135,7 +135,7 @@ class BaseLogic(object):
         """ Creates a |DISTINCT FROM| SQL clause
 
             -> SQL :class:Clause object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -151,7 +151,7 @@ class BaseLogic(object):
         """ Creates a |NOT DISTINCT FROM| SQL clause
 
             -> SQL :class:Clause object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -171,7 +171,7 @@ class BaseLogic(object):
         """ Creates an |IN| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -189,7 +189,7 @@ class BaseLogic(object):
         """ Creates a |NOT IN| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -207,7 +207,7 @@ class BaseLogic(object):
         """ Creates a |IS NULL| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -222,7 +222,7 @@ class BaseLogic(object):
         """ Creates a |IS NOT NULL| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -238,7 +238,7 @@ class BaseLogic(object):
         """ Creates an |ASC| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -253,7 +253,7 @@ class BaseLogic(object):
         """ Creates a |DESC| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -342,7 +342,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |<| (less than) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -359,7 +359,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |<=| (less than or equal) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -376,7 +376,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |>| (greater than) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -393,7 +393,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |>=| (greater than or equal) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -410,7 +410,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |/| (division) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -428,7 +428,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |*| (multiplication) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -445,7 +445,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |+| (addition) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -462,7 +462,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |^| (power) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -479,7 +479,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |-| (subtraction) SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -508,7 +508,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |BETWEEN| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -525,7 +525,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a |NOT BETWEEN| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -542,7 +542,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a SQL expression for incrementing numeric values
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -560,7 +560,7 @@ class BaseNumericLogic(BaseLogic):
         """ Creates a SQL expression for decrementing numeric values
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -672,7 +672,7 @@ class StringLogic(BaseLogic):
         """ Creates a |LIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -689,7 +689,7 @@ class StringLogic(BaseLogic):
         """ Creates a |NOT LIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -705,7 +705,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -722,7 +722,7 @@ class StringLogic(BaseLogic):
         """ Creates a |NOT ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -738,7 +738,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -753,7 +753,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -768,7 +768,7 @@ class StringLogic(BaseLogic):
         """ Creates an |ILIKE| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -783,7 +783,7 @@ class StringLogic(BaseLogic):
         """ Creates a |SIMILAR TO| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -798,7 +798,7 @@ class StringLogic(BaseLogic):
         """ Creates a |NOT SIMILAR TO| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -814,7 +814,7 @@ class StringLogic(BaseLogic):
         """ Creates a |POSIX| SQL expression
 
             -> SQL :class:Expression object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -979,7 +979,7 @@ class __empty(object):
 
     def __str__(self):
         return ""
-        
+
     def __len__(self):
         return 0
 
@@ -1009,7 +1009,7 @@ class Expression(BaseExpression, NumericLogic, StringLogic):
            or
         |model.where(Expression(model.id, ">", 1000))|
 
-        ===================================================================
+        ==================================================================
         ``Usage Example``
         ..
             e = Expression(model.id, "BETWEEN", Expression(10, 'AND', 20))
@@ -1021,9 +1021,10 @@ class Expression(BaseExpression, NumericLogic, StringLogic):
 
     def __init__(self, left, operator, right=_empty, params=None, alias=None,
                  use_field_name=False):
-        """ `Expression`
+        """`Expression`
+            ==================================================================
             Formats and parameterizes SQL expressions.
-
+            ==================================================================
             @left: any object
             @operator: (#str) operator. This does NOT get parameterized so it
                 is completely unsafe to put user submitted data here.
@@ -1154,7 +1155,7 @@ class ValuesClause(Clause):
 
 
 class Case(BaseExpression):
-    """ ===================================================================
+    """ ======================================================================
         ``Usage Example`
         ..
             orm.select(Case(fielda.eq(1), 'one',
@@ -1244,9 +1245,10 @@ class Function(BaseExpression, NumericLogic, StringLogic):
 
     def __init__(self, func, *args, use_field_name=False, params=None,
                  alias=None):
-        """ `Function`
+        """`Function`
+            ==================================================================
             Formats and aliases SQL functions.
-
+            ==================================================================
             @func: (#str) name of func - this does NOT get parameterized
                 so it is completely unsafe to put user submitted data here
             @*args: arguments to pass to the function
@@ -1548,7 +1550,7 @@ class Functions(WindowFunctions):
             that is not null.
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1563,7 +1565,7 @@ class Functions(WindowFunctions):
         """ Creates a |GREATEST| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1578,7 +1580,7 @@ class Functions(WindowFunctions):
         """ Creates a |LEAST| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1593,7 +1595,7 @@ class Functions(WindowFunctions):
         """ Creates a |generate_series| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1608,7 +1610,7 @@ class Functions(WindowFunctions):
         """ Creates a |generate_dates| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1624,7 +1626,7 @@ class Functions(WindowFunctions):
         """ Creates a |MAX| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1641,7 +1643,7 @@ class Functions(WindowFunctions):
         """ Creates a |MIN| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1658,7 +1660,7 @@ class Functions(WindowFunctions):
         """ Creates a |AVG| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1675,7 +1677,7 @@ class Functions(WindowFunctions):
         """ Creates a |SUM| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1692,7 +1694,7 @@ class Functions(WindowFunctions):
         """ Creates a |ABS| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1856,7 +1858,7 @@ class Functions(WindowFunctions):
         """ Creates a |NULLIF| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1870,7 +1872,7 @@ class Functions(WindowFunctions):
         """ Creates a |COUNT| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1886,7 +1888,7 @@ class Functions(WindowFunctions):
         """ Creates a |DISTINCT| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1904,7 +1906,7 @@ class Functions(WindowFunctions):
         """ Creates a |DISTINCT ON| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1922,7 +1924,7 @@ class Functions(WindowFunctions):
         """ Creates a |age| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1965,7 +1967,7 @@ class Functions(WindowFunctions):
         """ Creates an |ANY| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1982,7 +1984,7 @@ class Functions(WindowFunctions):
         """ Creates an |ALL| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -1999,7 +2001,7 @@ class Functions(WindowFunctions):
         """ Creates a |SOME| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -2016,7 +2018,7 @@ class Functions(WindowFunctions):
         """ Creates a |USING| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -2031,7 +2033,7 @@ class Functions(WindowFunctions):
         """ Creates a |substring| SQL expression
 
             -> SQL :class:Function object
-            ===================================================================
+            ==================================================================
 
             ``Usage Example``
             ..
@@ -2489,6 +2491,7 @@ class parameterize(BaseExpression, NumericLogic, StringLogic):
 
     def __init__(self, value, alias=None):
         """`parameterize`
+            ==================================================================
             Parameterizes plain text
             @value: the values to parameterize
             @alias: (#str) an alias to apply to the value
