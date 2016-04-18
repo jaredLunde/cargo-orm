@@ -22,7 +22,7 @@ from multiprocessing import cpu_count
 from vital.cache import DictProperty, local_property
 from vital.tools.dicts import merge_dict
 from vital.tools.lists import unique_list
-from vital.debug import prepr
+from vital.debug import preprX
 
 from cargo.cursors import CNamedTupleCursor, ModelCursor
 from cargo.etc.types import reg_array_type, reg_type
@@ -307,8 +307,7 @@ class Postgres(BasePostgresClient):
         # Cursor options
         self._cursor_factory = cursor_factory
 
-    @prepr('_connection', 'autocommit')
-    def __repr__(self): return
+    __repr__ = preprX('_connection', 'autocommit')
 
     def __enter__(self):
         return self.connection
@@ -486,8 +485,7 @@ class PostgresPool(BasePostgresClient):
         # Cursor options
         self._cursor_factory = cursor_factory
 
-    @prepr('_pool', 'autocommit')
-    def __repr__(self): return
+    __repr__ = preprX('_pool', 'autocommit')
 
     def __enter__(self):
         """ Gets a connection from the pool """

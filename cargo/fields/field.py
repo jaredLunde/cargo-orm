@@ -11,7 +11,7 @@ try:
     import ujson as json
 except:
     import json
-from vital.debug import prepr
+from vital.debug import preprX
 
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
@@ -83,8 +83,7 @@ class Field(BaseLogic):
         self.value = self.empty
         self.__call__(value)
 
-    @prepr('name', 'value', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('name', 'value', keyless=True)
 
     def __getstate__(self):
         state = {}

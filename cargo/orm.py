@@ -28,7 +28,7 @@ from psycopg2.extensions import cursor as _cursor
 from vital.cache import cached_property
 from vital.tools.strings import camel_to_underscore
 from vital.tools.lists import grouped
-from vital.debug import prepr, line, logg
+from vital.debug import prepr, preprX, line, logg
 
 from cargo.clients import *
 from cargo.cursors import CNamedTupleCursor, ModelCursor
@@ -81,8 +81,7 @@ class ORM(object):
         self.table = table or self.table
         self._debug = debug
 
-    @prepr('db')
-    def __repr__(self): return
+    __repr__ = preprX('db')
 
     # ``Connection handing``
 
@@ -1203,8 +1202,7 @@ class QueryState(object):
         self.is_subquery = False
         self.fields = []
 
-    @prepr('clauses', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('clauses', 'params', keyless=True)
 
     def __iter__(self):
         """ Iterating the query state yields it's clauses"""
@@ -1588,8 +1586,7 @@ class Model(ORM):
             del field_data['__nocompile__']
         self.fill(**field_data)
 
-    @prepr('field_names', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('field_names', keyless=True)
 
     def __str__(self):
         return self.__repr__()

@@ -14,11 +14,9 @@ from netaddr import *
 
 from psycopg2.extensions import *
 
-from vital.cache import high_pickle
-from vital.debug import prepr
+from vital.debug import preprX
 from vital.tools.encoding import uniorbytes
-from vital.security import aes_b64_encrypt, aes_b64_decrypt,\
-                           aes_encrypt, aes_decrypt, randstr
+from vital.security import aes_b64_encrypt, aes_b64_decrypt, randstr
 
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
@@ -360,8 +358,7 @@ class Encrypted(Field):
         self._alias = None
         self.__call__(value)
 
-    @prepr('type', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('type', keyless=True)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:

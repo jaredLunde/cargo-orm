@@ -23,7 +23,7 @@ import sqlparse
 from vital.cache import local_property
 from vital.debug import Logg as logg
 from vital.tools.dicts import merge_dict
-from vital.debug import prepr, line
+from vital.debug import preprX, line
 
 from cargo.clients import db
 from cargo.etc.types import *
@@ -140,8 +140,7 @@ class Query(BaseQuery):
             pass
         self.alias = alias
 
-    @prepr('query', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('query', 'params', keyless=True, address=False)
 
     def exists(self, alias=None):
         return Functions.exists(self, alias=alias)

@@ -7,7 +7,7 @@
 
 """
 import warnings
-from vital.debug import prepr
+from vital.debug import preprX
 
 import psycopg2._psycopg
 from psycopg2.extensions import register_adapter, adapt, AsIs
@@ -64,9 +64,7 @@ class OneOf(Field, EnumLogic):
         self._type_name = type_name
         super().__init__(validator=validator, **kwargs)
 
-    @prepr('types', 'name', 'value', _no_keys=True)
-    def __repr__(self):
-        return
+    __repr__ = preprX('types', 'name', 'value', keyless=True)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
@@ -145,8 +143,7 @@ class Array(Field, ArrayLogic):
         self.dimensions = dimensions
         super().__init__(validator=validator, **kwargs)
 
-    @prepr('type.__class__.__name__', 'name', 'value', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('type.__class__.__name__', 'name', 'value', keyless=True)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:

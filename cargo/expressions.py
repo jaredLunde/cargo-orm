@@ -13,7 +13,7 @@ from hashlib import sha1
 
 import psycopg2.extensions
 
-from vital.debug import prepr
+from vital.debug import preprX
 from cargo.etc import passwords, usernames, operators
 
 
@@ -881,8 +881,7 @@ class Subquery(NumericLogic, StringLogic):
             query.query, self.alias if self.alias else "").strip()
         self.params = query.params
 
-    @prepr('query', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('query', 'params', keyless=True, address=False)
 
     def __str__(self):
         return self.query
@@ -972,6 +971,7 @@ class BaseExpression(BaseLogic):
 
 class __empty(object):
     __slots__ = tuple()
+    __repr__ = preprX()
 
     @property
     def string(self):
@@ -1040,8 +1040,8 @@ class Expression(BaseExpression, NumericLogic, StringLogic):
         self.use_field_name = use_field_name
         self.compile()
 
-    @prepr('operator', 'string', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('operator', 'string', 'params', keyless=True,
+                      address=False)
 
     def group_and(self):
         self.group_op = "AND"
@@ -1107,8 +1107,7 @@ class Clause(BaseExpression):
         self.wrap = wrap
         self.compile()
 
-    @prepr('string', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('string', 'params', keyless=True, address=False)
 
     def __str__(self):
         return self.string
@@ -1186,8 +1185,7 @@ class Case(BaseExpression):
         self.use_field_name = use_field_name
         self.compile()
 
-    @prepr('string', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('string', 'params', keyless=True, address=False)
 
     def __str__(self):
         return self.string
@@ -1264,8 +1262,7 @@ class Function(BaseExpression, NumericLogic, StringLogic):
         self.use_field_name = use_field_name
         self.compile()
 
-    @prepr('string', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('string', 'params', keyless=True, address=False)
 
     def __str__(self):
         return self.string
@@ -2461,8 +2458,7 @@ class aliased(NumericLogic, StringLogic):
         else:
             self.string = field.field_name if use_field_name else field.name
 
-    @prepr('field', 'string', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('field', 'string', keyless=True, address=False)
 
     def __str__(self):
         return str(self.string)
@@ -2504,8 +2500,7 @@ class parameterize(BaseExpression, NumericLogic, StringLogic):
             self._parameterize(value),
             alias if alias else "").rstrip()
 
-    @prepr('string', 'params', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('string', 'params', keyless=True, address=False)
 
     def __str__(self):
         return self.string
@@ -2527,8 +2522,7 @@ class safe(NumericLogic, StringLogic):
         self.params = {}
         self.string = "{} {}".format(value, self.alias).rstrip()
 
-    @prepr('string', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('string', keyless=True, address=False)
 
     def __str__(self):
         return self.string

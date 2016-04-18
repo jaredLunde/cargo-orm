@@ -30,7 +30,7 @@ import argon2
 from argon2 import PasswordHasher
 from passlib.context import CryptContext
 
-from vital.debug import prepr, Timer, line
+from vital.debug import preprX, Timer, line
 from vital.security import randkey, randstr
 from vital.tools import strings as string_tools
 
@@ -312,8 +312,7 @@ class Hasher(HashIdentifier):
         self.raises = raises
         self.context = context or _pwd_context
 
-    @prepr('scheme', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('scheme', keyless=True)
 
     def _verify(self, value, hash):
         return self.context.verify(value, hash)
@@ -705,8 +704,7 @@ class Key(Field, StringLogic):
         self.keyspace = keyspace
         self.rng = rng
 
-    @prepr('name', 'size', 'value', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('name', 'size', 'value', keyless=True)
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:

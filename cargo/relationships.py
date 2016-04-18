@@ -13,7 +13,7 @@ from functools import lru_cache
 from pydoc import locate, ErrorDuringImport
 
 from vital.cache import cached_property
-from vital.debug import prepr, get_obj_name
+from vital.debug import preprX, get_obj_name
 
 from cargo.fields import *
 from cargo.etc.types import *
@@ -89,8 +89,7 @@ class Reference(object):
         self.field_name = field_name
         self.constraints = constraints or []
 
-    @prepr('_model', 'field_name')
-    def __repr__(self): return
+    __repr__ = preprX('_model', 'field_name')
 
     def __getattr__(self, name):
         try:
@@ -226,8 +225,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         self._args = args
         self._kwargs = kwargs
 
-    @prepr('_ref')
-    def __repr__(self): return
+    __repr__ = preprX('_ref')
 
     def __getstate__(self):
         return self.__dict__.copy()
@@ -414,8 +412,7 @@ class Relationship(BaseRelationship):
         self._foreign_key = foreign_key
         self._forged = False
 
-    @prepr('_foreign_key', '_model_cls')
-    def __repr__(self): return
+    __repr__ = preprX('_foreign_key', '_model_cls')
 
     def __getattr__(self, name):
         try:

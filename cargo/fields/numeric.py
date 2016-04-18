@@ -10,7 +10,7 @@ import copy
 import decimal
 import babel.numbers
 
-from vital.debug import prepr
+from vital.debug import preprX
 
 from cargo.etc.types import *
 from cargo.expressions import *
@@ -244,8 +244,7 @@ class Currency(BaseDecimal):
         super().__init__(minval=minval, maxval=maxval, digits=digits,
                          decimal_places=decimal_places, **kwargs)
 
-    @prepr('name', 'code', 'str', _no_keys=True)
-    def __repr__(self): return
+    __repr__ = preprX('name', 'code', 'str', keyless=True)
 
     def __str__(self):
         return self.format()
