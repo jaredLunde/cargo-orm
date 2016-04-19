@@ -2161,16 +2161,6 @@ class Model(ORM):
             pass
         return cursor
 
-    def run_iter(self, *queries, **kwargs):
-        """ :see::meth:ORM.run_iter
-            -> yields :prop:_cursor_factory if this isn't a :meth:many query
-                or :prop:_naked is |True|, otherwise returns :class:Model
-        """
-        if self._multi:
-            self.new()
-        for x in super().run_iter(*queries, **kwargs):
-            yield x
-
     def add(self, *args, **kwargs):
         """ Adds a new record to the DB without affecting the current model.
             @*args: values to insert according to the model's ORDINAL
@@ -2269,8 +2259,6 @@ class Model(ORM):
                 if :prop:_dry is |True|.
         """
         return super().one().select(*fields, **kwargs)
-
-    get_one = get
 
     def _explicit_where(self):
         if not self.state.has('WHERE'):
