@@ -224,7 +224,7 @@ class Field(BaseLogic):
     def _should_update(self):
         if not self.validate():
             raise self.validator.raises(self.validator.error,
-                                        self.field_name,
+                                        self,
                                         code=self.validator.code)
         return self.value is not self.empty
 

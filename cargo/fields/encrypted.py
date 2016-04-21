@@ -156,15 +156,26 @@ class _EncryptedValue(object):
     def encrypted(self):
         return self.field.encrypt(self)
 
-    @staticmethod
-    def to_db(val):
+
+class _EncryptedAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
         inherit = category.KEYVALUE
         try:
-            if val.field.type.OID in inherit:
-                return adapt(val.field.type(val.encrypted))
+            if self.value.field.type.OID in inherit:
+                adapter = adapt(self.value.field.type(self.value.encrypted))
+            else:
+                adapter = adapt(self.value.encrypted)
         except AttributeError:
-            pass
-        return adapt(val.encrypted)
+            adapter = adapt(self.value.encrypted)
+        adapter.prepare(self.conn)
+        return adapter.getquoted()
 
 
 class encstr(str, _EncryptedValue):
@@ -594,19 +605,19 @@ class Encrypted(Field):
         return self.type.validate()
 
     def register_adapter(self):
-        register_adapter(encint, encint.to_db)
-        register_adapter(encstr, encstr.to_db)
-        register_adapter(encfloat, encfloat.to_db)
-        register_adapter(encdecimal, encdecimal.to_db)
-        register_adapter(encbytes, encbytes.to_db)
-        register_adapter(enclist, enclist.to_db)
-        register_adapter(encdict, encdict.to_db)
-        register_adapter(enctuple, enctuple.to_db)
-        register_adapter(encset, encset.to_db)
-        register_adapter(_EncArrow, _EncArrow.to_db)
-        register_adapter(encip, encip.to_db)
-        register_adapter(encipnet, encipnet.to_db)
-        register_adapter(enceui, enceui.to_db)
+        register_adapter(encint, _EncryptedAdapter)
+        register_adapter(encstr, _EncryptedAdapter)
+        register_adapter(encfloat, _EncryptedAdapter)
+        register_adapter(encdecimal, _EncryptedAdapter)
+        register_adapter(encbytes, _EncryptedAdapter)
+        register_adapter(enclist, _EncryptedAdapter)
+        register_adapter(encdict, _EncryptedAdapter)
+        register_adapter(enctuple, _EncryptedAdapter)
+        register_adapter(encset, _EncryptedAdapter)
+        register_adapter(_EncArrow, _EncryptedAdapter)
+        register_adapter(encip, _EncryptedAdapter)
+        register_adapter(encipnet, _EncryptedAdapter)
+        register_adapter(enceui, _EncryptedAdapter)
         self.type.register_adapter()
 
     def copy(self, *args, **kwargs):

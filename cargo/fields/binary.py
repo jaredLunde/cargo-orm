@@ -23,16 +23,26 @@ from cargo.logic.binary import BinaryLogic
 __all__ = ('Binary',)
 
 
+class _BytesAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        adapter = adapt(psycopg2.Binary(self.value))
+        adapter.prepare(self.conn)
+        return adapter.getquoted()
+
+
 class cargobytes(bytes):
     def __iadd__(self, other):
         return self.__class__(self.__add__(other))
 
     def __isub__(self, other):
         return self.__class__(self.__sub__(other))
-
-    @staticmethod
-    def to_db(value):
-        return adapt(psycopg2.Binary(b64encode(value)))
 
 
 class Binary(Field, BinaryLogic):
@@ -58,16 +68,17 @@ class Binary(Field, BinaryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(cargobytes, cargobytes.to_db)
+        register_adapter(cargobytes, _BytesAdapter)
         BINARYTYPE = reg_type('BINARYTYPE', BINARY, Binary.to_python)
         reg_array_type('BINARYARRAYTYPE', BINARYARRAY, BINARYTYPE)
 
     @staticmethod
     def to_python(value, cur):
+        bin_ = psycopg2.BINARY(value, cur)
         try:
-            return b64decode(psycopg2.BINARY(value, cur))
+            return b64decode(bin_)
         except (TypeError, binascii.Error):
-            return psycopg2.BINARY(value, cur)
+            return bin_
 
     def for_json(self):
         """:see::meth:Field.for_json"""

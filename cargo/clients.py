@@ -383,7 +383,7 @@ class Postgres(BasePostgresClient):
         if self.autocommit:
             self._connection.set_session(autocommit=self.autocommit)
         if self.encoding:
-            self._connection.set_client_encoding(encoding=self.encoding)
+            self._connection.set_client_encoding(self.encoding)
 
     def commit(self):
         """ Commits a transaction """

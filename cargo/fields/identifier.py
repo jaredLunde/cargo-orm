@@ -81,7 +81,7 @@ class UUID(Field, StringLogic):
 
     @staticmethod
     def adapt(uuid):
-        return AsIs("%s::uuid" % adapt(str(uuid)).getquoted().decode())
+        return AsIs("'%s'::uuid" % str(uuid))
 
 
 class SmallSerial(SmallInt):

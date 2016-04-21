@@ -898,6 +898,23 @@ class _DurationTemplate(string.Formatter):
         return value
 
 
+class _DurationAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        adapter = adapt(self.value.total_seconds())
+        try:
+            adapter.prepare(self.conn)
+        except AttributeError:
+            pass
+        return adapter.getquoted()
+
+
 class _DurationDelta(datetime.timedelta):
     _nt = namedtuple('Duration', ('years', 'months', 'days', 'hours', 'mins',
                                   'secs', 'msecs'))
@@ -927,10 +944,6 @@ class _DurationDelta(datetime.timedelta):
                       msecs=int(msecs))
         self._cache[self.total_seconds()] = nt
         return nt
-
-    @staticmethod
-    def to_db(value):
-        return adapt(value.total_seconds())
 
 
 class Duration(Double):
@@ -969,7 +982,7 @@ class Duration(Double):
 
     @staticmethod
     def register_adapter():
-        register_adapter(_DurationDelta, _DurationDelta.to_db)
+        register_adapter(_DurationDelta, _DurationAdapter)
 
     _std_fmts = {'years': ('year', 'years'),
                  'months': ('month', 'months'),
@@ -1110,6 +1123,15 @@ class Duration(Double):
         return self._formatter.format(fmt, **dt._asdict()).strip()
 
 
+class _PhoneNumberAdapter(_DurationAdapter):
+
+    def getquoted(self):
+        adapter = adapt(PhoneNumber._db_re.sub("", phonenumbers.format_number(
+            self.value, PhoneNumber.INTERNATIONAL)).replace('ext', 'x'))
+        adapter.prepare(self.conn)
+        return adapter.getquoted()
+
+
 class PhoneNumber(Field, StringLogic):
     OID = TEXT
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
@@ -1166,9 +1188,4 @@ class PhoneNumber(Field, StringLogic):
     @staticmethod
     def register_adapter():
         register_adapter(phonenumbers.phonenumber.PhoneNumber,
-                         PhoneNumber.to_db)
-
-    @staticmethod
-    def to_db(value):
-        return adapt(PhoneNumber._db_re.sub("", phonenumbers.format_number(
-            value, PhoneNumber.INTERNATIONAL)).replace('ext', 'x'))
+                         _PhoneNumberAdapter)

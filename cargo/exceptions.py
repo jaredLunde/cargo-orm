@@ -21,7 +21,7 @@ Psycopg2QueryErrors= (_psycopg2.ProgrammingError,
                       _psycopg2.InternalError)
 
 
-class QueryError(BaseException):
+class QueryError(Exception):
     """ Raised when there was an error executing a :class:cargo.Query """
     def __init__(self, message, code=None, root=None):
         self.message = message
@@ -29,35 +29,35 @@ class QueryError(BaseException):
         self.root = root
 
 
-class BuildError(BaseException):
+class BuildError(Exception):
     """ Raised when tables fail to build with :class:cargo.builder.Build """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class ORMIndexError(BaseException):
+class ORMIndexError(Exception):
     """ Raised when there was an error saving a record """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class RelationshipImportError(BaseException):
+class RelationshipImportError(Exception):
     """ Raised when a relationship could not be forged """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class PullError(BaseException):
+class PullError(Exception):
     """ Raised when a relationship could not be pulled """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class TranslationError(BaseException):
+class TranslationError(Exception):
     """ Raised when a native sql type could not be translated automatically
         to a vital sql :class:Field type
     """
@@ -66,21 +66,21 @@ class TranslationError(BaseException):
         self.code = code
 
 
-class SchemaError(BaseException):
+class SchemaError(Exception):
     """ Raised when errors related to the database schema happen. """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class FieldError(BaseException):
+class FieldError(Exception):
     """ Raised when errors related to :class:Field(s) happen. """
     def __init__(self, message, code=None):
         self.message = message
         self.code = code
 
 
-class ValidationError(BaseException):
+class ValidationError(Exception):
     """ Raised when there was an error validating one of your
         :class:cargo.Field objects with
         :class:cargo.validators.Validate

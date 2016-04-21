@@ -21,6 +21,20 @@ from cargo.logic.networking import NetworkingLogic
 __all__ = ('IP', 'Inet', 'Cidr', 'MacAddress')
 
 
+class _IPAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        adapter = adapt(str(self.value))
+        adapter.prepare(self.conn)
+        return b"%s::inet" % adapter.getquoted()
+
+
 class IP(Field, NetworkingLogic):
     """ ======================================================================
         Field object for the PostgreSQL field type |INET|.
@@ -84,10 +98,6 @@ class IP(Field, NetworkingLogic):
             setattr(self, slot, value)
 
     @staticmethod
-    def to_db(value):
-        return AsIs("%s::inet" % adapt(str(value)).getquoted().decode())
-
-    @staticmethod
     def to_python(value, cur):
         if value is None:
             return value
@@ -95,7 +105,7 @@ class IP(Field, NetworkingLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(IPAddress, IP.to_db)
+        register_adapter(IPAddress, _IPAdapter)
         IPTYPE_ = reg_type('IPTYPE', IPTYPE, IP.to_python)
         reg_array_type('IPARRAYTYPE', IPARRAY, IPTYPE_)
 
@@ -106,6 +116,15 @@ class IP(Field, NetworkingLogic):
 
 
 Inet = IP
+
+
+class _CidrAdapter(_IPAdapter):
+
+
+    def getquoted(self):
+        adapter = adapt(str(self.value))
+        adapter.prepare(self.conn)
+        return b"%s::cidr" % adapter.getquoted()
 
 
 class Cidr(Field, StringLogic):
@@ -146,13 +165,17 @@ class Cidr(Field, StringLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(IPNetwork, Cidr.to_db)
+        register_adapter(IPNetwork, _CidrAdapter)
         CIDRTYPE = reg_type('CIDRTYPE', CIDR, Cidr.to_python)
         reg_array_type('CIDRARRAYTYPE', CIDRARRAY, CIDRTYPE)
 
-    @staticmethod
-    def to_db(value):
-        return AsIs("%s::cidr" % adapt(str(value)).getquoted().decode())
+
+class _MacAddressAdapter(_IPAdapter):
+
+    def getquoted(self):
+        adapter = adapt(str(self.value))
+        adapter.prepare(self.conn)
+        return b"%s::macaddr" % adapter.getquoted()
 
 
 class MacAddress(Cidr):
@@ -189,12 +212,8 @@ class MacAddress(Cidr):
         return EUI(value)
 
     @staticmethod
-    def to_db(value):
-        return AsIs("%s::macaddr" % adapt(str(value)).getquoted().decode())
-
-    @staticmethod
     def register_adapter():
-        register_adapter(EUI, MacAddress.to_db)
+        register_adapter(EUI, _MacAddressAdapter)
         MACADDRTYPE = reg_type('MACADDRTYPE', MACADDR, MacAddress.to_python)
         reg_array_type('MACADDRARRAYTYPE', MACADDRARRAY, MACADDRTYPE)
 

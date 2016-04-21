@@ -29,6 +29,19 @@ from cargo.logic import JsonLogic, JsonBLogic, HStoreLogic, KeyValueOps,\
 __all__ = ('Json', 'JsonB', 'HStore')
 
 
+class _JsonAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        adapter = psycopg2.extensions.adapt(json.dumps(self.value))
+        adapter.prepare(self.conn)
+        return b"%s::json" % adapter.getquoted()
+
 
 class _jsontype(object):
     def __iadd__(self, other):
@@ -73,14 +86,8 @@ class _jsontype(object):
     def __iand__(self, other):
         return self.__class__(self.__and__(other))
 
-    @staticmethod
-    def to_db(value):
-        adapt = psycopg2.extensions.adapt
-        return psycopg2.extensions.AsIs(
-            "%s::json" % adapt(json.dumps(value)).getquoted().decode())
-
     def __str__(self):
-        return self.to_db(self).getquoted().decode('ascii', 'replace')
+        return _JsonAdapter(self).getquoted().decode('ascii', 'replace')
 
 
 class jsondict(dict, _jsontype):
@@ -165,12 +172,12 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
 
     @staticmethod
     def register_adapter():
-        psycopg2.extensions.register_adapter(jsondict, jsondict.to_db)
-        psycopg2.extensions.register_adapter(jsonlist, jsonlist.to_db)
-        psycopg2.extensions.register_adapter(jsonstr, jsonstr.to_db)
-        psycopg2.extensions.register_adapter(jsonint, jsonint.to_db)
-        psycopg2.extensions.register_adapter(jsonfloat, jsonfloat.to_db)
-        psycopg2.extensions.register_adapter(jsondecimal, jsondecimal.to_db)
+        psycopg2.extensions.register_adapter(jsondict, _JsonAdapter)
+        psycopg2.extensions.register_adapter(jsonlist, _JsonAdapter)
+        psycopg2.extensions.register_adapter(jsonstr, _JsonAdapter)
+        psycopg2.extensions.register_adapter(jsonint, _JsonAdapter)
+        psycopg2.extensions.register_adapter(jsonfloat, _JsonAdapter)
+        psycopg2.extensions.register_adapter(jsondecimal, _JsonAdapter)
 
     @staticmethod
     def to_python(value, cur):

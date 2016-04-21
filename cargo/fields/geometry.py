@@ -33,6 +33,21 @@ __all__ = (
     'Polygon')
 
 
+class _PointAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        ax = adapt(self.value.x)
+        ay = adapt(self.value.y)
+        p = b"(%s, %s)" % (ax.getquoted(), ay.getquoted())
+        return b"'%s'::point" % p
+
+
 class Point(Field, GeometryLogic):
     OID = POINT
     __slots__ = Field.__slots__
@@ -63,13 +78,6 @@ class Point(Field, GeometryLogic):
         if self.value_is_not_null:
             return tuple(self.value)
         return None
-
-    @staticmethod
-    def to_db(point):
-        p = b"(%s, %s)" % (adapt(point.x).getquoted(),
-                           adapt(point.y).getquoted())
-        return AsIs("%s::point" % adapt(p.decode()).getquoted().decode())
-
     @staticmethod
     def to_python(val, cur):
         if val is None:
@@ -78,12 +86,24 @@ class Point(Field, GeometryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(PointRecord, Point.to_db)
+        register_adapter(PointRecord, _PointAdapter)
         POINTTYPE = reg_type('POINTTYPE', POINT, Point.to_python)
         reg_array_type('POINTARRAYTYPE', POINTARRAY, POINTTYPE)
 
 
 PointRecord = namedtuple('PointRecord', ('x', 'y'))
+
+
+class _BoxAdapter(_PointAdapter):
+
+    def getquoted(self):
+        ax = adapt(self.value.a.x)
+        ay = adapt(self.value.a.y)
+        bx = adapt(self.value.b.x)
+        by = adapt(self.value.b.y)
+        box = b"((%s, %s), (%s, %s))" % (ax.getquoted(), ay.getquoted(),
+                                         bx.getquoted(), by.getquoted())
+        return b"'%s'::box" % box
 
 
 class Box(Field, GeometryLogic):
@@ -115,13 +135,6 @@ class Box(Field, GeometryLogic):
         return tuple(self.value)
 
     @staticmethod
-    def to_db(box):
-        box = b"((%s, %s), (%s, %s))" % (
-            adapt(box.a.x).getquoted(), adapt(box.a.y).getquoted(),
-            adapt(box.b.x).getquoted(), adapt(box.b.y).getquoted())
-        return AsIs("%s::box" % adapt(box.decode()).getquoted().decode())
-
-    @staticmethod
     def to_python(val, cur):
         if val is None:
             return val
@@ -136,12 +149,23 @@ class Box(Field, GeometryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(BoxRecord, Box.to_db)
+        register_adapter(BoxRecord, _BoxAdapter)
         BOXTYPE = reg_type('BOXTYPE', BOX, Box.to_python)
         reg_type('BOXARRAYTYPE', BOXARRAY, Box.array_to_python)
 
 
 BoxRecord = namedtuple('BoxRecord', ('a', 'b'))
+
+
+class _CircleAdapter(_PointAdapter):
+
+    def getquoted(self):
+        cx = adapt(self.value.center.x)
+        cy = adapt(self.value.center.y)
+        r = adapt(self.value.radius)
+        circ = b"((%s, %s), %s)" % (cx.getquoted(), cy.getquoted(),
+                                    r.getquoted())
+        return b"'%s'::circle" % circ
 
 
 class Circle(Field, GeometryLogic):
@@ -169,14 +193,6 @@ class Circle(Field, GeometryLogic):
         return None
 
     @staticmethod
-    def to_db(circle):
-        circ = b"((%s, %s), %s)" % (
-            adapt(circle.center.x).getquoted(),
-            adapt(circle.center.y).getquoted(),
-            adapt(circle.radius).getquoted())
-        return AsIs("%s::circle" % adapt(circ.decode()).getquoted().decode())
-
-    @staticmethod
     def to_python(val, cur):
         if val is None:
             return val
@@ -185,12 +201,23 @@ class Circle(Field, GeometryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(CircleRecord, Circle.to_db)
+        register_adapter(CircleRecord, _CircleAdapter)
         CIRCLETYPE = reg_type('CIRCLETYPE', CIRCLE, Circle.to_python)
         reg_array_type('CIRCLEARRAYTYPE', CIRCLEARRAY, CIRCLETYPE)
 
 
 CircleRecord = namedtuple('CircleRecord', ('center', 'radius'))
+
+
+class _LineAdapter(_PointAdapter):
+
+    def getquoted(self):
+        a = adapt(self.value.a)
+        b = adapt(self.value.b)
+        c = adapt(self.value.c)
+        return b"'{%s, %s, %s}'::line" % (a.getquoted(),
+                                          b.getquoted(),
+                                          c.getquoted())
 
 
 class Line(Field, GeometryLogic):
@@ -222,13 +249,6 @@ class Line(Field, GeometryLogic):
         return None
 
     @staticmethod
-    def to_db(line):
-        return AsIs("'{%s, %s, %s}'::line" % (
-            adapt(line.a).getquoted().decode(),
-            adapt(line.b).getquoted().decode(),
-            adapt(line.c).getquoted().decode()))
-
-    @staticmethod
     def to_python(val, cur):
         if val is None:
             return val
@@ -236,12 +256,24 @@ class Line(Field, GeometryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(LineRecord, Line.to_db)
+        register_adapter(LineRecord, _LineAdapter)
         LINETYPE = reg_type('LINETYPE', LINE, Line.to_python)
         reg_array_type('LINEARRAYTYPE', LINEARRAY, LINETYPE)
 
 
 LineRecord = namedtuple('LineRecord', ('a', 'b', 'c'))
+
+
+class _LSegAdapter(_PointAdapter):
+
+    def getquoted(self):
+        ax = adapt(self.value.a.x)
+        ay = adapt(self.value.a.y)
+        bx = adapt(self.value.b.x)
+        by = adapt(self.value.b.y)
+        box = b"((%s, %s), (%s, %s))" % (ax.getquoted(), ay.getquoted(),
+                                         bx.getquoted(), by.getquoted())
+        return b"'%s'::lseg" % box
 
 
 class LSeg(Box):
@@ -268,13 +300,6 @@ class LSeg(Box):
         return None
 
     @staticmethod
-    def to_db(box):
-        box = b"((%s, %s), (%s, %s))" % (
-            adapt(box.a.x).getquoted(), adapt(box.a.y).getquoted(),
-            adapt(box.b.x).getquoted(), adapt(box.b.y).getquoted())
-        return AsIs("%s::lseg" % adapt(box.decode()).getquoted().decode())
-
-    @staticmethod
     def to_python(val, cur):
         if val is None:
             return val
@@ -282,12 +307,22 @@ class LSeg(Box):
 
     @staticmethod
     def register_adapter():
-        register_adapter(LSegRecord, LSeg.to_db)
+        register_adapter(LSegRecord, _LSegAdapter)
         LSEGTYPE = reg_type('LSEGTYPE', LSEG, LSeg.to_python)
         reg_array_type('LSEGARRAYTYPE', LSEGARRAY, LSEGTYPE)
 
 
 LSegRecord = namedtuple('LSegRecord', ('a', 'b'))
+
+
+class _PathAdapter(_PointAdapter):
+
+    def getquoted(self):
+        points = (b"(%s, %s)" % (adapt(x).getquoted(), adapt(y).getquoted())
+                  for x, y in self.value[:-1])
+        ctype = b"(%s)" if self.value.closed else b"[%s]"
+        ctype = ctype % b", ".join(points)
+        return b"'%s'::path" % ctype
 
 
 class Path(Field, GeometryLogic):
@@ -362,15 +397,6 @@ class Path(Field, GeometryLogic):
         return None
 
     @staticmethod
-    def to_db(line):
-        points = (b"(%s, %s)" % (adapt(point.x).getquoted(),
-                                 adapt(point.y).getquoted())
-                  for point in line[:-1])
-        ctype = "(%s)" if line.closed else "[%s]"
-        ctype = ctype % b", ".join(points).decode()
-        return AsIs("%s::path" % adapt(ctype).getquoted().decode())
-
-    @staticmethod
     def to_python(val, cur):
         if val is None:
             return val
@@ -379,7 +405,7 @@ class Path(Field, GeometryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(PathRecord, Path.to_db)
+        register_adapter(PathRecord, _PathAdapter)
         PATHTYPE = reg_type('PATHTYPE', PATH, Path.to_python)
         reg_array_type('PATHARRAYTYPE', PATHARRAY, PATHTYPE)
 
@@ -404,6 +430,16 @@ class PathRecord(UserList):
             return self.data.__getattribute__(name)
 
 
+class _PolygonAdapter(_PointAdapter):
+
+    def getquoted(self):
+        points = (b"(%s, %s)" % (adapt(point.x).getquoted(),
+                                 adapt(point.y).getquoted())
+                  for point in self.value)
+        points = b"(%s)" % b", ".join(points)
+        return b"'%s'::polygon" % points
+
+
 class Polygon(Field, GeometryLogic):
     OID = POLYGON
     __slots__ = Field.__slots__
@@ -426,14 +462,6 @@ class Polygon(Field, GeometryLogic):
         except AttributeError:
             return self.value.__getattr__(name)
 
-    @staticmethod
-    def to_db(poly):
-        points = (b"(%s, %s)" % (adapt(point.x).getquoted(),
-                                 adapt(point.y).getquoted())
-                  for point in poly)
-        points = "(%s)" % b", ".join(points).decode()
-        return AsIs("%s::path" % adapt(points).getquoted().decode())
-
     def for_json(self):
         """:see::meth:Field.for_json"""
         if self.value_is_not_null:
@@ -448,7 +476,7 @@ class Polygon(Field, GeometryLogic):
 
     @staticmethod
     def register_adapter():
-        register_adapter(PolygonRecord, Polygon.to_db)
+        register_adapter(PolygonRecord, _PolygonAdapter)
         POLYGONTYPE = reg_type('POLYGONTYPE', POLYGON, Polygon.to_python)
         POLYGONARRAYTYPE = reg_array_type('POLYGONARRAYTYPE',
                                           POLYGONARRAY,

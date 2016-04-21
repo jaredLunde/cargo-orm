@@ -100,18 +100,33 @@ class OneOf(Field, EnumLogic):
 Enum = OneOf
 
 
-class arraylist(list):
-    @staticmethod
-    def to_db(value):
+class _ListAdapter(object):
+    def __init__(self, value, type=None):
+        self.value = value
         try:
-            arr = "%s::%s[]" % (
-                psycopg2._psycopg.List(value).getquoted().decode(),
-                value.__cargotype__)
-            return AsIs(arr)
+            self.type = value.__cargotype__
         except AttributeError:
-            return adapt(list(value))
+            self.value = None
 
-register_adapter(arraylist, arraylist.to_db)
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        """Use the hstore(text[], text[]) function."""
+        if not len(self.value) or not self.type:
+            adapter = psycopg2._psycopg.List(self.value)
+            adapter.prepare(self.conn)
+            return adapter.getquoted()
+        else:
+            adapter = psycopg2._psycopg.List(self.value)
+            adapter.prepare(self.conn)
+            return b"%s::%s[]" % (
+                adapter.getquoted(),
+                self.type.encode())
+
+
+class arraylist(list):
+    pass
 
 
 class Array(Field, ArrayLogic):
@@ -283,6 +298,7 @@ class Array(Field, ArrayLogic):
         self.type.clear()
 
     def register_adapter(self):
+        register_adapter(arraylist, _ListAdapter)
         try:
             self.type.register_adapter()
         except AttributeError:

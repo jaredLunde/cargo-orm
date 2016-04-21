@@ -251,7 +251,7 @@ class Time(_TimeFields, TimeLogic, DateLogic):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            if not isinstance(value, arrow.Arrow):
+            if not isinstance(value, arrow.Arrow) and value is not None:
                 try:
                     value = dateparser.parse(str(value))
                 except ValueError:

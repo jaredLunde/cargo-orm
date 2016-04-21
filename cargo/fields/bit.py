@@ -21,6 +21,20 @@ from cargo.validators import BitValidator, VarbitValidator
 __all__ = ('Bit', 'Varbit',)
 
 
+class _BitAdapter(object):
+
+    def __init__(self, value):
+        self.value = value
+
+    def prepare(self, conn):
+        self.conn = conn
+
+    def getquoted(self):
+        adapter = adapt(self.value.bin)
+        adapter.prepare(self.conn)
+        return b"B%s" % adapter.getquoted()
+
+
 class Bit(Field, BitLogic):
     """ ======================================================================
         Field object for the PostgreSQL field type |BIT|.
@@ -65,7 +79,7 @@ class Bit(Field, BitLogic):
 
     @staticmethod
     def to_db(value):
-        return AsIs("B%s" % adapt(value.bin).getquoted().decode())
+        return _BitAdapter(value)
 
     @staticmethod
     def register_adapter():
