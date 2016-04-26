@@ -1855,7 +1855,7 @@ class Model(ORM):
         return self
 
     def approx_size(self, alias=None):
-        """ Selects the approximate size of the model.
+        """ Selects the approximate size of the model. This is not filterable.
             ..
             SELECT reltuples::bigint FROM pg_class WHERE oid = 'foo'::regclass;
             ..
@@ -1881,6 +1881,7 @@ class Model(ORM):
                     result = result.count
                 except KeyError:
                     result = result[0]
+        self.reset()
         return result
 
     def exact_size(self, alias=None):

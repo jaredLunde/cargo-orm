@@ -85,7 +85,9 @@ class OneOf(Field, EnumLogic):
 
     @property
     def type_name(self):
-        return (self._type_name or self.field_name or "") + '_enum_type'
+        tname = self._type_name or '%s_%s_enumtype' % (self.table or "",
+                                                        self.field_name or "")
+        return self._type_name or tname
 
     def index_of(self, type=None):
         return self.types.index(type or self.value)

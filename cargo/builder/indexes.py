@@ -19,7 +19,7 @@ from cargo.builder.utils import BaseCreator
 __all__ = ('IndexMeta', 'Index')
 
 
-INDEX_TYPES = ('btree', 'gin', 'gist', 'spgist', 'hash')
+INDEX_TYPES = ('btree', 'gin', 'gist', 'spgist', 'hash', 'brin')
 
 
 class IndexMeta(object):
