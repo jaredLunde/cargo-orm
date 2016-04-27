@@ -7,8 +7,8 @@
 
 """
 import os
-
-from docr import Docr
+import inspect
+from collections import OrderedDict
 
 from cargo import fields
 from cargo.clients import db
@@ -16,7 +16,7 @@ from cargo.expressions import safe
 from cargo.etc.translator import postgres
 
 
-__all__ = ('_get_sql_file', '_get_docr', '_find_sql_field', 'BaseCreator')
+__all__ = ('_get_sql_file', '_get_all_args', '_find_sql_field', 'BaseCreator')
 
 
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,8 +37,49 @@ def _get_sql_file(name, searchpath=''):
     return sql_file
 
 
-def _get_docr(field):
-    return Docr(getattr(fields, field))
+def _get_base_classes(obj, ignore_builtins=False):
+        """ @obj: a python class object
+            @ignore_builtins: #bool whether or not to ignore builtin classes
+                such as :class:object
+
+            -> #list of :class:Class base classes of @obj
+        """
+        return list(_cls for _cls in inspect.getmro(obj))[:-1]
+
+
+def _get_args_dict(obj, arglist=None):
+    arglist = arglist or []
+    add_arg = arglist.append
+    try:
+        for k, v in inspect.signature(obj).parameters.items():
+            if v.kind == v.VAR_POSITIONAL:
+                add_arg(("*{}".format(k), "_NODEFAULT"))
+            elif v.kind == v.VAR_KEYWORD:
+                add_arg(("**{}".format(k), "_NODEFAULT"))
+            elif k == "self":
+                pass
+            elif v.default is v.empty:
+                add_arg(("{}".format(k), "_NODEFAULT"))
+            else:
+                add_arg(("{}".format(k), v.default))
+    except ValueError:
+        #: @obj not supported by signature
+        pass
+    return arglist
+
+
+def _get_all_args(obj, is_method=False):
+        """ @obj: any callable python object
+            @is_method: #bool whether or not the callable is a class method
+
+            -> :class:OrderedDict |{arg_name: default_value}| of all arguments
+                and keyword arguments accepted by :prop:obj
+        """
+        arglist = [(k, v)
+                   for cls in _get_base_classes(obj)
+                   for k, v in _get_args_dict(cls)]
+        arglist.extend(_get_args_dict(obj))
+        return OrderedDict(arglist)
 
 
 class BaseCreator(object):

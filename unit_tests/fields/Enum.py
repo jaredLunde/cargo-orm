@@ -71,8 +71,9 @@ class TestEnum(configure.SequenceTestCase, TestField):
         self.assertListEqual(val, val_b)
 
     def test_type_name(self):
-        self.assertEqual(self.base.type_name, 'enum_enum_type')
-        self.assertEqual(self.base_array.type_name, 'array_enum_enum_type[]')
+        self.assertEqual(self.base.type_name, 'sequence_model_enum_enumtype')
+        self.assertEqual(self.base_array.type_name,
+                         'sequence_model_array_enum_enumtype[]')
 
 
 if __name__ == '__main__':

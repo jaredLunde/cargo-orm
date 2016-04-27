@@ -6,7 +6,7 @@
    http://github.com/jaredlunde/cargo-orm
 
 """
-from vital.debug import prepr
+from vital.debug import preprX
 
 from cargo.fields import Field
 from cargo.etc import types as oids
@@ -36,8 +36,7 @@ class IndexMeta(object):
         self.schema = schema
         self.table = table
 
-    @prepr('name', 'fields', 'table')
-    def __repr__(self): return
+    __repr__ = preprX('name', 'fields', 'table')
 
 
 class Index(BaseCreator):

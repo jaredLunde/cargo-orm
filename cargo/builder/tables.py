@@ -7,7 +7,7 @@
 
 """
 from vital.cache import cached_property
-from vital.debug import prepr
+from vital.debug import preprX
 
 from cargo.etc.translator import postgres
 
@@ -36,8 +36,7 @@ class TableMeta(object):
         self.schema = schema
         self.comment = comment
 
-    @prepr('name', 'schema')
-    def __repr__(self): return
+    __repr__ = preprX('name', 'schema')
 
     @property
     def index_query(self):

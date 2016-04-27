@@ -70,8 +70,7 @@ class FieldMeta(object):
 
     @property
     def positional_args(self):
-        field_meta = _get_docr(self.cls)
-        return field_meta.get_all_args()
+        return _get_all_args(self.cls)
 
     @cached_property
     def foreign(self):
