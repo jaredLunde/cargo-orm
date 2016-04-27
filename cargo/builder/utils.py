@@ -39,12 +39,9 @@ def _get_sql_file(name, searchpath=''):
 
 def _get_base_classes(obj, ignore_builtins=False):
         """ @obj: a python class object
-            @ignore_builtins: #bool whether or not to ignore builtin classes
-                such as :class:object
-
             -> #list of :class:Class base classes of @obj
         """
-        return list(_cls for _cls in inspect.getmro(obj))[:-1]
+        return inspect.getmro(obj)[:-1]
 
 
 def _get_args_dict(obj, arglist=None):
