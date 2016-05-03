@@ -774,8 +774,8 @@ class Select(SetOperations):
                 update_params(field.params)
                 yield field.string
 
-    clauses = ('FROM', 'JOIN', 'WHERE', 'GROUP BY', 'HAVING', 'WINDOW',
-               'ORDER BY', 'LIMIT', 'OFFSET', 'FETCH', 'FOR')
+    clauses = ('DISTINCT', 'FROM', 'JOIN', 'WHERE', 'GROUP BY', 'HAVING',
+               'WINDOW', 'ORDER BY', 'LIMIT', 'OFFSET', 'FETCH', 'FOR')
 
     def evaluate_state(self):
         """ Evaluates the :class:Clause objects in :class:QueryState """
@@ -787,14 +787,13 @@ class Select(SetOperations):
             except (ValueError, AttributeError):
                 joins = state
         if joins is not None:
-            query_clauses[1] = " ".join(c.string for c in joins)
+            query_clauses[2] = " ".join(c.string for c in joins)
+        query_clauses.insert(1, ", ".join(self.fields) or "*")
         return self._filter_empty(query_clauses)
 
     def compile(self):
         """ Compiles a query string from the :class:QueryState """
-        self.string = (
-            "SELECT %s %s" % (", ".join(self.fields) or "*",
-                              " ".join(self.evaluate_state()))).strip()
+        self.string = ("SELECT %s" % (" ".join(self.evaluate_state())))
         return self.string
 
 

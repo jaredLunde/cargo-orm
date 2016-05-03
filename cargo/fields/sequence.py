@@ -237,7 +237,7 @@ class Array(Field, ArrayLogic):
 
     def _select_cast(self, value, dimension=1):
         return self.type(value)\
-               if not isinstance(value, list) else\
+               if not isinstance(value, (list, tuple)) else\
                self._cast(value, dimension=dimension)
 
     def append(self, value):

@@ -357,6 +357,17 @@ class ORM(object):
 
     use = from_
 
+    def distinct(self, field, *args, **kwargs):
+        self.state.add(Clause('DISTINCT', field, *args, **kwargs))
+        return self
+
+    def distinct_on(self, field, *args, **kwargs):
+        self.state.add(Clause('DISTINCT',
+                              Function('ON', field),
+                              *args,
+                              **kwargs))
+        return self
+
     def window(self, alias, *expressions, partition_by=None, order_by=None):
         """ Creates a |WINDOW| clause and adds it to the query :prop:state.
             This is only for :class:Select queries.
@@ -1157,13 +1168,14 @@ class ORM(object):
             l = logg(pre.sub(r'\033[1m\1\033[1;m',
                              sqlparse.format(query.replace('; ', ';\n'),
                                              reindent=True)),
-                     params)
+                     params,
+                     pretty=True)
             l.log("Parameterized", force=True)
             line('—')
             mog = sqlparse.format(
                 cursor.mogrify(query.replace('; ', ';\n'), params).decode(),
                 reindent=True)
-            l = logg(mog)
+            l = logg(mog, pretty=True)
             l.log("Mogrified", force=True)
             line('—')
 

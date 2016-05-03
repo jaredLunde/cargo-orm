@@ -30,7 +30,7 @@ class ArrayLogic(BaseLogic):
             ..
             |array_field @> [1,2]|
         """
-        return Expression(self, self.CONTAINS_OP, array, **kwargs)
+        return Expression(self, self.CONTAINS_OP, list(array), **kwargs)
 
     def contained_by(self, array, **kwargs):
         """ Creates a |<@| SQL expression
@@ -46,7 +46,7 @@ class ArrayLogic(BaseLogic):
             ..
             |array_field <@ [1,2]|
         """
-        return Expression(self, self.CONTAINED_OP, array, **kwargs)
+        return Expression(self, self.CONTAINED_OP, list(array), **kwargs)
 
     def overlaps(self, array, **kwargs):
         """ Creates a |&&| (overlaps) SQL expression
@@ -62,7 +62,7 @@ class ArrayLogic(BaseLogic):
             ..
             |array_field && [1,2]|
         """
-        return Expression(self, self.OVERLAPS_OP, array, **kwargs)
+        return Expression(self, self.OVERLAPS_OP, list(array), **kwargs)
 
     def all(self, target, **kwargs):
         """ Creates an |ALL| SQL expression
@@ -89,10 +89,10 @@ class ArrayLogic(BaseLogic):
 
             ``Usage Example``
             ..
-                condition = model.array_field.any([1, 2])
+                condition = model.array_field.any(1)
                 model.where(condition)
             ..
-            |[1,2] = ANY(array_field)|
+            |1 = ANY(array_field)|
         """
         return Expression(target, "=", Function("ANY", self), **kwargs)
 
@@ -110,7 +110,7 @@ class ArrayLogic(BaseLogic):
             ..
             |[1,2] = SOME(array_field)|
         """
-        return Expression(target, "=", Function("SOME", self), **kwargs)
+        return Expression(list(target), "=", Function("SOME", self), **kwargs)
 
     def length(self, dimension=1, **kwargs):
         """ :see::meth:F.array_length """

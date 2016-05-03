@@ -266,6 +266,6 @@ class Field(BaseLogic):
         """ Sets the value of the field to :prop:empty and the alias of the
             field to |None
         """
-        self.value = self.empty
+        self.clear()
         self._alias = None
         return self

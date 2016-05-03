@@ -253,8 +253,12 @@ class strint(int):
                       keyspace=_ascii_letters)
 
     @staticmethod
-    def from_str(self, value):
-        return strint(self.to_str(value))
+    def from_str(value):
+        if isinstance(value, str) and not value.isdigit():
+            return strint(strkey(value or self,
+                                 chaffify=1,
+                                 keyspace=_ascii_letters))
+        return strint(value)
 
     @staticmethod
     def to_db(val):

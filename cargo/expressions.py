@@ -182,8 +182,10 @@ class BaseLogic(object):
         """
         return Expression(self, operators.IN, others)
 
-    __rshift__ = in_
     is_in = in_
+
+    def __rshift__(self, others):
+        return self.is_in(*others)
 
     def not_in(self, *others):
         """ Creates a |NOT IN| SQL expression
@@ -201,7 +203,8 @@ class BaseLogic(object):
         op = "{} {}".format(operators.NOT, operators.IN)
         return Expression(self, op, others)
 
-    __lshift__ = not_in
+    def __lshift__(self, others):
+        return self.not_in(*others)
 
     def is_null(self):
         """ Creates a |IS NULL| SQL expression

@@ -584,15 +584,6 @@ class Encrypted(Field):
         except (AttributeError, TypeError):
             return False
 
-    def for_json(self):
-        """:see::meth:Field.for_json"""
-        if self.value_is_not_null:
-            try:
-                return self.encrypted.decode()
-            except AttributeError:
-                return self.encrypted
-        return None
-
     @property
     def validation(self):
         return self.type.validation
