@@ -366,7 +366,7 @@ class StrUID(UID):
     def for_json(self):
         """:see::meth:Field.for_json"""
         if self.value_is_not_null:
-            return str(self)
+            return self.__str__()
         return None
 
     @staticmethod
