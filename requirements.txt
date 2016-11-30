@@ -13,7 +13,7 @@ passlib
 phonenumbers
 psycopg2
 pycrypto
-slugify
+python-slugify
 sqlparse
 vital-tools
 yapf
