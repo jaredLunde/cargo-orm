@@ -1170,7 +1170,7 @@ class PhoneNumber(Field, StringLogic):
 
     def for_json(self):
         if self.value_is_not_null:
-            return self.value.to_html()
+            return self.to_std()
         return None
 
     def to_html(self):
