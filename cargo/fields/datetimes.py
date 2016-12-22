@@ -25,7 +25,8 @@ __all__ = (
     'Date',
     'Timestamp',
     'TimestampTZ',
-    'TimeTZ')
+    'TimeTZ'
+)
 
 
 class _DateFields(Field):
@@ -265,7 +266,7 @@ class Time(_TimeFields, TimeLogic, DateLogic):
         return self.value
 
     def __str__(self):
-        return self.format()
+        return self.format() or ''
 
     @staticmethod
     def register_adapter():
