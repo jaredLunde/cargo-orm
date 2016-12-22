@@ -146,6 +146,8 @@ class _DateFields(Field):
 
     def format(self, *args, **kwargs):
         """ :see::meth:arrow.Arrow.format """
+        if self._arrow is None:
+            return None
         return self._arrow.format(*args, **kwargs)
 
 

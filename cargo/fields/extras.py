@@ -219,8 +219,9 @@ def _get_pwd_context():
                'sha512_crypt', 'sha256_crypt', 'sha1_crypt', 'md5_crypt')
     return CryptContext(
         schemes=schemes,
-        all__min_rounds=5,
         bcrypt__ident='2b',
+        bcrypt__min_rounds=8,
+        bcrypt_sha256__min_rounds=8,
         pbkdf2_sha512__min_rounds=2500,
         sha512_crypt__min_rounds=2500,
         sha256_crypt__min_rounds=2500)
