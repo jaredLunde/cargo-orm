@@ -244,6 +244,48 @@ class strint(int):
     def __new__(cls, value):
         return int.__new__(cls, value)
 
+    def __iadd__(self, other):
+        return self.__class__(self.__add__(other))
+
+    def __isub__(self, other):
+        return self.__class__(self.__sub__(other))
+
+    def __imul__(self, other):
+        return self.__class__(self.__mul__(other))
+
+    def __ipow__(self, other):
+        return self.__class__(self.__pow__(other))
+
+    def __ixor__(self, other):
+        return self.__class__(self.__xor__(other))
+
+    def __ior__(self, other):
+        return self.__class__(self.__or__(other))
+
+    def __imatmul__(self, other):
+        return self.__class__(self.__matmul__(other))
+
+    def __ilshift__(self, other):
+        return self.__class__(self.__lshift__(other))
+
+    def __irshift__(self, other):
+        return self.__class__(self.__rshift__(other))
+
+    def __imod__(self, other):
+        return self.__class__(self.__mod__(other))
+
+    def __ifloordiv__(self, other):
+        return self.__class__(self.__floordiv__(other))
+
+    def __itruediv__(self, other):
+        return self.__class__(self.__truediv__(other))
+
+    def __iconcat__(self, other):
+        return self.__class__(self.__concat__(other))
+
+    def __iand__(self, other):
+        return self.__class__(self.__and__(other))
+
     def __str__(self):
         return self.to_str()
 
