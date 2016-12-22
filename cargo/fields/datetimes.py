@@ -151,7 +151,11 @@ class _DateFields(Field):
             return None
         return self._arrow.format(*args, **kwargs)
 
+    def clear(self):
+        super().clear()
+        self._arrow = None
 
+        
 class _TimeFields(_DateFields):
     __slots__ = ('_arrow',)
 
