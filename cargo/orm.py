@@ -1845,10 +1845,13 @@ class Model(ORM):
         except AttributeError:
             pass
         try:
-            self.db.after('connect', field.type.register_type)
+            # self.db.after('connect', )
+            field.type.register_type(self.db)
         except AttributeError:
-            if hasattr(field, 'register_type'):
-                self.db.after('connect', field.register_type)
+            try:
+                field.register_type(self.db)
+            except AttributeError:
+                pass
 
     def _add_field(self, field):
         """ Adds a field to the model to the model.

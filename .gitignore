@@ -56,3 +56,5 @@ target/
 # Remote Sync
 .remote-sync.json
 .DS_Store
+.idea
+.imdone

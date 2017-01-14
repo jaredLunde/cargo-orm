@@ -14,7 +14,7 @@ except ImportError:
 from collections import UserList
 
 from psycopg2.extensions import adapt, register_adapter, AsIs, new_type,\
-                                register_type, QuotedString
+                                QuotedString
 from vital.tools.lists import flatten
 
 from cargo.etc.types import *

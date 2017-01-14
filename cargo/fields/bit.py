@@ -7,8 +7,7 @@
 
 """
 from bitstring import BitArray
-from psycopg2.extensions import new_type, register_type, register_adapter,\
-                                adapt, AsIs
+from psycopg2.extensions import new_type, register_adapter, adapt, AsIs
 
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map

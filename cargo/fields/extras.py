@@ -809,7 +809,8 @@ class Username(Text):
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
                  'value', 'validator', '_alias', 'default', 'minlen', 'maxlen',
-                 '_re', 'reserved_usernames', 'table')
+                 '_re', 'reserved_usernames', 'table', '_type_oid',
+                 '_type_array_oid')
     OID = USERNAME
 
     def __init__(self, maxlen=25, minlen=1, reserved_usernames=Field.empty,
@@ -827,6 +828,8 @@ class Username(Text):
         """
         super().__init__(minlen=minlen, maxlen=maxlen, validator=validator,
                          **kwargs)
+        self._type_oid = None
+        self._type_array_oid = None
         self._re = re_pattern or string_tools.username_re
         if reserved_usernames is self.empty:
             self.reserved_usernames = usernames.reserved_usernames
@@ -843,13 +846,18 @@ class Username(Text):
     def type_name(self):
         return 'citext'
 
-    @staticmethod
-    def register_type(db):
+    def _register_oid(self, db):
+        if self._type_oid is None and self._type_array_oid is None:
+            OIDs = db.get_type_OID('citext')
+            self._type_oid, self._type_array_oid = OIDs
+
+    def register_type(self, db):
         try:
+            self._register_oid(db)
             OID, ARRAY_OID = db.get_type_OID('citext')
-            return reg_array_type('CITEXTARRAYTYPE',
-                                  ARRAY_OID,
-                                  psycopg2.STRING)
+            reg_array_type('CITEXTARRAYTYPE',
+                           self._type_array_oid,
+                           psycopg2.STRING)
         except ValueError:
             warnings.warn('Type `citext` was not found in the database.')
 
@@ -860,6 +868,8 @@ class Username(Text):
                          re_pattern=self._re,
                          **kwargs)
         cls.reserved_usernames = self.reserved_usernames
+        cls._type_oid = self._type_oid
+        cls._type_array_oid = self._type_array_oid
         return cls
 
     __copy__ = copy

@@ -10,7 +10,7 @@ import warnings
 from vital.debug import preprX
 
 import psycopg2._psycopg
-from psycopg2.extensions import register_adapter, adapt, AsIs
+from psycopg2.extensions import register_adapter, adapt, AsIs, string_types
 
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
@@ -19,6 +19,7 @@ from cargo.fields.field import Field
 from cargo.fields.character import Text
 from cargo.logic import EnumLogic, ArrayLogic
 from cargo.validators import ArrayValidator, EnumValidator
+
 
 
 __all__ = ('Enum', 'OneOf', 'Array')
@@ -42,7 +43,7 @@ class OneOf(Field, EnumLogic):
     """
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
                  'value', 'validator', '_alias', 'default', 'types', 'table',
-                 '_type_name')
+                 '_type_name', '_type_oid', '_type_array_oid')
     OID = ENUM
 
     def __init__(self, *types, type_name=None, validator=EnumValidator,
@@ -62,6 +63,8 @@ class OneOf(Field, EnumLogic):
                             'See http://docs.cargo-orm.com/OneOf')
         self.types = types
         self._type_name = type_name
+        self._type_oid = None
+        self._type_array_oid = None
         super().__init__(validator=validator, **kwargs)
 
     __repr__ = preprX('types', 'name', 'value', keyless=True)
@@ -74,11 +77,20 @@ class OneOf(Field, EnumLogic):
                 raise ValueError("`{}` not in {}".format(value, self.types))
         return self.value
 
+    def _register_oid(self, db):
+        if self._type_oid is None and self._type_array_oid is None:
+            OIDs = db.get_type_OID(self.type_name)
+            self._type_oid, self._type_array_oid = OIDs
+
     def register_type(self, db):
         try:
-            typ, atyp = db.get_type_OID(self.type_name)
-            ENUMTYPE = reg_type(self.type_name.upper(), typ, psycopg2.STRING)
-            reg_array_type(self.type_name.upper() + 'ARRAY',  atyp, ENUMTYPE)
+            self._register_oid(db)
+            ENUMTYPE = reg_type(self.type_name.upper(),
+                                self._type_oid,
+                                psycopg2.STRING)
+            reg_array_type(self.type_name.upper() + 'ARRAY',
+                           self._type_array_oid,
+                           ENUMTYPE)
         except ValueError:
             warnings.warn('Type `%s` not found in the database.' %
                           self.type_name)
@@ -86,14 +98,16 @@ class OneOf(Field, EnumLogic):
     @property
     def type_name(self):
         tname = self._type_name or '%s_%s_enumtype' % (self.table or "",
-                                                        self.field_name or "")
-        return self._type_name or tname
+                                                       self.field_name or "")
+        return tname
 
     def index_of(self, type=None):
         return self.types.index(type or self.value)
 
     def copy(self, **kwargs):
-        cls = Field.copy(self, *self.types, **kwargs)
+        cls = Field.copy(self, *self.types, type_name=self._type_name, **kwargs)
+        cls._type_oid = self._type_oid
+        cls._type_array_oid = self._type_array_oid
         return cls
 
     __copy__ = copy
@@ -226,7 +240,7 @@ class Array(Field, ArrayLogic):
 
     def _cast(self, value, dimension=1):
         """ Casts @value to its correct type, e.g. #int or #str """
-        if dimension > self.dimensions:
+        if self.dimensions and dimension > self.dimensions:
             raise ValueError('Invalid dimensions ({}): max depth is set to {}'
                              .format(dimension, repr(self.dimensions)))
         next_dimension = dimension + 1
@@ -276,23 +290,35 @@ class Array(Field, ArrayLogic):
         self.value.sort(key=key, reverse=reverse)
 
     def _to_fields(self, value):
+        """ Wraps the values in the array with :prop:type """
+        fields = []
+        add_field = fields.append
         for val in value:
             if not isinstance(val, list):
                 field = self.type.copy()
                 field(val)
-                yield field
+                add_field(field)
             else:
+                more_fields = []
+                add_more_fields = more_fields.append
                 for field in self._to_fields(val):
-                    yield field
+                    add_more_fields(field)
+                add_field(more_fields)
+        return fields
 
     def to_fields(self):
-        """ Wraps the values in the array with :prop:type """
-        return list(self._to_fields(self.value))
+        return self._to_fields(self.value)
+
+    def _recurse_for_json(self, field):
+        if isinstance(field, list):
+            return [self._recurse_for_json(f) for f in field]
+        else:
+            return field.for_json()
 
     def for_json(self):
         """:see::meth:Field.for_json"""
         if self.value_is_not_null:
-            return [field.for_json() for field in self.to_fields()]
+            return [self._recurse_for_json(field) for field in self.to_fields()]
         return None
 
     def clear(self):

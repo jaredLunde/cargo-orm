@@ -111,9 +111,9 @@ class TestPostgres(unittest.TestCase):
             self.assertIsInstance(cb, list)
             self.assertEqual(cb[0], self._is_client)
         client.before('COMMIT', self._is_client)
-        self.assertEqual(len(client._events['BEFORE']['COMMIT']), 1)
-        client.before('COMMIT', self.test_get_oid)
         self.assertEqual(len(client._events['BEFORE']['COMMIT']), 2)
+        client.before('COMMIT', self.test_get_oid)
+        self.assertEqual(len(client._events['BEFORE']['COMMIT']), 3)
         self.assertEqual(client._events['BEFORE']['COMMIT'].pop(),
                          self.test_get_oid)
 
@@ -126,9 +126,9 @@ class TestPostgres(unittest.TestCase):
             self.assertIsInstance(cb, list)
             self.assertEqual(cb[0], self._is_client)
         client.after('COMMIT', self._is_client)
-        self.assertEqual(len(client._events['AFTER']['COMMIT']), 1)
-        client.after('COMMIT', self.test_get_oid)
         self.assertEqual(len(client._events['AFTER']['COMMIT']), 2)
+        client.after('COMMIT', self.test_get_oid)
+        self.assertEqual(len(client._events['AFTER']['COMMIT']), 3)
         self.assertEqual(client._events['AFTER']['COMMIT'].pop(),
                          self.test_get_oid)
 

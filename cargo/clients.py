@@ -52,6 +52,7 @@ class BasePostgresClient(object):
                ORDER BY name DESC;"""
         conn = self.get()
         cur = conn.cursor(cursor_factory=CNamedTupleCursor)
+        self.apply_schema(cur, *self.get_search_paths())
         cur.execute(q, ('_%s' % typname, typname))
         res = cur.fetchall()
         conn.put()
@@ -175,7 +176,7 @@ class BasePostgresClient(object):
         except AttributeError:
             return opt
 
-    EVENTS = {'COMMIT', 'ROLLBACK', 'CONNECT', 'CLOSE', 'NEW CURSOR'}
+    EVENTS = {'COMMIT', 'ROLLBACK', 'CONNECT', 'CLOSE', 'NEW_CURSOR'}
 
     def before(self, event, task):
         """ Creates a hook which fires @task before @event. The task callable
@@ -195,7 +196,7 @@ class BasePostgresClient(object):
 
             @event: (#str) name of the event in :prop:_events
             ..
-                db.client.after('new cursor',
+                db.client.after('new_cursor',
                                 lambda pg, cur:
                                     cur.set_client_encoding('latin1'))
             ..
@@ -205,7 +206,8 @@ class BasePostgresClient(object):
     def _attach_event(self, when, event, task):
         event = event.upper()
         try:
-            if task not in self._events[when][event]:
+            ids = set(id(task) for task in self._events[when][event])
+            if id(task) not in ids:
                 self._events[when][event].append(task)
         except KeyError:
             self._events[when][event] = []
@@ -279,7 +281,7 @@ class Postgres(BasePostgresClient):
                             "commit": do_something
                         },
                         "after": {
-                            "new cursor": lambda pg, cur:
+                            "new_cursor": lambda pg, cur:
                                 cur.set_client_encoding('latin1')
                         }
                     })
@@ -331,7 +333,7 @@ class Postgres(BasePostgresClient):
         return self._connection
 
     def cursor(self, *args, cursor_factory=None, **kwargs):
-        """ Creates a new cursor object with given options, defaulting to
+        """ Creates a new_cursor object with given options, defaulting to
             configured options.
 
             @name: (#str) name of the cursor
@@ -354,11 +356,11 @@ class Postgres(BasePostgresClient):
         if cursor_factory is None and \
            self.cursor_factory != self.connection.cursor_factory:
             cursor_factory = self.cursor_factory
-        self._apply_before("new cursor")
+        self._apply_before("new_cursor")
         cursor = self.connection.cursor(*args,
                                         cursor_factory=cursor_factory,
                                         **kwargs)
-        self._apply_after("new cursor", cursor)
+        self._apply_after("new_cursor", cursor)
         return cursor
 
     def connect(self, dsn=None, **options):
