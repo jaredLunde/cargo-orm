@@ -128,7 +128,6 @@ class _ListAdapter(object):
         self.conn = conn
 
     def getquoted(self):
-        """Use the hstore(text[], text[]) function."""
         if not len(self.value) or not self.type:
             adapter = psycopg2._psycopg.List(self.value)
             adapter.prepare(self.conn)
@@ -136,9 +135,8 @@ class _ListAdapter(object):
         else:
             adapter = psycopg2._psycopg.List(self.value)
             adapter.prepare(self.conn)
-            return b"%s::%s[]" % (
-                adapter.getquoted(),
-                self.type.encode())
+            return b"%s::%s[]" % (adapter.getquoted(),
+                                  self.type.encode())
 
 
 class arraylist(list):
@@ -243,11 +241,16 @@ class Array(Field, ArrayLogic):
         if self.dimensions and dimension > self.dimensions:
             raise ValueError('Invalid dimensions ({}): max depth is set to {}'
                              .format(dimension, repr(self.dimensions)))
+
         next_dimension = dimension + 1
-        arr = arraylist(self.type(x) if not isinstance(x, list) else
-                        self._cast(x, next_dimension)
-                        for x in value)
-        return self._add_arr_type(arr)
+        arr = (self.type(x) if not isinstance(x, list) else
+               self._cast(x, next_dimension)
+               for x in value)
+
+        if dimension > 1:
+            return list(arr)
+        else:
+            return self._add_arr_type(arraylist(arr))
 
     def _select_cast(self, value, dimension=1):
         return self.type(value)\

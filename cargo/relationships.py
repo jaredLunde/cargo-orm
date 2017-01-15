@@ -77,7 +77,7 @@ class BaseRelationship(object):
 
 class Reference(object):
 
-    def __init__(self, model, field_name, constraints=None):
+    def __init__(self, model, field_name, constraints=None, schema=None):
         """`Reference`
             ==================================================================
             This object is added to :class:ForeignKey fields as
@@ -86,6 +86,7 @@ class Reference(object):
         """
         self._model = model
         self._forged = False
+        self._schema = schema
         self.field_name = field_name
         self.constraints = constraints or []
 
@@ -142,7 +143,7 @@ class Reference(object):
     def model(self):
         """ The referenced :class:Model """
         self._forged = True
-        return self._model()
+        return self._model(schema=self._schema)
 
     @cached_property
     def field(self):
@@ -290,7 +291,8 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                 self.default = _kwargs.get('default')
                 self.table = _owner.table
                 self.field_name = _owner_attr
-                self.ref = Reference(_ref_model, _ref_attr)
+                self.ref = Reference(_ref_model, _ref_attr,
+                                     schema=_owner.schema)
                 self._state = ForeignKeyState(_args, _kwargs, _relation, _ref)
 
             __repr__ = _class.__repr__
@@ -532,7 +534,7 @@ class Relationship(BaseRelationship):
     @cached_property
     def _model(self):
         """ Initialized :class:Model which :prop:foreign_key belongs to """
-        return self._model_cls().copy()
+        return self._model_cls(schema=self._owner.schema).copy()
 
     def forge(self, owner, attribute):
         """ Called when the @owner :class:Model is initialized. Makes
