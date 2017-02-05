@@ -1757,11 +1757,12 @@ class Model(ORM):
         add_exp = exps.append
         for field, value in filters.items():
             field_name, *method = field.split("__")
-            field = getattr(self, field_name)
+            field = getattr(self, field_name).copy()
+            field(value)
             if not method:
-                method = field.eq(value)
+                method = field.eq(field.value)
             else:
-                method = getattr(field, "".join(method))(value)
+                method = getattr(field, "".join(method))(field.value)
             add_exp(method)
         return self.where(*exps)
 

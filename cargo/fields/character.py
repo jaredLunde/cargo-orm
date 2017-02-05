@@ -6,6 +6,7 @@
    http://github.com/jaredlunde/cargo-orm
 
 """
+import psycopg2
 from cargo.etc.types import *
 from cargo.etc.translator.postgres import OID_map
 from cargo.expressions import *
@@ -13,7 +14,7 @@ from cargo.fields.field import Field
 from cargo.validators import CharValidator
 
 
-__all__ = ('Char', 'Varchar', 'Text')
+__all__ = ('Char', 'Varchar', 'Text', 'CiText')
 
 
 class Char(Field, StringLogic):
@@ -101,3 +102,56 @@ class Text(Char):
     @property
     def type_name(self):
         return 'text'
+
+
+class CiText(Text):
+    """ ======================================================================
+        Field object for PostgreSQL CITEXT types.
+        ======================================================================
+    """
+    __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+                 'value', 'validator', '_alias', 'default', 'minlen', 'maxlen',
+                 'table', '_type_oid', '_type_array_oid')
+    OID = CITEXT
+
+    def __init__(self, **kwargs):
+        """`CiText`
+            ==================================================================
+            @minlen: (#int) minimum length of string value
+            @maxlen: (#int) minimum length of string value
+            ==================================================================
+            :see::meth:Field.__init__
+        """
+        super().__init__(**kwargs)
+        self._type_oid = None
+        self._type_array_oid = None
+
+    @property
+    def type_name(self):
+        return 'citext'
+
+    def _register_oid(self, db):
+        if self._type_oid is None and self._type_array_oid is None:
+            OIDs = db.get_type_OID('citext')
+            self._type_oid, self._type_array_oid = OIDs
+
+    def register_type(self, db):
+        try:
+            self._register_oid(db)
+            OID, ARRAY_OID = db.get_type_OID('citext')
+            reg_array_type('CITEXTARRAYTYPE',
+                           self._type_array_oid,
+                           psycopg2.STRING)
+        except ValueError:
+            warnings.warn('Type `citext` was not found in the database.')
+
+    def copy(self, **kwargs):
+        cls = Field.copy(self,
+                         maxlen=self.maxlen,
+                         minlen=self.minlen,
+                         **kwargs)
+        cls._type_oid = self._type_oid
+        cls._type_array_oid = self._type_array_oid
+        return cls
+
+    __copy__ = copy
