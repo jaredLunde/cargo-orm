@@ -1,4 +1,6 @@
 # Cargo ORM
+[![Build Status](https://travis-ci.org/jaredlunde/cargo-orm.svg?branch=dev)](https://travis-ci.org/jaredlunde/cargo-orm)
+
 A fast, friendly, Postgres ORM written in Python.
 
 
@@ -11,16 +13,6 @@ A fast, friendly, Postgres ORM written in Python.
 git clone https://github.com/jaredlunde/cargo-orm
 cd cargo-orm
 python setup.py install
-```
-
-### Hello Model
-```python
-from cargo import create_db, Model, db
-
-
-class Hello(Model):
-    uid = UID()  # Primary key
-    text = Text(default='Hello Word')    
 ```
 
 
