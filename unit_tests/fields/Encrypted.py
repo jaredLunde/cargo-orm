@@ -6,7 +6,6 @@ import unittest
 import psycopg2.extras
 import psycopg2.extensions
 
-from kola import config
 from vital.debug import RandData, logg
 
 from cargo.fields import *
