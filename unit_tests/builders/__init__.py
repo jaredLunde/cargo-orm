@@ -8,7 +8,6 @@ path = os.path.dirname(os.path.abspath(__file__)).split('cargo-orm')[0] + \
 sys.path.insert(0, path)
 
 
-from kola import config
 from unit_tests.builders.TableMeta import *
 from unit_tests.builders.FieldMeta import *
 from unit_tests.builders.Modeller import *
