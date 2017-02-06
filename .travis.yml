@@ -4,11 +4,21 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
+env:
+  global:
+  - NODE_ENV=test
+  - PGPORT=5433
+  - PGHOST=localhost
 services:
   - postgresql
 addons:
-  postgresql: "9.5"
+  apt:
+    packages:
+    - postgresql-9.5
+    - postgresql-contrib-9.5
+  postgresql: 9.5
 before_install:
- - pip install -r requirements.txt
- - psql -c 'create database travis_ci_test;' -U postgres
+  - pip install -r requirements.txt
+  - psql -U postgres -c 'create database "travis-db-test";'
+  - psql -U postgres travis-db-test -c 'create extension "uuid-ossp";'
 script: python unit_tests/run.py -v
