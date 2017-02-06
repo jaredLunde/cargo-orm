@@ -8,7 +8,7 @@ from pkgutil import walk_packages
 
 PKG = 'cargo'
 PKG_NAME = 'cargo-orm'
-PKG_VERSION = '0.1.0'
+PKG_VERSION = '0.1.1'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 
@@ -30,11 +30,19 @@ def find_packages(prefix=""):
 setup(
     name=PKG_NAME,
     version=PKG_VERSION,
-    description='A friendly, rich Postgres ORM for Python.',
+    description='A friendly, rich Postgres ORM for Python 3.5+.',
     author='Jared Lunde',
-    author_email='jared.lunde@gmail.com',
-    url='https://github.com/jaredlunde/cargo',
+    author_email='jared@tessellate.io',
+    url='https://github.com/jaredlunde/cargo-orm',
     license="MIT",
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: Implementation :: CPython",
+        "Topic :: Database :: Front-Ends",
+        "Operating System :: OS Independent"
+    ],
     install_requires=[str(ir.req) for ir in install_reqs],
     packages=list(find_packages(PKG))
 )

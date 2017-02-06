@@ -66,5 +66,5 @@ from cargo.validators import *
 
 
 __author__ = "Jared Lunde"
-__version__ = "0.8.0"
+__version__ = "0.1.1"
 __license__ = "MIT"
