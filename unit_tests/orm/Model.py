@@ -322,7 +322,9 @@ class TestModel(configure.BaseTestCase):
         self.model.fill(**rds)
         self.assertIn(
             self.model.to_json(), ('{"textfield":"foo","uid":1234}',
-                                   '{"uid":1234,"textfield":"foo"}'))
+                                   '{"uid":1234,"textfield":"foo"}',
+                                   '{"uid": 1234, "textfield": "foo"}',
+                                   '{"textfield": "foo", "uid": 1234}'))
 
     def test_from_json(self):
         self.model.from_json('{"uid":1234,"textfield":"foo"}')
