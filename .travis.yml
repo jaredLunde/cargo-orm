@@ -4,10 +4,6 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-env:
-  global:
-    - PGPORT=5432
-    - PGHOST=localhost
 services:
   - postgresql
 addons:
