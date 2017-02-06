@@ -4,8 +4,6 @@ import unittest
 import pickle
 import copy
 
-from docr import Docr
-
 from cargo import aliased, Model
 from cargo.fields import Field
 
@@ -35,7 +33,7 @@ class TestField(unittest.TestCase):
     @property
     def base_array(self):
         return getattr(self.orm, 'array_' + self.base.field_name)
-        
+
     def test_init(self, *args, **kwargs):
         base = self.base.__class__()
         self.assertEqual(base.value, base.empty)
