@@ -6,15 +6,11 @@ python:
   - "3.6"
 env:
   global:
-  - NODE_ENV=test
-  - PGPORT=5433
-  - PGHOST=localhost
+    - PGPORT=5433
+    - PGHOST=localhost
 services:
   - postgresql
 addons:
-  apt:
-    packages:
-    - postgresql-contrib-9.5
   postgresql: 9.5
 before_install:
   - pip install -r requirements.txt
