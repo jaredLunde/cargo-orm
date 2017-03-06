@@ -768,7 +768,7 @@ class Email(Text):
     __slots__ = Text.__slots__
     OID = EMAIL
 
-    def __init__(self, maxlen=320, minlen=6, validator=EmailValidator,
+    def __init__(self, maxlen=320, minlen=3, validator=EmailValidator,
                  **kwargs):
         """`Email`
             ==================================================================

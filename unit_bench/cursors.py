@@ -34,6 +34,15 @@ t = Timer(cnt.select)
 t.time(50000, 1, 2, 3, 4, 5, 'a', 'b', 'c', 'd', 'e', 'f')
 
 
+'''
+Fails
+-----
+print(bold('NamedTuple'))
+t = Timer(nt.select)
+t.time(50000, 1, 2, 3, 4, 5, 'a', 'b', 'c', 'd', 'e', 'f')
+'''
+
+
 print(bold('OrderedDict'))
 t = Timer(od.select)
 t.time(50000, 1, 2, 3, 4, 5, 'a', 'b', 'c', 'd', 'e', 'f')
