@@ -1585,7 +1585,6 @@ class Model(ORM):
             @naked: (#bool) True to default to raw query results in the form
                 of the :prop:_cursor_factory, rather than the default which
                 is to return query results as copies of the current model.
-            @**field_data: |field_name=field_value| key/value pairs
             =======================================================================
             :see::class:ORM
         """
@@ -1599,11 +1598,7 @@ class Model(ORM):
         self._relationships = []
         self._alias = None
         self._always_naked = naked or False
-        if not field_data.get('__nocompile__'):
-            self._compile()
-        else:
-            del field_data['__nocompile__']
-        self.fill(**field_data)
+        self._compile()
 
     __repr__ = preprX('field_names', keyless=True)
 

@@ -930,6 +930,12 @@ class _DurationDelta(datetime.timedelta):
     _nt = namedtuple('Duration', ('years', 'months', 'days', 'hours', 'mins',
                                   'secs', 'msecs'))
 
+    def __float__(self):
+        return self.total_seconds()
+
+    def __int__(self):
+        return self.total_seconds()
+
     @property
     def namedtuple(self):
         try:
@@ -954,6 +960,7 @@ class _DurationDelta(datetime.timedelta):
                       secs=int(secs),
                       msecs=int(msecs))
         self._cache[self.total_seconds()] = nt
+
         return nt
 
 
