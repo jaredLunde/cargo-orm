@@ -209,7 +209,8 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
     """
 
-    def __init__(self, ref, *args, relation=None, **kwargs):
+    def __init__(self, ref, *args, relation=None, on_delete=None,
+                 on_update=None, **kwargs):
         """`Foreign Keys`
             ==================================================================
             @ref: (#str) python path to the :class:Field which
@@ -217,12 +218,18 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                 |coolapp.model.User.uid|
             @relation: (#str) attribute name of :class:Relationship to set
                 in the model which @ref is referencing
+            @on_delete: (#str) adds ON_DELETE constraint to the foreign key
+                field
+            @on_update: (#str) adds ON_UPDATE constraint to the foreign key
+                field
             @*args and @**kwargs will get passed to the the :class:Field
         """
         self._owner = None
         self._owner_attr = None
         self._ref = ref
         self._relation = relation
+        self._on_delete = on_delete
+        self._on_update = on_update
         self._args = args
         self._kwargs = kwargs
 
@@ -271,6 +278,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         _class = copy.copy(self.ref.__class__)
         _args, _kwargs = self._args, self._kwargs
         _owner, _owner_attr = self._owner, self._owner_attr
+        _on_delete, _on_update = self._on_delete, self._on_update
         _relation = self._relation
         _ref = self._ref
         _ref_model, _ref_attr = self.ref_model, _ref.split(".")[-1]
@@ -293,6 +301,12 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                 self.field_name = _owner_attr
                 self.ref = Reference(_ref_model, _ref_attr,
                                      schema=_owner.schema)
+
+                if _on_delete is not None:
+                    self.ref.on_delete(_on_delete)
+                if _on_update is not None:
+                    self.ref.on_update(_on_update)
+
                 self._state = ForeignKeyState(_args, _kwargs, _relation, _ref)
 
             __repr__ = _class.__repr__
