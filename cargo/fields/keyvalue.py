@@ -160,6 +160,13 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
             self.value = value
         return self.value
 
+    def _make_dict_if(self):
+        if self.value_is_null:
+            try:
+                self.value = self.cast()
+            except (AttributeError, TypeError):
+                self.value = jsondict()
+
     def from_json(self, value):
         """ Loads @value from Json and inserts it as the value of the field """
         return self.__call__(json.loads(value))
