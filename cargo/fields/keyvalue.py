@@ -91,27 +91,36 @@ class _jsontype(object):
 
 
 class jsondict(dict, _jsontype):
-    pass
+    def for_json(self):
+        return dict(self)
 
 
 class jsonlist(list, _jsontype):
-    pass
+    def for_json(self):
+        return list(self)
 
 
 class jsonstr(str, _jsontype):
-    pass
+    def __str__(self):
+        return self
+
+    def for_json(self):
+        return str(self)
 
 
 class jsonint(int, _jsontype):
-    pass
+    def for_json(self):
+        return int(self)
 
 
 class jsonfloat(float, _jsontype):
-    pass
+    def for_json(self):
+        return float(self)
 
 
 class jsondecimal(decimal.Decimal, _jsontype):
-    pass
+    def for_json(self):
+        return float(self)
 
 
 _jsontypes = (((collections.Mapping, collections.ItemsView, dict), jsondict),
@@ -174,7 +183,7 @@ class Json(Field, KeyValueOps, SequenceOps, JsonLogic):
     def for_json(self):
         """:see::meth:Field.for_json"""
         if self.value_is_not_null:
-            return self.value
+            return self.value.for_json()
         return None
 
     @staticmethod
