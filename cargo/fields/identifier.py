@@ -389,12 +389,7 @@ class StrUID(UID):
 
     def __call__(self, value=Field.empty):
         if value is not Field.empty:
-            if value is not None:
-                if str(value).isdigit():
-                    value = strint(value)
-                else:
-                    value = strint.from_str(value)
-            self.value = value
+            self.value = StrUID.cast(value)
         return str(self.value)
 
     def __str__(self):
@@ -405,11 +400,132 @@ class StrUID(UID):
             return len(self.value)
         return 0
 
+    def lt(self, other):
+        """ Creates a |<| (less than) SQL expression
+
+            -> SQL :class:Expression object
+            ==================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field < 4
+                model.where(condition)
+            ..
+            |field < 4|
+        """
+        return Expression(self, operators.LT, StrUID.cast(other))
+
+    __lt__ = lt
+
+    def le(self, other):
+        """ Creates a |<=| (less than or equal) SQL expression
+
+            -> SQL :class:Expression object
+            ==================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field <= 4
+                model.where(condition)
+            ..
+            |field <= 4|
+        """
+        return Expression(self, operators.LE, StrUID.cast(other))
+
+    __le__ = le
+
+    def gt(self, other):
+        """ Creates a |>| (greater than) SQL expression
+
+            -> SQL :class:Expression object
+            ==================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field > 4
+                model.where(condition)
+            ..
+            |field > 4|
+        """
+        return Expression(self, operators.GT, StrUID.cast(other))
+
+    __gt__ = gt
+
+    def ge(self, other):
+        """ Creates a |>=| (greater than or equal) SQL expression
+
+            -> SQL :class:Expression object
+            ==================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field >= 4
+                model.where(condition)
+            ..
+            |field >= 4|
+        """
+        return Expression(self, operators.GE, StrUID.cast(other))
+
+    __ge__ = ge
+
+    def between(self, *others):
+        """ Creates a |BETWEEN| SQL expression
+
+            -> SQL :class:Expression object
+            ==================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field.between(10, 20)
+                model.where(condition)
+            ..
+            |field BETWEEN 10 AND 20|
+        """
+        return Expression(
+            self,
+            operators.BETWEEN,
+            Expression(
+                StrUID.cast(others[0]),
+                operators.AND,
+                StrUID.cast(others[1])
+            )
+        )
+
+    def not_between(self, a, b):
+        """ Creates a |NOT BETWEEN| SQL expression
+
+            -> SQL :class:Expression object
+            ==================================================================
+
+            ``Usage Example``
+            ..
+                condition = model.field.not_between(10, 20)
+                model.where(condition)
+            ..
+            |field NOT BETWEEN 10 AND 20|
+        """
+        a = StrUID.cast(a)
+        b = StrUID.cast(b)
+        
+        return Expression(
+            self, "{} {}".format(operators.NOT, operators.BETWEEN),
+            Expression(a, operators.AND, b)
+        )
+
     def for_json(self):
         """:see::meth:Field.for_json"""
         if self.value_is_not_null:
             return self.__str__()
         return None
+
+    @staticmethod
+    def cast(value):
+        if value is not None:
+            if str(value).isdigit():
+                value = strint(value)
+            else:
+                value = strint.from_str(value)
+        self.value = value
 
     @staticmethod
     def register_adapter():

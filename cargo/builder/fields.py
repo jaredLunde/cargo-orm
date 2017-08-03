@@ -337,11 +337,10 @@ class Column(BaseCreator):
         return self
 
     def _get_col_ref(self, ref):
-        field = self.field
         return Clause('REFERENCES',
                       Function(ref.field.table,
                                safe(ref.field.field_name)),
-                      *field.ref.constraints)
+                      *ref.constraints)
 
     def references(self, val, on_delete=None, on_update=None):
         """ @val: (:class:cargo.relationships.Reference or None or #str) If |None|
