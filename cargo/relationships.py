@@ -130,6 +130,11 @@ class Reference(object):
             clause = Clause(name, safe(val) if val is not None else _empty)
         else:
             clause = name
+
+        for c in self.constraints:
+            if str(c) == str(clause):
+                return self
+
         self.constraints.append(clause)
         return self
 

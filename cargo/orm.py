@@ -1777,10 +1777,15 @@ class Model(ORM):
                values
         """
         filter = (filter if filter is not None else lambda x: True)
-        return {field.field_name: field.for_json()
-                for field in self.fields
-                if filter(field) and
-                not ignore_private or field.field_name not in self.PRIVATE}
+        return {
+            field.field_name: field.for_json()
+            for field in self.fields
+                if filter(field)
+                and (
+                    not ignore_private
+                    or field.field_name not in self.PRIVATE
+                )
+        }
 
     def from_json(self, val):
         """ JSON loads @val into the current model.
@@ -2383,7 +2388,7 @@ class Model(ORM):
         return super().select(*args, **kwargs)
 
     def iternaked(self, offset=0, limit=0, buffer=100, order_field=None,
-                  reverse=False):
+                  reverse=False, fields=None):
         """ Yields cursor factory until there are no more results to fetch.
 
             @offset: (#int) cursor start position
@@ -2397,11 +2402,12 @@ class Model(ORM):
                                       limit=limit,
                                       buffer=buffer,
                                       order_field=order_field,
-                                      reverse=reverse):
+                                      reverse=reverse,
+                                      fields=fields):
             yield item
 
     def iter(self, offset=0, limit=0, buffer=100, order_field=None,
-             reverse=False):
+             reverse=False, fields=None):
         """ Yields populated models until there are no more
             results to fetch.
 
@@ -2414,14 +2420,20 @@ class Model(ORM):
         """
         if not self.state.has('WHERE'):
             self.where(self.best_available_index or True)
+
         field = getattr(self, order_field) if order_field else self.best_index
+
         if field is not None:
             order = field.asc() if not reverse else field.desc()
             self.order_by(order)
+
         self.offset(offset)
+
         if limit:
             self.limit(limit)
-        q = super().dry().select().execute()
+
+        q = super().dry().select(*fields or []).execute()
+
         while True:
             results = q.fetchmany(buffer)
             if not results:
@@ -2437,10 +2449,13 @@ class Model(ORM):
         cls.names = self.names
         cls._alias = self._alias
         cls._always_naked = self._always_naked
-        cls._fields = list(map(
-            lambda x: getattr(cls, x.field_name)
-            if not setattr(cls, x.field_name, x.copy()) else None,
-            self._fields))
+        cls._fields = list(
+            map(
+                lambda x: getattr(cls, x.field_name)
+                    if not setattr(cls, x.field_name, x.copy()) else None,
+                self._fields
+            )
+        )
         cls._relationships = []
         for rel in self._relationships:
             rel.forge(cls, rel._owner_attr)

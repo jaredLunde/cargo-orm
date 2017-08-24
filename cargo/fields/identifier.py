@@ -18,6 +18,7 @@ from vital.security import strkey
 
 from cargo.etc.types import *
 from cargo.expressions import *
+from cargo.etc import operators
 
 from cargo.fields.field import Field
 from cargo.fields.integer import SmallInt
@@ -506,7 +507,7 @@ class StrUID(UID):
         """
         a = StrUID.cast(a)
         b = StrUID.cast(b)
-        
+
         return Expression(
             self, "{} {}".format(operators.NOT, operators.BETWEEN),
             Expression(a, operators.AND, b)
@@ -525,7 +526,7 @@ class StrUID(UID):
                 value = strint(value)
             else:
                 value = strint.from_str(value)
-        self.value = value
+        return value
 
     @staticmethod
     def register_adapter():
