@@ -1753,11 +1753,20 @@ class Model(ORM):
         for field, value in filters.items():
             field_name, *method = field.split("__")
             field = getattr(self, field_name).copy()
-            field(value)
-            if not method:
+
+            if not len(method):
+                field(value)
                 method = field.eq(field.value)
             else:
-                method = getattr(field, "".join(method))(field.value)
+                method = ''.join(method)
+
+                if method == 'in_' or method == 'is_in':
+                    method = '__rshift__'
+                elif method == 'not_in':
+                    method = '__lshift__'
+
+                method = getattr(field, method)(value)
+
             add_exp(method)
         return self.where(*exps)
 
