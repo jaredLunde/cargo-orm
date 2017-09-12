@@ -130,14 +130,17 @@ class ORM(object):
     def set_table(self, table):
         """ Sets the ORM table to @table (#str) """
         self.table = table
+        return self
 
     def set_cursor_factory(self, factory):
         """ Sets the ORM default cursor factory to @factory """
         self._cursor_factory = factory
+        return self
 
     def set_schema(self, name):
         """ Changes the default search path for this model to @name """
         self.schema = name
+        return self
 
     # Pickling and copying
 
@@ -352,7 +355,10 @@ class ORM(object):
         """
         table = table if table else self.table
         if table:
-            self.state.add(Clause("FROM", safe(table), alias=alias))
+            if isinstance(table, str):
+                table = safe(table)
+
+            self.state.add(Clause("FROM", table, alias=alias))
         return self
 
     use = from_

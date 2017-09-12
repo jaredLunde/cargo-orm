@@ -322,6 +322,10 @@ class ForeignKey(BaseRelationship, _ForeignObject):
                     self.ref.model.reset()
                     self.ref.model.reset_fields()
 
+            def clear_copy(self):
+                self.clear()
+                return self.copy()
+                
             def copy(self):
                 cls = _class.copy(self)
                 try:
