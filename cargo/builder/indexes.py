@@ -50,13 +50,13 @@ class Index(BaseCreator):
             :see::func:cargo.builder.create_index
         """
         super().__init__(orm, name)
-        self.fields = [field if isinstance(field, Field) else field._field
+        self.fields = [field if isinstance(field, (Field, Function)) else field._field
                        for field in fields]
         self._type = method
         self._table = table or self.orm.table
         if unique is not None:
             self._unique = unique
-        elif isinstance(self.fields[0], Field):
+        elif len(self.fields) and isinstance(self.fields[0], Field):
             unique = False
             for field in self.fields:
                 if field.unique:
@@ -145,20 +145,25 @@ class Index(BaseCreator):
             between 'gin' and 'gist', 'gin' is chosen by default.
         """
         default = 'btree'
-        if len(self.fields) == 1 and isinstance(self.fields[0], Field):
+        if len(self.fields) and len(self.fields) == 1\
+           and isinstance(self.fields[0], Field):
             if self.fields[0].OID in self.gin_types:
                 default = 'gin'
             elif self.fields[0].OID in self.gist_types:
                 default = 'gist'
         type = self._type
-        if isinstance(self.fields[0].index, str):
+        if type is None and len(self.fields) and isinstance(self.fields[0], Function):
+            return ''
+        if type is None and len(self.fields)\
+           and isinstance(self.fields[0].index, str):
             type = self.fields[0].index
         return type or default
 
     @property
     def options(self):
         opt = []
-        opt.append(safe(', '.join(field.field_name for field in self.fields)))
+        opt.extend(safe(str(field)) for field in self.fields if isinstance(field, Function))
+        opt.append(safe(', '.join(field.field_name for field in self.fields if isinstance(field, Field))))
         if self._collate:
             opt.append(self._collate)
         if self._op:
@@ -170,7 +175,10 @@ class Index(BaseCreator):
     @property
     def method(self):
         cls = Clause(self.type, *self.options, join_with=" ", wrap=True)
-        return Clause('USING', cls)
+        if self.type:
+            return Clause('USING', cls)
+        else:
+            return cls
 
     @property
     def storage_parameters(self):
