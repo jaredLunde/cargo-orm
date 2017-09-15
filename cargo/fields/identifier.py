@@ -236,6 +236,7 @@ class UID(Field, NumericLogic):
             return str(self.value)
         return None
 
+
 _ascii_letters = ''.join(letter
                          for letter in string.ascii_letters
                          if letter not in {'I', 'l'})

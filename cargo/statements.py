@@ -671,7 +671,7 @@ class Insert(Query):
         super().__init__(orm=orm, **kwargs)
         self.compile()
 
-    clauses = ('INTO', 'VALUES', 'RETURNING', 'ON')
+    clauses = ('INTO', 'VALUES', 'ON', 'DO', 'RETURNING')
 
     def evaluate_state(self):
         """ :see::meth:SELECT.evaluate_state """

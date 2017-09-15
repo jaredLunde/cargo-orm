@@ -281,7 +281,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             model and the field referenced.
         """
         _class = copy.copy(self.ref.__class__)
-        _args, _kwargs = self._args, self._kwargs
+        _args, _kwargs = self._args, self._kwargs.copy()
         _owner, _owner_attr = self._owner, self._owner_attr
         _on_delete, _on_update = self._on_delete, self._on_update
         _relation = self._relation
@@ -325,7 +325,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             def clear_copy(self):
                 self.clear()
                 return self.copy()
-                
+
             def copy(self):
                 cls = _class.copy(self)
                 try:

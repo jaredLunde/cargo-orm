@@ -230,6 +230,7 @@ class ORM(object):
         if fields and all(isinstance(f, Field) for f in fields):
             self.state.fields = list(fields)
         self._set_into_if_empty(fields)
+
         return self._cast_query(Insert(self, **kwargs))
 
     def select(self, *fields, **kwargs):
@@ -307,12 +308,12 @@ class ORM(object):
 
     def upsert(self, *fields, conflict_field=None, conflict_action=None,
                **kwargs):
-        """ !! Postgres 9.5 only !!
+        """ !! Postgres 9.5+ only !!
             Updates @fields if they don't already exist, otherwise the
             fields are inserted.
 
             @*fields: (:class:Field) to insert or update
-            @conflict_field: (:class:Field) the unique field which will
+            @conflict_field: (:class:Field|#list) the unique field which will
                 determine if a conflict exists. If none is given, Postgres
                 will decide based on unique fields and primary keys.
             @conflict_action: (:class:Query or :class:Clause) action
@@ -320,11 +321,17 @@ class ORM(object):
             @**kwargs: additional arguments to pass to :meth:insert
         """
         conflict_action = conflict_action or Clause('DO UPDATE')
+
         if conflict_field:
-            self.on(
-                Clause('CONFLICT', conflict_field, wrap=True), conflict_action)
+            try:
+                cls = CommaClause('CONFLICT', *conflict_field, wrap=True)
+            except TypeError:
+                cls = CommaClause('CONFLICT', conflict_field, wrap=True)
+            self.on(cls, use_field_name=True, join_with=' ')
+            self.state.add(conflict_action)
         else:
-            self.on(Clause('CONFLICT'), conflict_action)
+            self.on(Clause('CONFLICT', conflict_action))
+
         return self.insert(*fields, **kwargs)
 
     def _raw(self, *args, **kwargs):
@@ -2250,8 +2257,6 @@ class Model(ORM):
                 return self.one().update(*fields, **kwargs)
         #: INSERT
         return self.insert(*fields, **kwargs)
-
-    upsert = save
 
     def insert(self, *fields, **kwargs):
         """ @fields: (:class:Field) objects to insert. If none are given, all
