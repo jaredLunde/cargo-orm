@@ -1065,13 +1065,19 @@ class Expression(BaseExpression, NumericLogic, StringLogic):
         """ Turns the expression into a string """
         if use_field_name is not None:
             self.use_field_name = use_field_name
+
         left, right = self._compile_expressions(
-            self.left, self.right, use_field_name=self.use_field_name)
+            self.left, self.right, use_field_name=self.use_field_name
+        )
+
         self.string = ("%s %s %s" % (left, self.operator, right)).strip()
+
         if self.alias is not None:
             self.string = "%s %s" % (self.string, self.alias)
+
         if self.group_op is not None:
             self.string = ("(%s) %s" % (self.string, self.group_op)).rstrip()
+
         return self.string
 
 
@@ -1119,17 +1125,24 @@ class Clause(BaseExpression):
         """ Turns the clause into a string """
         if join_with is not None:
             self.join_with = join_with
+
         if wrap is not None:
             self.wrap = wrap
+
         if use_field_name is not None:
             self.use_field_name = use_field_name
+
         clause_params = self._join_expressions(
-            self.join_with, *self.args, use_field_name=self.use_field_name)
+            self.join_with, *self.args, use_field_name=self.use_field_name
+        )
+
         if self.wrap:
             clause_params = "(%s)" % clause_params
+
         self.string = (
             "%s %s %s" % (self.clause, clause_params, self.alias or "")
         ).strip()
+        
         return self.string
 
 

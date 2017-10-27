@@ -1358,6 +1358,7 @@ class Joins(object):
                 exp.left = aliased(exp.left)
         except AttributeError:
             self.expression_on_alias(exp.left, join_table, alias)
+
         try:
             if exp.right.table == join_table:
                 exp.right = exp.right.copy()
@@ -1365,13 +1366,18 @@ class Joins(object):
                 exp.right = aliased(exp.right)
         except AttributeError:
             self.expression_on_alias(exp.right, join_table, alias)
+
         return exp
 
     def with_on(self, a, on, alias):
         """ An 'on' expression was given, so we can use that expression
             to join the 'a' table.
         """
-        table = a.table
+        try:
+            table = a.table
+        except AttributeError:
+            table = a
+
         if not isinstance(on, Expression):
             if alias:
                 on = [
@@ -1390,7 +1396,11 @@ class Joins(object):
             field types. The best guess is returned. If no guess is found,
             a :class:ValueError is raised.
         """
-        table = a.table
+        try:
+            table = a.table
+        except AttributeError:
+            table = a
+
         on = None
         if hasattr(a, 'ref'):
             on = a.eq(a.ref.field)
@@ -1404,6 +1414,7 @@ class Joins(object):
                 elif isinstance(field, a.__class__) and \
                         typed_match is None and is_index:
                     typed_match = field_name
+
             if named_match is not None:
                 on = a.eq(named_match)
             elif typed_match is not None:
@@ -1411,18 +1422,23 @@ class Joins(object):
         if on is None:
             raise ValueError(
                 'Could not find join field in `{}` for ' +
-                'field `{}`'.format(table, a.name))
+                'field `{}`'.format(table, a.name)
+            )
+
         if alias:
             on = self.expression_on_alias(on, table, alias)
+
         return table, Clause('ON', on)
 
     def with_fields(self, a, b, alias):
         """ 'a' and 'b' are given, they are assumed to be related fields """
         table = b.table if a.table == self.orm.table else a.table
+
         if alias:
             on = self.expression_on_alias(a.eq(b), table, alias)
         else:
             on = a.eq(b)
+
         return table, Clause('ON', on)
 
     def with_model(self, a, alias):
@@ -1480,6 +1496,7 @@ class Joins(object):
         """ :see::meth:ORM.join """
         clause = "{} JOIN".format(type).strip()
         using = [using] if isinstance(using, Field) else using
+
         if using:
             #: Join 'using' the given fields of the same name
             table = using[0].table
@@ -1489,8 +1506,9 @@ class Joins(object):
         else:
             if on:
                 #: Auto-sets aliases when they exist on models
-                if not alias and a._alias is not None:
+                if not alias and hasattr(a, '_alias') and a._alias is not None:
                     alias = a._alias
+
                 table, on = self.with_on(a, on, alias)
             else:
                 table = None
@@ -1506,7 +1524,7 @@ class Joins(object):
                         table, on = self.with_field(a, alias)
                     elif isinstance(a, (Model, Relationship, Reference)):
                         #: Auto-sets aliases when they exist on models
-                        if not alias and a._alias is not None:
+                        if not alias and hasattr(a, '_alias') and a._alias is not None:
                             alias = a._alias
                         #: Only a :class:Model was provided
                         table, on = self.with_model(a, alias)
@@ -1515,7 +1533,10 @@ class Joins(object):
                         # as the ON clause and the left or right field's table
                         # as the join table
                         table, on = self.with_expression(a, alias)
-            clause = Clause(clause, safe(table, alias=alias), on)
+
+            table = table if isinstance(table, BaseExpression) else safe(table, alias=alias)
+            clause = Clause(clause, table, on)
+
         return clause
 
     __call__ = join
