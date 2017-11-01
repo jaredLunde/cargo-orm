@@ -97,7 +97,8 @@ class Reference(object):
         try:
             return self.__getattribute__(name)
         except AttributeError:
-            return self.model.__getattribute__(name)
+            if not name.startswith('__') and name.endswith('__'):
+                return self.model.__getattribute__(name)
 
     def __setattr__(self, name, value):
         try:
@@ -152,7 +153,7 @@ class Reference(object):
     @cached_property
     def model(self):
         """ The referenced :class:Model """
-        self._forged = True
+        # self._forged = True
         return self._model(schema=self._schema)
 
     @cached_property
@@ -167,7 +168,7 @@ class Reference(object):
             cls.model = self.model.copy()
         except AttributeError:
             pass
-        cls._forged = self._forged
+        # cls._forged = self._forged
         return cls
 
     __copy__ = copy
@@ -315,6 +316,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             del _kwargs['primary']
 
         _class.copy = copy_field
+        _class.pull = _ForeignObject.pull
         field = _class(*_args, primary=primary, **_kwargs)
         field.table = _owner.table
         field.field_name = _owner_attr
@@ -402,10 +404,11 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         """
         self._owner = owner
         self._owner_attr = attribute
-        self._forged = True
+        # self._forged = True
         field = self.get_field()
         owner._add_field(field)
-
+        setattr(owner.__class__, field.field_name, field)
+        # print(getattr(owner.__class__, field.field_name))
         if self._relation:
             self._create_relation()
 
