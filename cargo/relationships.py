@@ -29,7 +29,6 @@ __all__ = (
 )
 
 
-@lru_cache(1000)
 def _import_from(owner_module, string):
     obj = locate(string)
     if obj is None:
@@ -54,10 +53,12 @@ class _ForeignObject(object):
 
     def pull(self, *args, dry=False, naked=False, **kwargs):
         model = self.ref.model.where(self.ref.field == self.value)
+
         if naked:
             model.naked()
         if dry:
             model.dry()
+
         return model.get(*args, **kwargs)
 
 
@@ -109,6 +110,10 @@ class Reference(object):
 
     def __delitem__(self, name):
         del self.model[name]
+
+    def __getstate__(self):
+        """ For pickling """
+        return self.__dict__.copy()
 
     def add_constraint(self, name, val=None):
         """ Adds foreign key constraints to the reference. This is used
@@ -251,12 +256,14 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         string = string.split(".")
         field_name = string[-1]
         string = ".".join(string[:-1])
+
         try:
             obj = getattr(self._find(string), field_name)
         except AttributeError:
             self._raise_forge_error(
                 string,
                 'Field `{}` not found in `{}`'.format(field_name, string))
+
         if isinstance(obj, Field):
             return obj
         elif isinstance(obj, ForeignKey):
@@ -287,19 +294,52 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         _relation = self._relation
         _ref = self._ref
         _ref_model, _ref_attr = self.ref_model, _ref.split(".")[-1]
-        _slots = list(_class.__slots__)
-        _slots.append('ref')
-        _slots.append('_state')
 
-        class ForeignKeyField(_class, _ForeignObject):
+        ## BULLSHIT STARTS HERE
+        # _slots = list(_class.__slots__)
+        # _slots.append('ref')
+        # _slots.append('_state')
+
+        def copy_field(self, *args, **kwargs):
+            cls = Field.copy(self, *args, **kwargs)
+
+            cls.ref = Reference(_ref_model, _ref_attr)
+
+            cls._state = self._state
+            return cls
+
+        primary = False
+
+        if 'primary' in _kwargs:
+            primary = _kwargs['primary']
+            del _kwargs['primary']
+
+        _class.copy = copy_field
+        field = _class(*_args, primary=primary, **_kwargs)
+        field.table = _owner.table
+        field.field_name = _owner_attr
+        field.ref = Reference(_ref_model, _ref_attr,
+                              schema=_owner.schema)
+
+        if _on_delete is not None:
+            field.ref.on_delete(_on_delete)
+
+        if _on_update is not None:
+            field.ref.on_update(_on_update)
+
+        field._state = ForeignKeyState(_args, _kwargs, _relation, _ref)
+        ## BULLSHIT ENDS HERE
+        '''class ForeignKeyField(_class, _ForeignObject):
             __slots__ = _slots
             __doc__ = _class.__doc__
 
             def __init__(self, *args, **kwargs):
                 primary = False
+
                 if 'primary' in _kwargs:
                     primary = _kwargs['primary']
                     del _kwargs['primary']
+
                 super().__init__(*_args, primary=primary, **_kwargs)
                 self.default = _kwargs.get('default')
                 self.table = _owner.table
@@ -309,6 +349,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
                 if _on_delete is not None:
                     self.ref.on_delete(_on_delete)
+
                 if _on_update is not None:
                     self.ref.on_update(_on_update)
 
@@ -318,6 +359,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
             def clear(self):
                 super().clear()
+
                 if self.ref._forged:
                     self.ref.model.reset()
                     self.ref.model.reset_fields()
@@ -328,14 +370,17 @@ class ForeignKey(BaseRelationship, _ForeignObject):
 
             def copy(self):
                 cls = _class.copy(self)
+
                 try:
                     cls.ref = self.ref.copy()
                 except AttributeError:
                     cls.ref = Reference(_ref_model, _ref_attr)
+
                 cls._state = self._state
                 return cls
 
-        return ForeignKeyField()
+        return ForeignKeyField()'''
+        return field
 
     def _create_relation(self):
         """ Creates the :class:Relationship object in the parent model
@@ -360,8 +405,10 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         self._forged = True
         field = self.get_field()
         owner._add_field(field)
+
         if self._relation:
             self._create_relation()
+
         return field
 
     def copy(self):

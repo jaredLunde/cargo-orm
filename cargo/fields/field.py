@@ -36,8 +36,11 @@ class Field(BaseLogic):
                     return self._validate()
         ..
     """
+    # __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
+    #             'value', 'default', 'validator', '_alias', 'table')
     __slots__ = ('field_name', 'primary', 'unique', 'index', 'not_null',
-                 'value', 'default', 'validator', '_alias', 'table')
+                 'value', 'default', 'validator', '_alias', 'table', 'ref',
+                 '_state')
     OID = UNKNOWN
     empty = _empty
 
@@ -69,6 +72,12 @@ class Field(BaseLogic):
         self.unique = unique
         self.index = index
         self.not_null = not_null
+
+        ## BULLSHIT ##
+        self.ref = None
+        self._state = None
+        ## END BULLSHIT ##
+        
         try:
             self.default = default
         except AttributeError:
@@ -235,23 +244,29 @@ class Field(BaseLogic):
 
     def copy(self, *args, **kwargs):
         vc = None
+
         if self.validator is not None:
             vc = self.validator.__class__
-        cls = self.__class__(*args,
-                             primary=self.primary,
-                             unique=self.unique,
-                             index=self.index,
-                             not_null=self.not_null,
-                             default=self.default,
-                             validator=vc,
-                             name=self.field_name,
-                             table=self.table,
-                             **kwargs)
+
+        cls = self.__class__(
+            *args,
+            primary=self.primary,
+            unique=self.unique,
+            index=self.index,
+            not_null=self.not_null,
+            default=self.default,
+            validator=vc,
+            name=self.field_name,
+            table=self.table,
+            **kwargs
+        )
+
         if self.value_is_not_null:
             try:
                 cls.value = self.value.copy()
             except AttributeError:
                 cls.value = copy.copy(self.value)
+
         cls._alias = self._alias
         return cls
 

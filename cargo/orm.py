@@ -155,11 +155,22 @@ class ORM(object):
             del d[nt]
         fkeys = []
         for k, v in d.copy().items():
+            '''
             if isinstance(v, Field) and hasattr(v, 'ref'):
                 d[k] = ForeignKey(v._state.ref, *v._state.args,
                                   relation=v._state.relation,
                                   **v._state.kwargs)
                 fkeys.append(v.name)
+            '''
+            if isinstance(v, Field):
+                try:
+                    d[k] = ForeignKey(v._state.ref, *v._state.args,
+                                      relation=v._state.relation,
+                                      **v._state.kwargs)
+                    fkeys.append(v.name)
+                except AttributeError:
+                    pass
+                
         if '_fields' in d:
             d['_fields'] = list(filter(lambda f: f.name not in fkeys,
                                        d['_fields']))
@@ -1702,6 +1713,7 @@ class Model(ORM):
                 self._add_field(field)
             elif isinstance(field, (ForeignKey, Relationship)):
                 field.forge(self, field_name)
+
         self._order_fields()
 
     def _make_nt(self):
@@ -1883,11 +1895,13 @@ class Model(ORM):
     def _register_field(self, field):
         try:
             confield = (self.db, field.__class__)
+
             if confield not in _adapted_fields:
                 field.register_adapter()
                 _adapted_fields.add(confield)
         except AttributeError:
             pass
+
         try:
             # self.db.after('connect', )
             field.type.register_type(self.db)
@@ -2485,7 +2499,7 @@ class Model(ORM):
 
     def copy(self, *args, clear=False, **kwargs):
         """ Returns a safe copy of the model """
-        cls = ORM.copy(self, *args, __nocompile__=True, clear=clear, **kwargs)
+        cls = ORM.copy(self, *args, clear=clear, **kwargs)
         cls.field_names = self.field_names
         cls.names = self.names
         cls._alias = self._alias
@@ -2497,9 +2511,11 @@ class Model(ORM):
                 self._fields
             )
         )
+
         cls._relationships = []
         for rel in self._relationships:
             rel.forge(cls, rel._owner_attr)
+
         return cls
 
     def clear_copy(self, *args, **kwargs):
