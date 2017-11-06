@@ -382,10 +382,8 @@ class Path(Field, GeometryLogic):
     def __iter__(self):
         return self.value.__iter__()
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, *args, closed=self._closed, **kwargs)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, *args, closed=self._closed, **kwargs)
 
     def close(self):
         self._closed = True

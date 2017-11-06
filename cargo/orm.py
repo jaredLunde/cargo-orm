@@ -1203,29 +1203,30 @@ class ORM(object):
             l.log("Mogrified", force=True)
             line('—')
 
-    def copy(self, *args, clear=False, **kwargs):
+    def copy(self, *args, **kwargs):
         """ -> a safe copy of the model """
+        cls = self.clear_copy(*args, **kwargs)
+        cls.queries = self.queries.copy()
+        if len(self.state.clauses):
+            cls._state = self.state.copy()
+        cls._multi = self._multi
+        cls._dry = self._dry
+        cls._naked = self._naked
+        cls._new = self._new
+        return cls
+
+
+    def clear_copy(self, *args, **kwargs):
+        """ -> a safe and cleared copy of the model """
         cls = self.__class__(*args,
                              cursor_factory=self._cursor_factory,
                              schema=self.schema,
                              debug=self._debug,
                              client=self._client,
                              **kwargs)
-        if not clear:
-            cls.queries = self.queries.copy()
-            if len(self.state.clauses):
-                cls._state = self.state.copy()
-            cls._multi = self._multi
-            cls._dry = self._dry
-            cls._naked = self._naked
-            cls._new = self._new
+
         cls.table = self.table
         return cls
-
-
-    def clear_copy(self, *args, **kwargs):
-        """ -> a safe and cleared copy of the model """
-        return self.copy(*args, clear=True, **kwargs)
 
     __copy__ = copy
 
@@ -1721,7 +1722,7 @@ class Model(ORM):
         """
         for field_name, field in self._getmembers():
             if isinstance(field, Field):
-                field = field.copy()
+                field = field.clear_copy()
                 field.field_name = field_name
                 self._add_field(field)
             elif isinstance(field, (ForeignKey, Relationship)):
@@ -2516,32 +2517,32 @@ class Model(ORM):
                 yield result
         self.reset()
 
-    def copy(self, *args, clear=False, **kwargs):
+    def copy(self, *args, **kwargs):
         """ Returns a safe copy of the model """
-        cls = ORM.copy(self, *args, clear=clear, **kwargs)
-        cls.field_names = self.field_names
-        cls.names = self.names
-        cls.foreign_keys = self.foreign_keys
+        cls = self.clear_copy(*args, **kwargs)
+        cls._fields = list(
+            map(
+                lambda x: getattr(cls, x)
+                    if not setattr(cls, x, getattr(self, x).copy()) else None,
+                self.field_names
+            )
+        )
         cls._alias = self._alias
         cls._always_naked = self._always_naked
-        '''cls._fields = list(
-            map(
-                lambda x: getattr(cls, x.field_name)
-                    if not setattr(cls, x.field_name, x.copy()) else None,
-                self._fields
-            )
-        )'''
-
-        '''cls._relationships = []
-        for rel in self._relationships:
-            rel.forge(cls, rel._owner_attr)'''
 
         return cls
 
     def clear_copy(self, *args, **kwargs):
         """ Returns a safe and cleared copy of the model """
-        cls = self.copy(*args, clear=True, **kwargs)
-        cls.reset_fields()
+        cls = ORM.clear_copy(self, *args, **kwargs)
+        cls.field_names = self.field_names
+        cls.names = self.names
+        cls.foreign_keys = self.foreign_keys
+
+        '''cls._relationships = []
+        for rel in self._relationships:
+            rel.forge(cls, rel._owner_attr)'''
+
         return cls
 
     __copy__ = copy

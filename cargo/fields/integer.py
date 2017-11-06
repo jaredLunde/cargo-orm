@@ -81,9 +81,9 @@ class SmallInt(Field, NumericLogic):
             return int(self)
         return None
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,
-                          locale=self.locale, **kwargs)
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, *args, minval=self.minval, maxval=self.maxval,
+                                locale=self.locale, **kwargs)
 
 
 class Int(SmallInt):

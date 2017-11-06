@@ -155,7 +155,7 @@ class _DateFields(Field):
         super().clear()
         self._arrow = None
 
-        
+
 class _TimeFields(_DateFields):
     __slots__ = ('_arrow',)
 
@@ -276,8 +276,8 @@ class Time(_TimeFields, TimeLogic, DateLogic):
     def register_adapter():
         register_adapter(ArrowTime, ArrowTime.to_db)
 
-    def copy(self):
-        cls = Field.copy(self)
+    def copy(self, *args, **kwargs):
+        cls = Field.copy(self, *args, **kwargs)
         if self._arrow is not None:
             cls._arrow = self._arrow.clone()
         return cls

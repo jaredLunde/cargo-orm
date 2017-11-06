@@ -77,7 +77,7 @@ class Field(BaseLogic):
         self.ref = None
         self._state = None
         ## END BULLSHIT ##
-        
+
         try:
             self.default = default
         except AttributeError:
@@ -243,6 +243,17 @@ class Field(BaseLogic):
         return True
 
     def copy(self, *args, **kwargs):
+        cls = self.clear_copy(*args, **kwargs)
+
+        if self.value_is_not_null:
+            try:
+                cls.value = self.value.copy()
+            except AttributeError:
+                cls.value = copy.copy(self.value)
+
+        return cls
+
+    def clear_copy(self, *args, **kwargs):
         vc = None
 
         if self.validator is not None:
@@ -260,12 +271,6 @@ class Field(BaseLogic):
             table=self.table,
             **kwargs
         )
-
-        if self.value_is_not_null:
-            try:
-                cls.value = self.value.copy()
-            except AttributeError:
-                cls.value = copy.copy(self.value)
 
         cls._alias = self._alias
         return cls

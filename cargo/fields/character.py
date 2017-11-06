@@ -49,10 +49,14 @@ class Char(Field, StringLogic):
     def type_name(self):
         return '%s(%s)' % (OID_map[self.OID], self.maxlen)
 
-    def copy(self):
-        return Field.copy(self, maxlen=self.maxlen, minlen=self.minlen)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(
+            self,
+            *args,
+            maxlen=self.maxlen,
+            minlen=self.minlen,
+            **kwargs
+        )
 
 
 class Varchar(Char):
@@ -145,13 +149,12 @@ class CiText(Text):
         except ValueError:
             warnings.warn('Type `citext` was not found in the database.')
 
-    def copy(self, **kwargs):
-        cls = Field.copy(self,
-                         maxlen=self.maxlen,
-                         minlen=self.minlen,
-                         **kwargs)
+    def clear_copy(self, *args, **kwargs):
+        cls = Field.clear_copy(self,
+                               *args,
+                               maxlen=self.maxlen,
+                               minlen=self.minlen,
+                               **kwargs)
         cls._type_oid = self._type_oid
         cls._type_array_oid = self._type_array_oid
         return cls
-
-    __copy__ = copy

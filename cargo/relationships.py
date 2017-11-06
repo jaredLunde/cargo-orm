@@ -189,7 +189,7 @@ class ForeignKeyState(object):
 def get_cls(cls):
     class FKey(cls):
         __slots__ = cls.__slots__
-        
+
         def copy(self, *args, **kwargs):
             cls = Field.copy(self, *args, **kwargs)
             cls.ref = self.ref

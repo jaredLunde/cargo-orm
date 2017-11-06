@@ -65,13 +65,11 @@ class BaseDecimal(Field, NumericLogic):
             return float(self)
         return None
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, *args, decimal_places=self.decimal_places,
-                          minval=self.minval, maxval=self.maxval,
-                          locale=self.locale, context=self._context.copy(),
-                          **kwargs)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, *args, decimal_places=self.decimal_places,
+                                minval=self.minval, maxval=self.maxval,
+                                locale=self.locale, context=self._context.copy(),
+                                **kwargs)
 
 
 class BaseDecimalFormat(object):
@@ -194,12 +192,10 @@ class Float(Field, NumericLogic, BaseDecimalFormat):
 
     for_json = Decimal.for_json
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, *args, minval=self.minval, maxval=self.maxval,
-                          decimal_places=self.decimal_places,
-                          locale=self.locale, **kwargs)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, *args, minval=self.minval, maxval=self.maxval,
+                                decimal_places=self.decimal_places,
+                                locale=self.locale, **kwargs)
 
 
 class Double(Float):
@@ -319,13 +315,11 @@ class Money(Currency):
         MONEYTYPE = reg_type('MONEYTYPE', MONEY, Money.to_python)
         reg_array_type('MONEYARRAYTYPE', MONEYARRAY, MONEYTYPE)
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self,
-                          *args,
-                          minval=self.minval,
-                          maxval=self.maxval,
-                          locale=self.locale,
-                          context=self._context.copy(),
-                          **kwargs)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self,
+                                *args,
+                                minval=self.minval,
+                                maxval=self.maxval,
+                                locale=self.locale,
+                                context=self._context.copy(),
+                                **kwargs)

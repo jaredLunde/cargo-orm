@@ -618,6 +618,11 @@ class Encrypted(Field):
                               factory=self.factory,
                               **kwargs)
 
+    def clear_copy(self, *args, **kwargs):
+        cls = self.copy(*args, **kwargs)
+        cls.clear()
+        return cls
+
     def clear(self):
         self.type.clear()
 

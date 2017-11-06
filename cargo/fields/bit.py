@@ -86,10 +86,9 @@ class Bit(Field, BitLogic):
         BITTYPE = reg_type("BITTYPE", (BIT, VARBIT), Bit.to_python)
         reg_array_type('BITARRAYTYPE', (VARBITARRAY, BITARRAY), BITTYPE)
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, self.length, *args, **kwargs)
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, self.length, *args, **kwargs)
 
-    __copy__ = copy
 
 
 class Varbit(Bit):

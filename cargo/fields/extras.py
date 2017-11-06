@@ -207,10 +207,8 @@ class Slug(Field, StringLogic):
             return self.factory(value)
         return value
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, *args, factory=self.factory, **kwargs)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, *args, factory=self.factory, **kwargs)
 
 
 def _get_pwd_context():
@@ -656,17 +654,15 @@ class Password(Field, StringLogic):
         self.validation_value = self.empty
         self.value = self.empty
 
-    def copy(self, *args, **kwargs):
-        cls = Field.copy(self, *args,
-                         hasher=self.hasher,
-                         minlen=self.minlen,
-                         maxlen=self.maxlen,
-                         blacklist=self.blacklist,
-                         **kwargs)
+    def clear_copy(self, *args, **kwargs):
+        cls = Field.clear_copy(self, *args,
+                               hasher=self.hasher,
+                               minlen=self.minlen,
+                               maxlen=self.maxlen,
+                               blacklist=self.blacklist,
+                               **kwargs)
         cls.validation_value = self.validation_value
         return cls
-
-    __copy__ = copy
 
 
 class Key(Field, StringLogic):
@@ -743,12 +739,9 @@ class Key(Field, StringLogic):
             value = self.generate(*args, **kwargs)
         self.__call__(value)
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self, self.size, self.keyspace, self.rng, *args,
-                          **kwargs)
-
-    __copy__ = copy
-
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self, self.size, self.keyspace, self.rng, *args,
+                                **kwargs)
 
 class Email(Text):
     """ ======================================================================
@@ -860,18 +853,16 @@ class Username(Text):
         except ValueError:
             warnings.warn('Type `citext` was not found in the database.')
 
-    def copy(self, **kwargs):
-        cls = Field.copy(self,
-                         maxlen=self.maxlen,
-                         minlen=self.minlen,
-                         re_pattern=self._re,
-                         **kwargs)
+    def clear_copy(self, **kwargs):
+        cls = Field.clear_copy(self,
+                               maxlen=self.maxlen,
+                               minlen=self.minlen,
+                               re_pattern=self._re,
+                               **kwargs)
         cls.reserved_usernames = self.reserved_usernames
         cls._type_oid = self._type_oid
         cls._type_array_oid = self._type_array_oid
         return cls
-
-    __copy__ = copy
 
     def __deepcopy__(self, memo):
         cls = self.__class__()

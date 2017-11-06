@@ -104,13 +104,11 @@ class OneOf(Field, EnumLogic):
     def index_of(self, type=None):
         return self.types.index(type or self.value)
 
-    def copy(self, **kwargs):
-        cls = Field.copy(self, *self.types, type_name=self._type_name, **kwargs)
+    def clear_copy(self, **kwargs):
+        cls = Field.clear_copy(self, *self.types, type_name=self._type_name, **kwargs)
         cls._type_oid = self._type_oid
         cls._type_array_oid = self._type_array_oid
         return cls
-
-    __copy__ = copy
 
 
 Enum = OneOf
@@ -341,13 +339,11 @@ class Array(Field, ArrayLogic):
         except AttributeError:
             pass
 
-    def copy(self, *args, **kwargs):
-        return Field.copy(self,
-                          *args,
-                          type=self.type.copy(),
-                          dimensions=self.dimensions,
-                          minlen=self.minlen,
-                          maxlen=self.maxlen,
-                          **kwargs)
-
-    __copy__ = copy
+    def clear_copy(self, *args, **kwargs):
+        return Field.clear_copy(self,
+                                *args,
+                                type=self.type.copy(),
+                                dimensions=self.dimensions,
+                                minlen=self.minlen,
+                                maxlen=self.maxlen,
+                                **kwargs)
