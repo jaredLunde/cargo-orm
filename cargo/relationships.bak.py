@@ -190,7 +190,7 @@ def get_cls(cls):
     class FKey(cls):
         def copy(self, *args, **kwargs):
             cls = Field.copy(self, *args, **kwargs)
-            cls.ref = self.ref
+            cls.ref = self.ref.copy()
             cls._state = self._state
 
             return cls
