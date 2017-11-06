@@ -1222,6 +1222,7 @@ class ORM(object):
         cls.table = self.table
         return cls
 
+
     def clear_copy(self, *args, **kwargs):
         """ -> a safe and cleared copy of the model """
         return self.copy(*args, clear=True, **kwargs)
@@ -2523,13 +2524,13 @@ class Model(ORM):
         cls.foreign_keys = self.foreign_keys
         cls._alias = self._alias
         cls._always_naked = self._always_naked
-        cls._fields = list(
+        '''cls._fields = list(
             map(
                 lambda x: getattr(cls, x.field_name)
                     if not setattr(cls, x.field_name, x.copy()) else None,
                 self._fields
             )
-        )
+        )'''
 
         '''cls._relationships = []
         for rel in self._relationships:
