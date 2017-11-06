@@ -1213,7 +1213,7 @@ class ORM(object):
                              **kwargs)
         if not clear:
             cls.queries = self.queries.copy()
-            if self.state:
+            if len(self.state.clauses):
                 cls._state = self.state.copy()
             cls._multi = self._multi
             cls._dry = self._dry
