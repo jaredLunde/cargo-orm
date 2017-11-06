@@ -1557,6 +1557,7 @@ class Joins(object):
 #  ``Models``
 #
 _adapted_fields = set()
+_registered_fields = set()
 
 
 class Model(ORM):
@@ -1699,7 +1700,7 @@ class Model(ORM):
         mro = self.__class__.__mro__
         mems = (
             items
-            for x in range(len(mro) - 3) # 3 = object, ORM, Model
+            for x in range(len(mro) - 3)  # 3 = object, ORM, Model
             for items in mro[x].__dict__.items()
         )
         seen = set()
@@ -1915,10 +1916,16 @@ class Model(ORM):
 
         try:
             # self.db.after('connect', )
-            field.type.register_type(self.db)
+            tfield = (self.db, field.type.__class__)
+            if tfield not in _registered_fields:
+                field.type.register_type(self.db)
+                _registered_fields.add(tfield)
         except AttributeError:
             try:
-                field.register_type(self.db)
+                tfield = (self.db, field.__class__)
+                if tfield not in _registered_fields:
+                    field.register_type(self.db)
+                    _registered_fields.add(tfield)
             except AttributeError:
                 pass
 
@@ -2036,7 +2043,7 @@ class Model(ORM):
         """
         return tuple(field
                      for field in self.fields
-                     if isinstance(field, _ForeignObject))
+                     if hasattr(field, 'ref') and field.ref is not None)
 
     @cached_property
     def indexes(self):
@@ -2513,6 +2520,7 @@ class Model(ORM):
         cls = ORM.copy(self, *args, clear=clear, **kwargs)
         cls.field_names = self.field_names
         cls.names = self.names
+        cls.foreign_keys = self.foreign_keys
         cls._alias = self._alias
         cls._always_naked = self._always_naked
         cls._fields = list(
@@ -2523,9 +2531,9 @@ class Model(ORM):
             )
         )
 
-        cls._relationships = []
+        '''cls._relationships = []
         for rel in self._relationships:
-            rel.forge(cls, rel._owner_attr)
+            rel.forge(cls, rel._owner_attr)'''
 
         return cls
 

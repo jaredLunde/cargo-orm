@@ -854,7 +854,6 @@ class Username(Text):
     def register_type(self, db):
         try:
             self._register_oid(db)
-            OID, ARRAY_OID = db.get_type_OID('citext')
             reg_array_type('CITEXTARRAYTYPE',
                            self._type_array_oid,
                            psycopg2.STRING)
@@ -866,8 +865,8 @@ class Username(Text):
                          maxlen=self.maxlen,
                          minlen=self.minlen,
                          re_pattern=self._re,
+                         reserved_usernames=self.reserved_usernames,
                          **kwargs)
-        cls.reserved_usernames = self.reserved_usernames
         cls._type_oid = self._type_oid
         cls._type_array_oid = self._type_array_oid
         return cls

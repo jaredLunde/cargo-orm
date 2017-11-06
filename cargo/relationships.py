@@ -188,6 +188,8 @@ class ForeignKeyState(object):
 @memoize
 def get_cls(cls):
     class FKey(cls):
+        __slots__ = cls.__slots__
+        
         def copy(self, *args, **kwargs):
             cls = Field.copy(self, *args, **kwargs)
             cls.ref = self.ref
@@ -413,7 +415,7 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         # self._forged = True
         field = self.get_field()
         owner._add_field(field)
-        # setattr(owner.__class__, field.field_name, field)
+        setattr(owner.__class__, field.field_name, field)
         # print(getattr(owner.__class__, field.field_name))
         if self._relation:
             self._create_relation()
@@ -532,7 +534,7 @@ class Relationship(BaseRelationship):
             obj = getattr(obj(), string.split(".")[-1])
         except AttributeError:
             self._raise_forge_error(string)
-        if isinstance(obj, _ForeignObject):
+        if hasattr(field, 'ref') and field.ref is not None:
             return obj
         else:
             self._raise_forge_error(

@@ -24,7 +24,7 @@ class Posts(Model):
     uid = UID()
     title = Text(500, not_null=True)
     author = ForeignKey('Users.uid',
-                        relation='posts',
+                        # relation='posts',
                         index=True,
                         not_null=True)
     slug = Slug(UniqueSlugFactory(8),
