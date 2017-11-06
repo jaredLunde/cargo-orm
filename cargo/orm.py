@@ -170,7 +170,7 @@ class ORM(object):
                     fkeys.append(v.name)
                 except AttributeError:
                     pass
-                
+
         if '_fields' in d:
             d['_fields'] = list(filter(lambda f: f.name not in fkeys,
                                        d['_fields']))
@@ -1697,10 +1697,21 @@ class Model(ORM):
 
     def _getmembers(self):
         mro = self.__class__.__mro__
-        mro_len = len(mro) - 3  # 3 = object, ORM, Model
-        for x in range(mro_len):
-            for items in mro[mro_len - x - 1].__dict__.items():
-                yield items
+        mems = (
+            items
+            for x in range(len(mro) - 3) # 3 = object, ORM, Model
+            for items in mro[x].__dict__.items()
+        )
+        seen = set()
+        seen_add = seen.add
+        mems = [mem for mem in mems if mem[0] not in seen and not seen_add(mem[0])]
+
+        for mem in reversed(mems):
+            yield mem
+        # for x in range(mro_len):
+        #     # for items in mro[mro_len - x - 1].__dict__.items():
+        #     for items in mro[x].__dict__.items():
+        #         yield items
 
     def _compile(self):
         """ Sets :class:Field, :class:Relationship and :class:ForeignKey

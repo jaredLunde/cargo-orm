@@ -12,7 +12,7 @@ from functools import lru_cache
 
 from pydoc import locate, ErrorDuringImport
 
-from vital.cache import cached_property
+from vital.cache import cached_property, memoize
 from vital.debug import preprX, get_obj_name
 
 from cargo.fields import *
@@ -185,6 +185,22 @@ class ForeignKeyState(object):
         self.ref = ref
 
 
+@memoize
+def get_cls(cls):
+    class FKey(cls):
+        def copy(self, *args, **kwargs):
+            cls = Field.copy(self, *args, **kwargs)
+            cls.ref = self.ref.copy()
+            cls._state = self._state
+
+            return cls
+
+        pull = _ForeignObject.pull
+
+    FKey.__name__ = cls.__name__
+    return FKey
+
+
 class ForeignKey(BaseRelationship, _ForeignObject):
     """ ===============================================================
         ``Usage Example``
@@ -288,7 +304,6 @@ class ForeignKey(BaseRelationship, _ForeignObject):
             the foreign key refers. :class:Reference provides both the
             model and the field referenced.
         """
-        _class = copy.copy(self.ref.__class__)
         _args, _kwargs = self._args, self._kwargs.copy()
         _owner, _owner_attr = self._owner, self._owner_attr
         _on_delete, _on_update = self._on_delete, self._on_update
@@ -301,22 +316,13 @@ class ForeignKey(BaseRelationship, _ForeignObject):
         # _slots.append('ref')
         # _slots.append('_state')
 
-        def copy_field(self, *args, **kwargs):
-            cls = Field.copy(self, *args, **kwargs)
-
-            cls.ref = Reference(_ref_model, _ref_attr)
-
-            cls._state = self._state
-            return cls
-
         primary = False
 
         if 'primary' in _kwargs:
             primary = _kwargs['primary']
             del _kwargs['primary']
 
-        _class.copy = copy_field
-        _class.pull = _ForeignObject.pull
+        _class = get_cls(self.ref.__class__)
         field = _class(*_args, primary=primary, **_kwargs)
         field.table = _owner.table
         field.field_name = _owner_attr

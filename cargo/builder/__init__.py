@@ -358,7 +358,7 @@ class Plan(Table):
             class UsersPlan(Plan):
                 ORDINAL = ('uid', 'username', 'email', 'password')
                 model = Users()
-                
+
                 def after(self):
                     self.comment_on(self.columns.uid,
                                     'A universally unique identifier '+
@@ -627,6 +627,7 @@ class Plan(Table):
         self.create_extensions()
         self.create_types()
         self.create_functions()
+        print(self.query)
         try:
             self.query.execute()
         except QueryError as e:
