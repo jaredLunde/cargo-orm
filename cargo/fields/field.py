@@ -251,6 +251,7 @@ class Field(BaseLogic):
             except AttributeError:
                 cls.value = copy.copy(self.value)
 
+        cls._alias = self._alias
         return cls
 
     def clear_copy(self, *args, **kwargs):
@@ -272,7 +273,6 @@ class Field(BaseLogic):
             **kwargs
         )
 
-        cls._alias = self._alias
         return cls
 
     __copy__ = copy

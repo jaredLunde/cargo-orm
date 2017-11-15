@@ -190,8 +190,8 @@ def get_cls(cls):
     class FKey(cls):
         __slots__ = cls.__slots__
 
-        def copy(self, *args, **kwargs):
-            cls = Field.copy(self, *args, **kwargs)
+        def clear_copy(self, *args, **kwargs):
+            cls = Field.clear_copy(self, *args, **kwargs)
             cls.ref = self.ref
             cls._state = self._state
 
