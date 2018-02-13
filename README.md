@@ -1,7 +1,7 @@
 # Cargo ORM
 [![Build Status](https://travis-ci.org/jaredlunde/cargo-orm.svg?branch=dev)](https://travis-ci.org/jaredlunde/cargo-orm)
 
-A fast, friendly, Postgres ORM written for Python 3.5+.
+A fast, friendly Postgres ORM written for Python 3.5+.
 
 
 ## Getting started
