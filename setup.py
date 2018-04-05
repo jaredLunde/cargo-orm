@@ -8,7 +8,7 @@ from pkgutil import walk_packages
 
 PKG = 'cargo'
 PKG_NAME = 'cargo-orm'
-PKG_VERSION = '0.1.3'
+PKG_VERSION = '0.1.4'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 
@@ -26,6 +26,7 @@ def find_packages(prefix=""):
         if ispkg:
             yield name
 
+print(list(find_packages(PKG)))
 setup(
     name=PKG_NAME,
     version=PKG_VERSION,
@@ -43,5 +44,13 @@ setup(
         "Operating System :: OS Independent"
     ],
     install_requires=[str(ir.req) for ir in install_reqs],
-    packages=list(find_packages(PKG))
+    packages=[
+        'cargo',
+        'cargo.aio',
+        'cargo.builder',
+        'cargo.etc',
+        'cargo.etc.translator',
+        'cargo.fields',
+        'cargo.logic'
+    ]
 )
