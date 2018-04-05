@@ -1142,7 +1142,7 @@ class Clause(BaseExpression):
         self.string = (
             "%s %s %s" % (self.clause, clause_params, self.alias or "")
         ).strip()
-        
+
         return self.string
 
 

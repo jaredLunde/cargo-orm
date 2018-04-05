@@ -1,1 +1,1 @@
-from cargo.etc.translator import postgres
+from . import postgres

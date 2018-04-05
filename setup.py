@@ -8,7 +8,7 @@ from pkgutil import walk_packages
 
 PKG = 'cargo'
 PKG_NAME = 'cargo-orm'
-PKG_VERSION = '0.1.1'
+PKG_VERSION = '0.1.3'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 
@@ -25,7 +25,6 @@ def find_packages(prefix=""):
     for _, name, ispkg in walk_packages(path, prefix):
         if ispkg:
             yield name
-
 
 setup(
     name=PKG_NAME,

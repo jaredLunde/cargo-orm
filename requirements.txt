@@ -1,7 +1,5 @@
-aiopg
 argon2_cffi
 arrow
-asynctest
 babel
 bcrypt
 bitstring
