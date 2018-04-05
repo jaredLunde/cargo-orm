@@ -1913,7 +1913,7 @@ class Model(ORM):
             if confield not in _adapted_fields:
                 field.register_adapter()
                 _adapted_fields.add(confield)
-        except AttributeError:
+        except (AttributeError, psycopg2.OperationalError):
             pass
 
         try:
@@ -1922,13 +1922,13 @@ class Model(ORM):
             if tfield not in _registered_fields:
                 field.type.register_type(self.db)
                 _registered_fields.add(tfield)
-        except AttributeError:
+        except (AttributeError, psycopg2.OperationalError):
             try:
                 tfield = (self.db, field.__class__)
                 if tfield not in _registered_fields:
                     field.register_type(self.db)
                     _registered_fields.add(tfield)
-            except AttributeError:
+            except (AttributeError, psycopg2.OperationalError):
                 pass
 
     def _add_field(self, field):
