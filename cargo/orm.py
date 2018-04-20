@@ -2481,7 +2481,7 @@ class Model(ORM):
                                       fields=fields):
             yield item
 
-    def iter(self, offset=0, limit=0, buffer=100, order_field=None,
+    def iter(self, offset=0, limit=0, buffer=2000, order_field=None,
              reverse=False, fields=None):
         """ Yields populated models until there are no more
             results to fetch.
@@ -2496,11 +2496,9 @@ class Model(ORM):
         if not self.state.has('WHERE'):
             self.where(self.best_available_index or True)
 
-        field = getattr(self, order_field) if order_field else self.best_index
-
-        if field is not None:
-            order = field.asc() if not reverse else field.desc()
-            self.order_by(order)
+        if order_field is not None:
+            field = getattr(self, order_field)
+            self.order_by(field.asc() if not reverse else field.desc())
 
         self.offset(offset)
 
@@ -2508,13 +2506,19 @@ class Model(ORM):
             self.limit(limit)
 
         q = super().dry().select(*fields or []).execute()
+        q.itersize = limit if buffer > limit else buffer
 
-        while True:
-            results = q.fetchmany(buffer)
-            if not results:
+        for n, result in enumerate(q, 1):
+            yield result
+            if n == limit:
                 break
-            for result in results:
-                yield result
+        #while True:
+        #    results = q.fetchmany(buffer)
+        #    if not results:
+        #        break
+        #    for result in results:
+        #        yield result
+
         self.reset()
 
     def copy(self, *args, **kwargs):

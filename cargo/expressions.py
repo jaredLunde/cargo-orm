@@ -144,8 +144,11 @@ class BaseLogic(object):
             ..
             |DISTINCT FROM field|
         """
-        return Expression(self, "{} {} {}".format(
-            operators.IS, operators.DISTINCT, operators.FROM), other)
+        return Expression(
+            self,
+            "{} {} {}".format(operators.IS, operators.DISTINCT, operators.FROM),
+            other
+        )
 
     def not_distinct_from(self, other):
         """ Creates a |NOT DISTINCT FROM| SQL clause
@@ -164,7 +167,8 @@ class BaseLogic(object):
             operators.IS,
             operators.NOT,
             operators.DISTINCT,
-            operators.FROM)
+            operators.FROM
+        )
         return Expression(self, op, other)
 
     def in_(self, *others):
@@ -180,6 +184,9 @@ class BaseLogic(object):
             ..
             |field IN (1, 2, 3, 4)|
         """
+        if len(others) == 1 and isinstance(others[0], (list, tuple)):
+            others = others[0]
+
         return Expression(self, operators.IN, others)
 
     is_in = in_
@@ -201,6 +208,10 @@ class BaseLogic(object):
             |field NOT IN (1, 2, 3, 4)|
         """
         op = "{} {}".format(operators.NOT, operators.IN)
+
+        if len(others) == 1 and isinstance(others[0], (list, tuple)):
+            others = others[0]
+
         return Expression(self, op, others)
 
     def __lshift__(self, others):
@@ -2465,7 +2476,7 @@ class aliased(NumericLogic, StringLogic):
             # foo_alias.field_name AS foo_alias_field_name
         ..
     """
-    __slots__ = ('string', 'field')
+    __slots__ = 'string', 'field'
 
     def __init__(self, field, use_field_name=False):
         self.field = field
@@ -2499,7 +2510,7 @@ class parameterize(BaseExpression, NumericLogic, StringLogic):
         ..
         |%(8ae08c)s| and |{'8ae08c': 1}|
     """
-    __slots__ = ('string', 'params')
+    __slots__ = 'string', 'params'
 
     def __init__(self, value, alias=None):
         """`parameterize`
@@ -2531,7 +2542,7 @@ class safe(NumericLogic, StringLogic):
 
         This object can be manipulated with expression :class:BaseLogic
     """
-    __slots__ = ('string', 'params', 'alias')
+    __slots__ = 'string', 'params', 'alias'
 
     def __init__(self, value, alias=None):
         self.alias = alias or ""

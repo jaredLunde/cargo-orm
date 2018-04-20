@@ -154,6 +154,7 @@ class _DateFields(Field):
     def clear(self):
         super().clear()
         self._arrow = None
+        return self
 
 
 class _TimeFields(_DateFields):
