@@ -8,7 +8,6 @@ humanize
 netaddr
 python-dateutil
 passlib
-phonenumbers
 psycopg2
 pycrypto
 python-slugify

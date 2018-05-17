@@ -7,7 +7,6 @@
 
 """
 import decimal
-import phonenumbers
 from bitstring import BitArray
 from collections import Iterable
 
@@ -32,8 +31,7 @@ __all__ = (
     'UsernameValidator',
     'EmailValidator',
     'PasswordValidator',
-    'BooleanValidator',
-    'PhoneNumberValidator'
+    'BooleanValidator'
 )
 
 
@@ -458,27 +456,5 @@ class EmailValidator(CharValidator):
             assert self.validate_type()
             assert self.validate_length()
             return self.validate_format()
-        except AssertionError:
-            return False
-
-
-class PhoneNumberValidator(NullValidator):
-    __slots__ = Validator.__slots__
-    FORMAT_CODE = 7805
-
-    def validate_number(self):
-        if phonenumbers.phonenumberutil.is_possible_number(self.value):
-            return True
-        self.set_value_error(self.FORMAT_CODE,
-                             "phone number is malformed ({})",
-                             self.value)
-        return False
-
-    def validate(self):
-        if self.is_nullable():
-            return True
-        try:
-            assert self.validate_null()
-            return self.validate_number()
         except AssertionError:
             return False

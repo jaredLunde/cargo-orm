@@ -2,20 +2,21 @@
 import os
 import uuid
 from setuptools import setup
-from pip.req import parse_requirements
 from pkgutil import walk_packages
 
 
 PKG = 'cargo'
 PKG_NAME = 'cargo-orm'
-PKG_VERSION = '0.1.10'
+PKG_VERSION = '0.1.11'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 
+def parse_requirements(filename):
+    """ load requirements from a pip requirements file """
+    lineiter = (line.strip() for line in open(filename))
+    return (line for line in lineiter if line and not line.startswith("#"))
 
-# parse_requirements() returns generator of pip.req.InstallRequirement objects
-install_reqs = parse_requirements(pathname + "/requirements.txt",
-                                  session=uuid.uuid1())
+install_reqs = parse_requirements(pathname + "/requirements.txt")
 
 
 def find_packages(prefix=""):
@@ -43,7 +44,7 @@ setup(
         "Topic :: Database :: Front-Ends",
         "Operating System :: OS Independent"
     ],
-    install_requires=[str(ir.req) for ir in install_reqs],
+    install_requires=list(install_reqs),
     packages=[
         'cargo',
         'cargo.builder',

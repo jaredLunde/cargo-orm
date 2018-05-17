@@ -2500,7 +2500,8 @@ class Model(ORM):
             field = getattr(self, order_field)
             self.order_by(field.asc() if not reverse else field.desc())
 
-        self.offset(offset)
+        if offset:
+            self.offset(offset)
 
         if limit:
             self.limit(limit)
