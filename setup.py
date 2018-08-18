@@ -7,7 +7,7 @@ from pkgutil import walk_packages
 
 PKG = 'cargo'
 PKG_NAME = 'cargo-orm'
-PKG_VERSION = '0.1.11'
+PKG_VERSION = '0.2.0'
 
 pathname = os.path.dirname(os.path.realpath(__file__))
 
