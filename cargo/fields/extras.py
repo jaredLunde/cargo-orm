@@ -378,7 +378,7 @@ class Hasher(HashIdentifier):
 
 class Argon2Hasher(Hasher):
     __slots__ = ('rounds', 'context', 'raises')
-    scheme = 'argon2i'
+    scheme = 'argon2id'
 
     def __init__(self, rounds=2, raises=True, salt_size=16,
                  memory_cost=1 << 9, parallelism=2, length=24,
