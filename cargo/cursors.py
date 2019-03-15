@@ -65,16 +65,20 @@ class CNamedTupleCursor(_cursor):
 
     def __iter__(self):
         it = super().__iter__()
-        t = next(it)
+        try:
+            t = next(it)
 
-        nt = self.Record
-        if nt is None:
-            nt = self.Record = self._make_nt()
+            nt = self.Record
+            if nt is None:
+                nt = self.Record = self._make_nt()
 
-        yield nt._make(t)
+            yield nt._make(t)
 
-        while 1:
-            yield nt._make(next(it))
+            while 1:
+                yield nt._make(next(it))
+        except StopIteration:
+            return
+
 
     def _make_nt(self):
         return nt("Record", (d for d, *_ in self.description or []),
@@ -110,10 +114,13 @@ class OrderedDictCursor(_cursor):
 
     def __iter__(self):
         it = super().__iter__()
-        t = next(it)
-        yield self._to_od(t)
-        while 1:
-            yield self._to_od(next(it))
+        try:
+            t = next(it)
+            yield self._to_od(t)
+            while 1:
+                yield self._to_od(next(it))
+        except StopIteration:
+            return
 
 
 class ModelCursor(_cursor):
@@ -148,7 +155,10 @@ class ModelCursor(_cursor):
 
     def __iter__(self):
         it = super().__iter__()
-        t = next(it)
-        yield self._fill_model(t)
-        while 1:
-            yield self._fill_model(next(it))
+        try:
+            t = next(it)
+            yield self._fill_model(t)
+            while 1:
+                yield self._fill_model(next(it))
+        except StopIteration:
+            return
